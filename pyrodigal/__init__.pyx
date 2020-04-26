@@ -10,6 +10,7 @@ import collections.abc
 # ----------------------------------------------------------------------------
 
 # system C imports
+cimport libc.errno
 from libc.stdlib cimport qsort
 from libc.string cimport memcpy, memset, strcpy
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
@@ -60,35 +61,35 @@ cdef void sequence_to_bitmap(
     if not seq[0] or not useq[0] or not rseq[0]:
         return
 
-    # clear memory
-    memset(seq[0], 0, blen * sizeof(unsigned char))
-    memset(rseq[0], 0, blen * sizeof(unsigned char))
-    memset(useq[0], 0, ulen * sizeof(unsigned char))
+    cdef size_t i, j
+    with nogil:
+        # clear memory
+        memset(seq[0], 0, blen * sizeof(unsigned char))
+        memset(rseq[0], 0, blen * sizeof(unsigned char))
+        memset(useq[0], 0, ulen * sizeof(unsigned char))
 
-    # fill the bitmaps depending on the sequence
-    cdef size_t i = 0
-    cdef size_t j = 0
-    while i < slen:
-        letter = text[i]
-        if letter == u'A' or letter == u'a':
-            pass
-        elif letter == u'T' or letter == u't':
-            bitmap.set(seq[0], j)
-            bitmap.set(seq[0], j+1)
-        elif letter == u'G' or letter == u'g':
-            bitmap.set(seq[0], j)
-        elif letter == u'C' or letter == u'c':
-            bitmap.set(seq[0], j+1)
-        else:
-            bitmap.set(useq[0], i)
-        j += 2
-        i += 1
+        # fill the bitmaps depending on the sequence
+        for i,j in enumerate(range(0, slen*2, 2)):
+            letter = text[i]
+            if letter == u'A' or letter == u'a':
+                pass
+            elif letter == u'T' or letter == u't':
+                bitmap.set(seq[0], j)
+                bitmap.set(seq[0], j+1)
+            elif letter == u'G' or letter == u'g':
+                bitmap.set(seq[0], j)
+            elif letter == u'C' or letter == u'c':
+                bitmap.set(seq[0], j+1)
+            else:
+                bitmap.set(useq[0], i)
+            j += 2
+            i += 1
 
-    # compute reverse complement
-    sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
+        # compute reverse complement
+        sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
 
 
-cdef size_t count_genes(_node* nodes, int path):
+cdef size_t count_genes(_node* nodes, int path) nogil:
     cdef size_t ctr = 0
 
     if path == -1:
@@ -98,12 +99,11 @@ cdef size_t count_genes(_node* nodes, int path):
         path = nodes[path].traceb
 
     while path != -1 and ctr < gene.MAX_GENES:
-        if nodes[path].elim == 1:
-            pass
-        elif nodes[path].strand == 1 and nodes[path].type == sequence.STOP:
-            ctr += 1
-        elif nodes[path].strand == -1 and nodes[path].type != sequence.STOP:
-            ctr += 1
+        if nodes[path].elim != 1:
+          if nodes[path].strand == 1 and nodes[path].type == sequence.STOP:
+              ctr += 1
+          elif nodes[path].strand == -1 and nodes[path].type != sequence.STOP:
+              ctr += 1
         path = nodes[path].tracef
 
     return ctr
@@ -120,13 +120,14 @@ cdef size_t count_genes(_node* nodes, int path):
 #   2. we don't have to worry about their lifetime within the results
 
 cdef _metagenomic_bin META_BINS[NUM_META]
-for i in range(NUM_META):
-    memset(&META_BINS[i], 0, sizeof(_metagenomic_bin))
-    strcpy(<char*> &META_BINS[i].desc, "None")
-    META_BINS[i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
-    if not META_BINS[i].tinf:
+cdef size_t _i
+for _i in range(NUM_META):
+    memset(&META_BINS[_i], 0, sizeof(_metagenomic_bin))
+    strcpy(<char*> &META_BINS[_i].desc, "None")
+    META_BINS[_i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
+    if not META_BINS[_i].tinf:
         raise MemoryError()
-    memset(META_BINS[i].tinf, 0, sizeof(_training))
+    memset(META_BINS[_i].tinf, 0, sizeof(_training))
 initialize_metagenomic_bins(META_BINS)
 
 # ----------------------------------------------------------------------------
@@ -298,10 +299,8 @@ cdef class Pyrodigal:
         self.genes = NULL
 
     def __dealloc__(self):
-        if self.nodes:
-            PyMem_Free(self.nodes)
-        if self.genes:
-            PyMem_Free(self.genes)
+        PyMem_Free(self.nodes)
+        PyMem_Free(self.genes)
 
     def find_genes(self, sequence):
         if not isinstance(sequence, str):
@@ -316,9 +315,9 @@ cdef class Pyrodigal:
         cdef bitmap_t useq = NULL
         sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
         if not seq or not useq or not rseq:
-            if seq: PyMem_Free(seq)
-            if useq: PyMem_Free(useq)
-            if rseq: PyMem_Free(rseq)
+            PyMem_Free(seq)
+            PyMem_Free(useq)
+            PyMem_Free(rseq)
             raise MemoryError()
 
         if self.meta:
@@ -327,6 +326,11 @@ cdef class Pyrodigal:
             raise NotImplementedError("single mode not implemented")
 
     cdef _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
+        cdef size_t i
+        cdef size_t gene_count
+        cdef size_t new_length
+
+
         # reallocate memory for the nodes if this is the biggest sequence
         # processed by this object so far
         if slen > self.max_slen:
@@ -336,66 +340,72 @@ cdef class Pyrodigal:
                 raise MemoryError()
             self.max_slen = new_length*8
 
-        # compute the GC% of the sequence
+
         cdef size_t gc_count = 0
-        for i in range(slen):
-            gc_count += sequence.is_gc(seq, i)
-        cdef double gc = (<double> gc_count) / slen
-
-        # compute the gc bias of the sequence
-        cdef double low = 0.88495*gc - 0.0102337
-        cdef double high = 0.86596*gc + .1131991
-        if low > 0.65:
-            low = 0.65
-        if high < 0.35:
-            high = 0.35
-
-        # check which of the metagenomic bins gets the best results
+        cdef double gc, low, high
         cdef double max_score = -100
         cdef size_t max_phase = 0
-        for i in range(NUM_META):
-            # recreate the node list if the translation table changed
-            if i == 0 or META_BINS[i].tinf.trans_table != META_BINS[i-1].tinf.trans_table:
-                memset(self.nodes, 0, self.nn*sizeof(_node))
-                self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[i].tinf)
-                qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
-            # check the GC% is compatible with the current bin
-            if META_BINS[i].tinf.gc < low or META_BINS[i].tinf.gc > high:
-                continue
+        with nogil:
+          # compute the GC% of the sequence
+            for i in range(slen):
+                gc_count += sequence.is_gc(seq, i)
+            gc = (<double> gc_count) / slen
 
-            # compute the score for the current metagenomic bin
-            node.reset_node_scores(self.nodes, self.nn)
-            node.score_nodes(seq, rseq, slen, self.nodes, self.nn, META_BINS[i].tinf, self.closed, True)
-            node.record_overlapping_starts(self.nodes, self.nn, META_BINS[i].tinf, 1)
-            ipath = dprog.dprog(self.nodes, self.nn, META_BINS[i].tinf, 1)
+            # compute the min/max acceptable gc for the sequence to only
+            # use appropriate metagenomic bins
+            low = 0.88495*gc - 0.0102337
+            high = 0.86596*gc + .1131991
+            if low > 0.65:
+                low = 0.65
+            if high < 0.35:
+                high = 0.35
 
-            # update if the current bin gave a better score
-            if self.nodes[ipath].score > max_score:
-                max_phase = i
-                max_score = self.nodes[ipath].score
-                dprog.eliminate_bad_genes(self.nodes, ipath, META_BINS[i].tinf)
-                # reallocate memory for the nodes if this is the largest amount
-                # of genes found so far
-                gene_count = count_genes(self.nodes, ipath)
-                if gene_count > self.max_genes:
-                    self.genes = <_gene*> PyMem_Realloc(self.genes, gene_count*sizeof(_gene))
-                    if not self.genes:
-                        raise MemoryError()
-                    self.max_genes = gene_count
-                # extract the genes from the dynamic programming array
-                self.ng = gene.add_genes(self.genes, self.nodes, ipath)
-                gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, META_BINS[i].tinf)
-                gene.record_gene_data(self.genes, self.ng, self.nodes, META_BINS[i].tinf, 0)
+            # check which of the metagenomic bins gets the best results
+            for i in range(NUM_META):
+                # recreate the node list if the translation table changed
+                if i == 0 or META_BINS[i].tinf.trans_table != META_BINS[i-1].tinf.trans_table:
+                    memset(self.nodes, 0, self.nn*sizeof(_node))
+                    self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[i].tinf)
+                    qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
-        # recover the nodes corresponding to the best run
-        memset(self.nodes, 0, self.nn*sizeof(_node))
-        self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[max_phase].tinf)
-        qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
-        node.score_nodes(seq, rseq, slen, self.nodes, self.nn, META_BINS[max_phase].tinf, self.closed, True)
+                # check the GC% is compatible with the current bin
+                if META_BINS[i].tinf.gc < low or META_BINS[i].tinf.gc > high:
+                    continue
+
+                # compute the score for the current metagenomic bin
+                node.reset_node_scores(self.nodes, self.nn)
+                node.score_nodes(seq, rseq, slen, self.nodes, self.nn, META_BINS[i].tinf, self.closed, True)
+                node.record_overlapping_starts(self.nodes, self.nn, META_BINS[i].tinf, 1)
+                ipath = dprog.dprog(self.nodes, self.nn, META_BINS[i].tinf, 1)
+
+                # update if the current bin gave a better score
+                if self.nodes[ipath].score > max_score:
+                    max_phase = i
+                    max_score = self.nodes[ipath].score
+                    dprog.eliminate_bad_genes(self.nodes, ipath, META_BINS[i].tinf)
+                    # reallocate memory for the nodes if this is the largest amount
+                    # of genes found so far
+                    gene_count = count_genes(self.nodes, ipath)
+                    if gene_count > self.max_genes:
+                        with gil:
+                            self.genes = <_gene*> PyMem_Realloc(self.genes, gene_count*sizeof(_gene))
+                            if not self.genes:
+                                raise MemoryError()
+                        self.max_genes = gene_count
+                    # extract the genes from the dynamic programming array
+                    self.ng = gene.add_genes(self.genes, self.nodes, ipath)
+                    gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, META_BINS[i].tinf)
+                    gene.record_gene_data(self.genes, self.ng, self.nodes, META_BINS[i].tinf, 0)
+
+            # recover the nodes corresponding to the best run
+            memset(self.nodes, 0, self.nn*sizeof(_node))
+            self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[max_phase].tinf)
+            qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
+            node.score_nodes(seq, rseq, slen, self.nodes, self.nn, META_BINS[max_phase].tinf, self.closed, True)
 
         # make a `Genes` instance to store the results
-        genes = Genes()
+        cdef Genes genes = Genes.__new__(Genes)
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
