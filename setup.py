@@ -29,6 +29,7 @@ class build_ext(_build_ext):
 
     def build_extension(self, ext):
         if self.debug:
+            ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
             ext.extra_compile_args.append("-O0")
         _build_ext.build_extension(self, ext)
 
@@ -49,12 +50,12 @@ extensions = [
         include_dirs=["Prodigal"],
         libraries=[],
         library_dirs=[],
-        extra_compile_args=["-pedantic", "-Wall"],
+        extra_compile_args=["-Wall"],
     ),
 ]
 
 
 setuptools.setup(
-    ext_modules=cythonize(extensions),
+    ext_modules=cythonize(extensions, annotate=True),
     cmdclass=dict(sdist=sdist, build_ext=build_ext),
 )

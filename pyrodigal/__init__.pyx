@@ -1,5 +1,5 @@
 # coding: utf-8
-# cython: language_level=3,
+# cython: language_level=3, linetrace=True
 
 """Bindings to Prodigal, an ORF finder for genomes, progenomes and metagenomes.
 """
@@ -309,6 +309,7 @@ cdef class Pyrodigal:
     #
     cdef public bint closed
     cdef readonly bint meta
+    cdef readonly size_t _num_seq
 
     #
     cdef size_t nn
@@ -319,7 +320,6 @@ cdef class Pyrodigal:
     cdef size_t ng
     cdef _gene* genes
     cdef size_t max_genes
-
 
     def __init__(self, meta=False, closed=False):
         """
@@ -341,6 +341,7 @@ cdef class Pyrodigal:
         self.closed = closed
 
     def __cinit__(self, meta=False, closed=False):
+        self._num_seq = 1
         # node array, uninitialized on object creation to reduce memory usage
         self.max_slen = 0
         self.nn = 0
@@ -448,7 +449,7 @@ cdef class Pyrodigal:
                     # extract the genes from the dynamic programming array
                     self.ng = gene.add_genes(self.genes, self.nodes, ipath)
                     gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, META_BINS[i].tinf)
-                    gene.record_gene_data(self.genes, self.ng, self.nodes, META_BINS[i].tinf, 0)
+                    gene.record_gene_data(self.genes, self.ng, self.nodes, META_BINS[i].tinf, self._num_seq)
 
             # recover the nodes corresponding to the best run
             memset(self.nodes, 0, self.nn*sizeof(_node))
