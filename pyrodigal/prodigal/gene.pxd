@@ -13,7 +13,7 @@ cdef extern from "gene.h" nogil:
         int begin
         int end
         int start_ndx
-        int end_ndx
+        int stop_ndx
         char gene_data[500]
         char score_data[500]
 

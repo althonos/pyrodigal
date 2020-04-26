@@ -12,7 +12,7 @@ import collections.abc
 # system C imports
 cimport libc.errno
 from libc.stdlib cimport qsort
-from libc.string cimport memcpy, memset, strcpy
+from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.unicode cimport PyUnicode_FromUnicode
 
@@ -207,6 +207,10 @@ cdef class Gene:
         self.tinf = genes.tinf
 
     @property
+    def _data(self):
+        return (<bytes> self.gene.gene_data).decode('ascii')
+
+    @property
     def begin(self):
         return self.gene.begin
 
@@ -217,6 +221,54 @@ cdef class Gene:
     @property
     def strand(self):
         return self.nodes[self.gene.start_ndx].strand
+
+    @property
+    def partial_begin(self):
+        if self.strand == 1:
+            return self.nodes[self.gene.start_ndx].edge == 1
+        else:
+            return self.nodes[self.gene.stop_ndx].edge == 1
+
+    @property
+    def partial_end(self):
+        if self.strand == 1:
+            return self.nodes[self.gene.stop_ndx].edge == 1
+        else:
+            return self.nodes[self.gene.start_ndx].edge == 1
+
+    @property
+    def start_type(self):
+        node = self.nodes[self.gene.start_ndx]
+        start_type = 3 if node.edge else node.type
+        return ["ATG", "GTG", "TTG" , "Edge"][start_type]
+
+    @property
+    def rbs_motif(self):
+        cdef char* data = self.gene.gene_data
+        cdef char* i = strstr(data, "rbs_motif")
+        cdef char* j = <char*> memchr(i, b';', 30)
+        cdef size_t length = j - i
+        if i[10:length] == b"None":
+            return None
+        return i[10:length].decode("ascii")
+
+    @property
+    def rbs_spacer(self):
+        cdef char* data = self.gene.gene_data
+        cdef char* i = strstr(data, "rbs_spacer")
+        cdef char* j = <char*> memchr(i, b';', 30)
+        cdef size_t length = j - i
+        if i[11:length] == b"None":
+            return None
+        return i[11:length].decode("ascii")
+
+    @property
+    def gc_cont(self):
+        cdef char* data = self.gene.gene_data
+        cdef char* i = strstr(data, "gc_cont")
+        cdef char* j = <char*> memchr(i, b'\0', 30)
+        cdef size_t length = j - i
+        return float(i[8:length])
 
     cpdef translate(self):
         # create a new PyUnicode string of the right length to hold the protein
