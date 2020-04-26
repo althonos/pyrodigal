@@ -1,0 +1,33 @@
+sudo: false
+dist: bionic
+language: python
+cache: pip
+
+python:
+- 3.5
+- 3.6
+- 3.7
+- 3.8
+- pypy3
+
+before_install:
+- pip install -r ci/requirements.txt
+
+install:
+- python -m setup.py build_ext --inplace --debug
+
+script:
+- python -m coverage run -p -m unittest discover -v
+
+after_success:
+- python -m coverage combine
+- python -m coverage xml
+- codecov
+
+before_deploy:
+- python setup.py sdist bdist_wheel
+- twine check dist/*
+
+notifications:
+  email:
+  - althonosdev@gmail.com
