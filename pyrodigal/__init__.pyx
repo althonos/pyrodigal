@@ -383,7 +383,6 @@ cdef class Pyrodigal:
         cdef size_t gene_count
         cdef size_t new_length
 
-
         # reallocate memory for the nodes if this is the biggest sequence
         # processed by this object so far
         if slen > self.max_slen:
@@ -392,7 +391,6 @@ cdef class Pyrodigal:
             if not self.nodes:
                 raise MemoryError()
             self.max_slen = new_length*8
-
 
         cdef size_t gc_count = 0
         cdef double gc, low, high
@@ -484,6 +482,7 @@ cdef class Pyrodigal:
         memset(self.nodes, 0, self.nn*sizeof(_node))
         memset(self.genes, 0, self.ng*sizeof(_gene))
         self.ng = self.nn = 0
+        self._num_seq += 1
 
         #
         return genes

@@ -14,6 +14,32 @@
 [![GitHub issues](https://img.shields.io/github/issues/althonos/pyrodigal.py.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyrodigal.py/issues)
 
 
+## 💡 Example
+
+Using [Biopython](https://biopython.org/), load a sequence from a FASTA file,
+use Prodigal to find all genes it contains, and create a list of `SeqRecord`
+containing each of the proteins:
+```python
+from Bio.Alphabet import generic_protein
+from Bio.Seq import Seq
+from Bio.SeqIO import read
+from Bio.SeqRecord import SeqRecord
+from pyrodigal import Pyrodigal
+
+record = read("sequence.fa", "fasta")
+proteins = []
+
+p = Pyrodigal(meta=True)
+for i, gene in enumerate(p.find_genes(str(record.seq))):
+    protein = SeqRecord(
+        Seq(gene.translate(), alphabet=generic_protein),
+        id=f"{record.id}_{i+1}",
+        name=f"{record.name}_{i+1}",
+        description=f"{record.description} # {gene.start} # {gene.stop} # {gene.strand}"
+    )
+    proteins.append(protein)
+```
+
 ## 📜 License
 
 This library, like the original Prodigal software, is provided under the
