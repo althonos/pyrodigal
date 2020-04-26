@@ -29,8 +29,9 @@ class build_ext(_build_ext):
 
     def build_extension(self, ext):
         if self.debug:
-            ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
             ext.extra_compile_args.append("-O0")
+            if sys.implementation.name == "cpython":
+                ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
         _build_ext.build_extension(self, ext)
 
 
