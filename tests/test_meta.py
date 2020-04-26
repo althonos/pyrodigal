@@ -21,7 +21,7 @@ class TestPyrodigalMeta(unittest.TestCase):
             cls.proteins = [
                 record
                 for record in Bio.SeqIO.parse(f, "fasta")
-                if record.id.startswith(f"{cls.record.id}_")
+                if record.id.startswith("{}_".format(cls.record.id))
             ]
 
     def test_translate(self):
