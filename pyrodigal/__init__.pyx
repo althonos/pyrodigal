@@ -24,10 +24,6 @@ from pyrodigal.prodigal.node cimport _node
 from pyrodigal.prodigal.training cimport _training
 
 
-
-
-
-
 # ----------------------------------------------------------------------------
 
 cdef void sequence_to_bitmap(
@@ -90,6 +86,30 @@ cdef void sequence_to_bitmap(
 
     # compute reverse complement
     sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
+
+
+cdef size_t count_genes(_node* nodes, int path):
+    cdef size_t ctr = 0
+
+    if path == -1:
+        return 0
+
+    while nodes[path].traceb != -1:
+        path = nodes[path].traceb
+
+    while path != -1 and ctr < gene.MAX_GENES:
+        if nodes[path].elim == 1:
+            pass
+        elif nodes[path].strand == 1 and nodes[path].type == sequence.STOP:
+            ctr += 1
+        elif nodes[path].strand == -1 and nodes[path].type != sequence.STOP:
+            ctr += 1
+        path = nodes[path].tracef
+
+    return ctr
+
+
+
 
 
 # ----------------------------------------------------------------------------
@@ -245,6 +265,7 @@ cdef class Pyrodigal:
     #
     cdef size_t ng
     cdef _gene* genes
+    cdef size_t max_genes
 
 
     def __init__(self, meta=False, closed=False):
@@ -271,12 +292,10 @@ cdef class Pyrodigal:
         self.max_slen = 0
         self.nn = 0
         self.nodes = NULL
-        # gene array, initialized on object creation (FIXME)
+        # gene array, uninitialized on object creation to reduce memory usage
+        self.max_genes = 0
         self.ng = 0
-        self.genes = <_gene*> PyMem_Malloc(MAX_GENES*sizeof(_gene))
-        if not self.genes:
-            raise MemoryError()
-        memset(self.genes, 0, MAX_GENES*sizeof(_gene))
+        self.genes = NULL
 
     def __dealloc__(self):
         if self.nodes:
@@ -356,6 +375,15 @@ cdef class Pyrodigal:
                 max_phase = i
                 max_score = self.nodes[ipath].score
                 dprog.eliminate_bad_genes(self.nodes, ipath, META_BINS[i].tinf)
+                # reallocate memory for the nodes if this is the largest amount
+                # of genes found so far
+                gene_count = count_genes(self.nodes, ipath)
+                if gene_count > self.max_genes:
+                    self.genes = <_gene*> PyMem_Realloc(self.genes, gene_count*sizeof(_gene))
+                    if not self.genes:
+                        raise MemoryError()
+                    self.max_genes = gene_count
+                # extract the genes from the dynamic programming array
                 self.ng = gene.add_genes(self.genes, self.nodes, ipath)
                 gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, META_BINS[i].tinf)
                 gene.record_gene_data(self.genes, self.ng, self.nodes, META_BINS[i].tinf, 0)

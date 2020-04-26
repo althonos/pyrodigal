@@ -11,6 +11,12 @@ cdef extern from "sequence.h":
         int begin
         int end
 
+    cdef enum:
+        ATG = 0
+        GTG = 1
+        TTG = 2
+        STOP = 3
+
     # given a bitmap_t sequence `seq` of length `len`, write the reverse
     # complement of `seq` into `rseq`, ignoring chars set a ``
     cdef void rcom_seq(const bitmap_t seq, bitmap_t rseq, bitmap_t useq, int len)
