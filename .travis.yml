@@ -14,7 +14,7 @@ before_install:
 - pip install -r ci/requirements.txt
 
 install:
-- python -m setup.py build_ext --inplace --debug
+- python setup.py build_ext --inplace --debug
 
 script:
 - python -m coverage run -p -m unittest discover -v
