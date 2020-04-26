@@ -1,6 +1,6 @@
 cdef extern from "training.h":
 
-    cdef struct _training:
+    struct _training:
         double gc
         int trans_table
         double st_wt
