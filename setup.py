@@ -3,11 +3,12 @@ import sys
 
 import setuptools
 from Cython.Build import cythonize
+from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.sdist import sdist as _sdist
 
 
 class sdist(_sdist):
-    """A custom `sdist` that generates a `pyproject.toml` on the fly.
+    """A `sdist` that generates a `pyproject.toml` on the fly.
     """
 
     def run(self):
@@ -22,10 +23,15 @@ class sdist(_sdist):
         _sdist.run(self)
 
 
-if "--debug" in sys.argv:
-    cflags = ["-pedantic", "-Wall", "-O0"]
-else:
-    cflags = ["-pedantic", "-Wall"]
+class build_ext(_build_ext):
+    """A `build_ext` that disables optimizations if compiled in debug mode.
+    """
+
+    def build_extension(self, ext):
+        if self.debug:
+            ext.extra_compile_args.append("-O0")
+        _build_ext.build_extension(self, ext)
+
 
 extensions = [
     setuptools.Extension(
@@ -43,12 +49,12 @@ extensions = [
         include_dirs=["Prodigal"],
         libraries=[],
         library_dirs=[],
-        extra_compile_args=cflags,
+        extra_compile_args=["-pedantic", "-Wall"],
     ),
 ]
 
 
 setuptools.setup(
     ext_modules=cythonize(extensions),
-    cmdclass=dict(sdist=sdist),
+    cmdclass=dict(sdist=sdist, build_ext=build_ext),
 )
