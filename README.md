@@ -1,6 +1,6 @@
 # 🔥 Pyrodigal
 
-*Python bindings to Prodigal, an ORF finder for genomes, progenomes and metagenomes.*
+*Python interface to Prodigal, an ORF finder for genomes, progenomes and metagenomes.*
 
 [![TravisCI](https://img.shields.io/travis/althonos/pyrodigal/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.org/althonos/pyrodigal/branches)
 [![AppVeyor](https://img.shields.io/appveyor/ci/althonos/pyrodigal/master?logo=appveyor&style=flat-square&maxAge=600)](https://ci.appveyor.com/project/althonos/pyrodigal)
