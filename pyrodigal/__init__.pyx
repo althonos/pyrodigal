@@ -136,6 +136,14 @@ initialize_metagenomic_bins(META_BINS)
 # ----------------------------------------------------------------------------
 
 cdef class Genes:
+    """A collection of all the genes found by Prodigal in a single sequence.
+
+    It implements all the methods of `collection.abc.Sequence`, so genes can
+    be accessed individually using an index, or iterated upon in forward or
+    reverse mode. Genes are sorted by their leftmost coordinate, independently
+    of the strand.
+    """
+
     # the list of nodes in the input sequence
     cdef _node* nodes
     cdef size_t nn
@@ -181,6 +189,9 @@ cdef class Genes:
 # ----------------------------------------------------------------------------
 
 cdef class Gene:
+    """A single gene found by Prodigal within a DNA sequence.
+    """
+
     # a hard reference to the Genes instance that created this object
     # to avoid the data referenced by other pointers to be deallocated.
     cdef Genes genes
@@ -231,6 +242,8 @@ cdef class Gene:
 
     @property
     def partial_begin(self):
+        """`bool`: whether the gene overlaps with the start of the sequence.
+        """
         if self.strand == 1:
             return self.nodes[self.gene.start_ndx].edge == 1
         else:
@@ -238,6 +251,8 @@ cdef class Gene:
 
     @property
     def partial_end(self):
+        """`bool`: whether the gene overlaps with the end of the sequence.
+        """
         if self.strand == 1:
             return self.nodes[self.gene.stop_ndx].edge == 1
         else:
@@ -245,12 +260,26 @@ cdef class Gene:
 
     @property
     def start_type(self):
+        """`str`: The start codon of this gene.
+
+        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if `Pyrodigal`
+        has been initialized in open ends mode and the gene starts right at the
+        beginning of the input sequence.
+        """
         node = self.nodes[self.gene.start_ndx]
         start_type = 3 if node.edge else node.type
         return ["ATG", "GTG", "TTG" , "Edge"][start_type]
 
     @property
     def rbs_motif(self):
+        """``str``, optional: The motif of the Ribosome Binding Site.
+
+        Possible non-`None` values are ``GGA/GAG/AGG``, ``3Base/5BMM``,
+        ``4Base/6BMM``, ``AGxAG``, ``GGxGG``, ``AGGAG(G)/GGAGG``, ``AGGA``,
+        ``AGGA/GGAG/GAGG``, ``GGAG/GAGG``, ``AGGAG/GGAGG``, ``AGGAG``
+        ``GGAGG`` or ``AGGAGG``.
+
+        """
         cdef char* data = self.gene.gene_data
         cdef char* i = strstr(data, "rbs_motif")
         cdef char* j = <char*> memchr(i, b';', 30)
@@ -261,6 +290,12 @@ cdef class Gene:
 
     @property
     def rbs_spacer(self):
+        """`str`, optional: The number of base pair between the RBS and the CDS.
+
+        Possible non-`None` values are ``3-4bp``, ``5-10bp``, ``11-12bp`` or
+        ``13-15bp``.
+
+        """
         cdef char* data = self.gene.gene_data
         cdef char* i = strstr(data, "rbs_spacer")
         cdef char* j = <char*> memchr(i, b';', 30)
@@ -271,6 +306,8 @@ cdef class Gene:
 
     @property
     def gc_cont(self):
+        """`float`: The GC content of the gene (between *0* and *1*).
+        """
         cdef char* data = self.gene.gene_data
         cdef char* i = strstr(data, "gc_cont")
         cdef char* j = <char*> memchr(i, b'\0', 30)
@@ -278,6 +315,13 @@ cdef class Gene:
         return float(i[8:length])
 
     cpdef translate(self):
+        """Translate the gene into a protein sequence.
+
+        Returns:
+          `str`: The proteins sequence as a string using the right translation
+          table and the standard single letter alphabet for proteins.
+
+        """
         # create a new PyUnicode string of the right length to hold the protein
         cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
@@ -328,17 +372,15 @@ cdef class Pyrodigal:
     cdef size_t max_genes
 
     def __init__(self, meta=False, closed=False):
-        """
-        __init__(self, meta=False, closed=False)
-        --
-
-        Instantiate and configure a new ORF finder.
+        """Instantiate and configure a new ORF finder.
 
         Arguments:
-            meta (bool): Set to `True` to run in metagenomic mode. Defaults
-                to `False`.
-            closed (bool): Set to `True` to consider sequences ends 'closed',
-                which prevents proteins to run off edges.
+            meta (`bool`): Set to `True` to run in metagenomic mode, using a
+                pre-trained profiles for better results with metagenomic or
+                progenomic inputs. Defaults to `False`.
+            closed (`bool`): Set to `True` to consider sequences ends 'closed',
+                which prevents proteins from running off edges. Defaults to
+                `False`.
 
         """
         if not meta:
@@ -362,6 +404,21 @@ cdef class Pyrodigal:
         PyMem_Free(self.genes)
 
     def find_genes(self, sequence):
+        """Find all the genes in the input DNA sequence.
+
+        Arguments:
+            sequence (`str`): A DNA sequence to process. Letters not
+                corresponding to a usual nucleotide (not any of "ATGC") will
+                be ignored.
+
+        Returns:
+            `Genes`: A collection of all the genes found in the input.
+
+        Raises:
+            `TypeError`: when ``sequence`` is not a string.
+            `MemoryError`: when allocation of an internal buffers fails.
+
+        """
         if not isinstance(sequence, str):
             raise TypeError(
                 "sequence must be a string, "
