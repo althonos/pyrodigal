@@ -17,28 +17,16 @@
 
 ## 💡 Example
 
-Using [Biopython](https://biopython.org/), load a sequence from a FASTA file,
-use Prodigal to find all genes it contains, and create a list of `SeqRecord`
-containing each of the proteins:
+Using [Biopython](https://biopython.org/), load a sequence from a GenBank file,
+use Prodigal to find all genes it contains, and print the proteins in FASTA
+format:
 ```python
-from Bio.Alphabet import generic_protein
-from Bio.Seq import Seq
-from Bio.SeqIO import read
-from Bio.SeqRecord import SeqRecord
-from pyrodigal import Pyrodigal
+record = Bio.SeqIO.read("sequence.fa", "genbank")
+p = pyrodigal.Pyrodigal(meta=True)
 
-record = read("sequence.fa", "fasta")
-proteins = []
-
-p = Pyrodigal(meta=True)
 for i, gene in enumerate(p.find_genes(str(record.seq))):
-    protein = SeqRecord(
-        Seq(gene.translate(), alphabet=generic_protein),
-        id=f"{record.id}_{i+1}",
-        name=f"{record.name}_{i+1}",
-        description=f"{record.description} # {gene.start} # {gene.stop} # {gene.strand}"
-    )
-    proteins.append(protein)
+    print(f"> {record.id}_{i+1}")
+    print(textwrap.fill(record.translate()))
 ```
 
 ## 📜 License
