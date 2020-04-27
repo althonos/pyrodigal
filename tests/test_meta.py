@@ -38,3 +38,14 @@ class TestPyrodigalMeta(unittest.TestCase):
 
         for gene, protein in zip(genes, self.proteins):
             self.assertEqual(gene.translate(), str(protein.seq))
+
+    def test_coordinates(self):
+        p = Pyrodigal(meta=True)
+        genes = p.find_genes(str(self.record.seq))
+        self.assertEqual(len(genes), len(self.proteins))
+
+        for gene, protein in zip(genes, self.proteins):
+            id_, start, end, strand, *_ = protein.description.split(" # ")
+            self.assertEqual(gene.begin, int(start))
+            self.assertEqual(gene.end, int(end))
+            self.assertEqual(gene.strand, int(strand))
