@@ -343,7 +343,7 @@ cdef class Gene:
         cdef size_t i = 0
         cdef size_t j = begin
         while j < end:
-            (<Py_UNICODE*> string)[i] = sequence.amino(seq[0], j-1, self.tinf, i!=0)
+            (<Py_UNICODE*> string)[i] = sequence.amino(seq[0], j-1, self.tinf, i==0)
             j += 3
             i += 1
 
