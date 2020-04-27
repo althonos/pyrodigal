@@ -28,6 +28,16 @@ before_deploy:
 - python setup.py sdist bdist_wheel
 - twine check dist/*
 
+deploy:
+  provider: script
+  script: ci/travis/deploy.sh
+  skip_cleanup: true
+  on:
+    python: 3.8
+    tags: true
+    branch: master
+    repo: althonos/pyrodigal
+
 notifications:
   email:
   - althonosdev@gmail.com
