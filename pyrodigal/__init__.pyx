@@ -4,9 +4,6 @@
 """Bindings to Prodigal, an ORF finder for genomes, progenomes and metagenomes.
 """
 
-# Python imports
-import collections.abc
-
 # ----------------------------------------------------------------------------
 
 # system C imports
@@ -90,6 +87,16 @@ cdef void sequence_to_bitmap(
 
 
 cdef size_t count_genes(_node* nodes, int path) nogil:
+    """Count the number of genes found in the node list.
+
+    Arguments:
+        nodes (_node*): An array of dynamic programming nodes.
+        path (int): An index found by `dprog.dprog`.
+
+    Returns:
+        size_t: The number of genes that can be extracted from the nodes list.
+
+    """
     cdef size_t ctr = 0
 
     if path == -1:
@@ -174,14 +181,14 @@ cdef class Genes:
     cdef _gene(self, index):
         return Gene.__new__(Gene, self, index)
 
-collections.abc.Sequence.register(Genes)
+
 
 # ----------------------------------------------------------------------------
 
 
 cdef class Gene:
-    # a weak reference to the Genes instance that created this object
-    # to avoid the data referenced by `nodes` and `gene` to be deallocated.
+    # a hard reference to the Genes instance that created this object
+    # to avoid the data referenced by other pointers to be deallocated.
     cdef Genes genes
     #
     cdef _node* nodes
@@ -212,14 +219,20 @@ cdef class Gene:
 
     @property
     def begin(self):
+        """`int`: The coordinate at which the gene begins.
+        """
         return self.gene.begin
 
     @property
     def end(self):
+        """`int`: The coordinate at which the gene ends.
+        """
         return self.gene.end
 
     @property
     def strand(self):
+        """`int`: *-1* if the gene is on the reverse strand, *+1* otherwise.
+        """
         return self.nodes[self.gene.start_ndx].strand
 
     @property
@@ -336,7 +349,7 @@ cdef class Pyrodigal:
 
         """
         if not meta:
-            raise NotImplemented("single mode not supported")
+            raise NotImplementedError("single mode not supported")
         self.meta = meta
         self.closed = closed
 

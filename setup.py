@@ -37,7 +37,7 @@ class build_ext(_build_ext):
 
 extensions = [
     setuptools.Extension(
-        "pyrodigal",
+        "pyrodigal._pyrodigal",
         [
             "pyrodigal/__init__.pyx",
             "Prodigal/bitmap.c",
