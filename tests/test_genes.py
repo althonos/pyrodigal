@@ -29,7 +29,6 @@ class TestGenes(unittest.TestCase):
         with self.assertRaises(IndexError):
             self.genes[-length-1]
 
-
     def test_iter(self):
         for i, gene in zip(range(len(self.genes)), self.genes):
             self.assertEqual(gene._data, self.genes[i]._data)
@@ -37,3 +36,7 @@ class TestGenes(unittest.TestCase):
     def test_reversed(self):
         for i, gene in zip(range(1, len(self.genes)+1), reversed(self.genes)):
             self.assertEqual(gene._data, self.genes[-i]._data)
+
+    def test_bool(self):
+        self.assertTrue(bool(self.genes))
+        self.assertFalse(bool(self.p.find_genes("TTT")))

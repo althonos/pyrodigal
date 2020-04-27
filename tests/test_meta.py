@@ -31,21 +31,45 @@ class TestPyrodigalMeta(unittest.TestCase):
                 if record.id.startswith("{}_".format(cls.record.id))
             ]
 
-    def test_translate(self):
-        p = Pyrodigal(meta=True)
-        genes = p.find_genes(str(self.record.seq))
-        self.assertEqual(len(genes), len(self.proteins))
+        cls.p = Pyrodigal(meta=True)
+        cls.preds = cls.p.find_genes(str(cls.record.seq))
 
-        for gene, protein in zip(genes, self.proteins):
+    def test_translate(self):
+        self.assertEqual(len(self.preds), len(self.proteins))
+        for gene, protein in zip(self.preds, self.proteins):
             self.assertEqual(gene.translate(), str(protein.seq))
 
     def test_coordinates(self):
-        p = Pyrodigal(meta=True)
-        genes = p.find_genes(str(self.record.seq))
-        self.assertEqual(len(genes), len(self.proteins))
-
-        for gene, protein in zip(genes, self.proteins):
+        self.assertEqual(len(self.preds), len(self.proteins))
+        for gene, protein in zip(self.preds, self.proteins):
             id_, start, end, strand, *_ = protein.description.split(" # ")
             self.assertEqual(gene.begin, int(start))
             self.assertEqual(gene.end, int(end))
             self.assertEqual(gene.strand, int(strand))
+
+    def test_rbs_motif(self):
+        self.assertEqual(len(self.preds), len(self.proteins))
+        for gene, protein in zip(self.preds, self.proteins):
+            *_, raw_data = protein.description.split(" # ")
+            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            if data["rbs_motif"] != "None":
+                self.assertEqual(gene.rbs_motif, data["rbs_motif"])
+            else:
+                self.assertIs(gene.rbs_motif, None)
+
+    def test_rbs_spacer(self):
+        self.assertEqual(len(self.preds), len(self.proteins))
+        for gene, protein in zip(self.preds, self.proteins):
+            *_, raw_data = protein.description.split(" # ")
+            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            if data["rbs_spacer"] != "None":
+                self.assertEqual(gene.rbs_spacer, data["rbs_spacer"])
+            else:
+                self.assertIs(gene.rbs_spacer, None)
+
+    def test_start_type(self):
+        self.assertEqual(len(self.preds), len(self.proteins))
+        for gene, protein in zip(self.preds, self.proteins):
+            *_, raw_data = protein.description.split(" # ")
+            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            self.assertEqual(gene.start_type, data["start_type"])
