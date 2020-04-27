@@ -6,14 +6,12 @@
 
 # ----------------------------------------------------------------------------
 
-# system C imports
 cimport libc.errno
 from libc.stdlib cimport qsort
 from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.unicode cimport PyUnicode_FromUnicode
 
-# local C imports
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport MAX_GENES, _gene
@@ -116,9 +114,6 @@ cdef size_t count_genes(_node* nodes, int path) nogil:
     return ctr
 
 
-
-
-
 # ----------------------------------------------------------------------------
 
 # Initializing the metagenomic bins is fast enough that we can afford to do it
@@ -136,6 +131,7 @@ for _i in range(NUM_META):
         raise MemoryError()
     memset(META_BINS[_i].tinf, 0, sizeof(_training))
 initialize_metagenomic_bins(META_BINS)
+
 
 # ----------------------------------------------------------------------------
 
@@ -182,9 +178,7 @@ cdef class Genes:
         return Gene.__new__(Gene, self, index)
 
 
-
 # ----------------------------------------------------------------------------
-
 
 cdef class Gene:
     # a hard reference to the Genes instance that created this object
@@ -314,7 +308,6 @@ cdef class Gene:
 
 
 # ----------------------------------------------------------------------------
-
 
 cdef class Pyrodigal:
     """An efficient ORF finder for genomes, progenomes and metagenomes.

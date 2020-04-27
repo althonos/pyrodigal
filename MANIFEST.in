@@ -1,0 +1,7 @@
+include COPYING
+include CHANGELOG.md
+include README.md
+
+recursive-include Prodigal *.c *.h *.md VERSION LICENSE CHANGES Makefile
+recursive-include pyrodigal *.py *.pyi *.pyx *.pxd _version.txt py.typed
+recursive-exclude pyrodigal *.c
