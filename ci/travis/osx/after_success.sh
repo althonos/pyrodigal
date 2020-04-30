@@ -10,7 +10,6 @@ pyenv shell $(pyenv versions --bare)
 
 # --- Coverage ---------------------------------------------------------------
 
-$PYTHON -m coverage run -p -m unittest discover -v
 $PYTHON -m coverage combine
 $PYTHON -m coverage xml
 $PYTHON -m coverage report

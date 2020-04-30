@@ -5,7 +5,7 @@
 # --- Test -------------------------------------------------------------------
 
 case $TRAVIS_PYTHON_VERSION in
-  pypy3) TAG=pp371-pypy3_71;;
+  pypy3) TAG=pypy3.6-7.3;;
   *)     TAG=cp$(echo $TRAVIS_PYTHON_VERSION | sed 's/\.//');;
 esac
 

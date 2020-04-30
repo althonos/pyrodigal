@@ -11,4 +11,4 @@ pyenv shell $(pyenv versions --bare)
 # --- Test -------------------------------------------------------------------
 
 $PYTHON setup.py build_ext --inplace --debug
-$PYTHON setup.py test
+$PYTHON -m coverage run -p -m unittest discover -v

@@ -6,6 +6,11 @@ stages:
   - name: Test (Linux)
   - name: Test (OSX)
 
+env:
+  global:
+    - PATH="$PYENV_ROOT/bin:$PATH"
+    - PYENV_ROOT="$HOME/.pyenv"
+
 .test-linux: &test-linux
   os: linux
   dist: bionic
@@ -35,16 +40,22 @@ stages:
 
 jobs:
   include:
+    # Linux
     - python: pypy3
+      if: tag IS present
       <<: *test-linux
     - python: 3.5
+      if: tag IS present
       <<: *test-linux
     - python: 3.6
+      if: tag IS present
       <<: *test-linux
     - python: 3.7
+      if: tag IS present
       <<: *test-linux
     - python: 3.8
       <<: *test-linux
+    # OSX
     - env: PYTHON=python3.5
       name: "Python: 3.5"
       if: tag IS present
@@ -61,7 +72,6 @@ jobs:
       name: "Python: 3.8"
       <<: *test-osx
 
-
 deploy:
   provider: script
   script: ci/travis/deploy.sh
@@ -71,43 +81,6 @@ deploy:
     branch: master
     repo: althonos/pyrodigal
 
-
-
-# python:
-# - 3.5
-# - 3.6
-# - 3.7
-# - 3.8
-# - pypy3
-#
-# before_install:
-# - pip install -r ci/requirements.txt
-#
-# install:
-# - python setup.py build_ext --inplace --debug
-#
-# script:
-# - python -m coverage run -p -m unittest discover -v
-#
-# after_success:
-# - python -m coverage combine
-# - python -m coverage xml
-# - codecov
-#
-# before_deploy:
-# - python setup.py sdist bdist_wheel
-# - twine check dist/*
-#
-# deploy:
-#   provider: script
-#   script: ci/travis/deploy.sh
-#   skip_cleanup: true
-#   on:
-#     python: 3.8
-#     tags: true
-#     branch: master
-#     repo: althonos/pyrodigal
-#
-# notifications:
-#   email:
-#   - althonosdev@gmail.com
+notifications:
+  email:
+  - althonosdev@gmail.com
