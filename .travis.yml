@@ -19,6 +19,20 @@ stages:
   after_success: ci/travis/manylinux/after_success.sh
   before_deploy: ci/travis/manylinux/before_deploy.sh
 
+.test-osx: &test-osx
+  os: osx
+  stage: Test (OSX)
+  language: generic
+  cache:
+    pip: cache
+    directories:
+      - $HOME/Library/Caches/Homebrew
+      - $HOME/.pyenv_cache
+  install: ci/travis/osx/install.sh
+  script: ci/travis/osx/script.sh
+  before_cache: ci/travis/osx/before_cache.sh
+  after_success: ci/travis/osx/after_success.sh
+
 jobs:
   include:
     - python: pypy3
@@ -31,6 +45,22 @@ jobs:
       <<: *test-linux
     - python: 3.8
       <<: *test-linux
+    - env: PYTHON=python3.5
+      name: "Python: 3.5"
+      if: tag IS present
+      <<: *test-osx
+    - env: PYTHON=python3.6
+      name: "Python: 3.6"
+      if: tag IS present
+      <<: *test-osx
+    - env: PYTHON=python3.7
+      name: "Python: 3.7"
+      if: tag IS present
+      <<: *test-osx
+    - env: PYTHON=python3.8
+      name: "Python: 3.8"
+      <<: *test-osx
+
 
 deploy:
   provider: script
