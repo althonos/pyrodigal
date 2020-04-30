@@ -30,4 +30,4 @@ log Using $(python --version | head -n1 | cut -d' ' -f1,2)
 # --- Install Python requirements --------------------------------------------
 
 log Installing Python requirements
-$PYTHON -m pip install -r "$TRAVIS_BUILD_DIR/ci/requirements.txt"
+$PYTHON -m pip install -U -r "$TRAVIS_BUILD_DIR/ci/requirements.txt"

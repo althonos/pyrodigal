@@ -2,7 +2,8 @@ coverage ~=5.0
 codecov ~=2.0
 cython ~=0.29.16
 
-auditwheel 
+auditwheel
 twine
+setuptools
 
 -r ../tests/requirements.txt

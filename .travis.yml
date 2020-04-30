@@ -29,13 +29,14 @@ env:
   stage: Test (OSX)
   language: generic
   cache:
-    pip: cache
+    pip: true
     directories:
       - $HOME/Library/Caches/Homebrew
       - $HOME/.pyenv_cache
   install: ci/travis/osx/install.sh
   script: ci/travis/osx/script.sh
   before_cache: ci/travis/osx/before_cache.sh
+  before_deploy: ci/travis/osx/before_deploy.sh
   after_success: ci/travis/osx/after_success.sh
 
 jobs:

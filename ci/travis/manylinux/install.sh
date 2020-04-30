@@ -5,7 +5,7 @@
 # --- Install Python dependencies --------------------------------------------
 
 case $TRAVIS_PYTHON_VERSION in
-  pypy3) TAG=pypy3.6-7.3;;
+  pypy3) TAG=pp36-pypy3_*;;
   *)     TAG=cp$(echo $TRAVIS_PYTHON_VERSION | sed 's/\.//');;
 esac
 

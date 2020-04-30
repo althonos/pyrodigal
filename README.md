@@ -28,7 +28,6 @@ the user but offers more flexibility.
 **Roadmap**:
 
 - [x] Metagenomic mode
-- [ ] Thread safety
 - [ ] Single mode
 - [ ] External training file support (`-t` flag)
 - [ ] Region masking (`-m` flag)
