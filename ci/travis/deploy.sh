@@ -16,5 +16,4 @@ chandler push --github="$TRAVIS_REPO_SLUG" --changelog="CHANGELOG.md"
 # --- Deploy to PyPI ---------------------------------------------------------
 
 log Deploying to PyPI
-# python3 -m twine upload --skip-existing dist/*.whl dist/*.tar.gz
-python3 -m twine upload --skip-existing dist/*.tar.gz
+python3 -m twine upload --skip-existing dist/*.whl dist/*.tar.gz

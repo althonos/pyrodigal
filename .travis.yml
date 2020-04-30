@@ -1,43 +1,83 @@
-sudo: false
 dist: bionic
 language: python
 cache: pip
 
-python:
-- 3.5
-- 3.6
-- 3.7
-- 3.8
-- pypy3
+stages:
+  - name: Test (Linux)
+  - name: Test (OSX)
 
-before_install:
-- pip install -r ci/requirements.txt
+.test-linux: &test-linux
+  os: linux
+  dist: bionic
+  stage: Test (Linux)
+  language: python
+  cache: pip
+  services: docker
+  before_install: ci/travis/manylinux/before_install.sh
+  install: ci/travis/manylinux/install.sh
+  script: ci/travis/manylinux/script.sh
+  after_success: ci/travis/manylinux/after_success.sh
+  before_deploy: ci/travis/manylinux/before_deploy.sh
 
-install:
-- python setup.py build_ext --inplace --debug
-
-script:
-- python -m coverage run -p -m unittest discover -v
-
-after_success:
-- python -m coverage combine
-- python -m coverage xml
-- codecov
-
-before_deploy:
-- python setup.py sdist bdist_wheel
-- twine check dist/*
+jobs:
+  include:
+    - python: pypy3
+      <<: *test-linux
+    - python: 3.5
+      <<: *test-linux
+    - python: 3.6
+      <<: *test-linux
+    - python: 3.7
+      <<: *test-linux
+    - python: 3.8
+      <<: *test-linux
 
 deploy:
   provider: script
   script: ci/travis/deploy.sh
   skip_cleanup: true
   on:
-    python: 3.8
     tags: true
     branch: master
     repo: althonos/pyrodigal
 
-notifications:
-  email:
-  - althonosdev@gmail.com
+
+
+# python:
+# - 3.5
+# - 3.6
+# - 3.7
+# - 3.8
+# - pypy3
+#
+# before_install:
+# - pip install -r ci/requirements.txt
+#
+# install:
+# - python setup.py build_ext --inplace --debug
+#
+# script:
+# - python -m coverage run -p -m unittest discover -v
+#
+# after_success:
+# - python -m coverage combine
+# - python -m coverage xml
+# - codecov
+#
+# before_deploy:
+# - python setup.py sdist bdist_wheel
+# - twine check dist/*
+#
+# deploy:
+#   provider: script
+#   script: ci/travis/deploy.sh
+#   skip_cleanup: true
+#   on:
+#     python: 3.8
+#     tags: true
+#     branch: master
+#     repo: althonos/pyrodigal
+#
+# notifications:
+#   email:
+#   - althonosdev@gmail.com
