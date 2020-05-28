@@ -8,7 +8,6 @@ import Bio.SeqIO
 from pyrodigal import Pyrodigal
 
 
-
 class _TestPyrodigalMode(object):
 
     mode = None
@@ -102,3 +101,7 @@ class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
             warnings.simplefilter("ignore")
             p.train(seq)
         return p.find_genes(seq)
+
+    def test_train_not_called(self):
+        p = Pyrodigal(meta=False)
+        self.assertRaises(RuntimeError, p.find_genes, str(self.record.seq))
