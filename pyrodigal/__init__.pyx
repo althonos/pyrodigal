@@ -150,11 +150,10 @@ initialize_metagenomic_bins(META_BINS)
 # ----------------------------------------------------------------------------
 
 cdef class TrainingInfo:
-    cdef _training raw
+    cdef _training* raw
 
-    def __cinit__(self, _training raw):
-        self.raw = raw
-
+    def __dealloc__(self):
+        PyMem_Free(self.raw)
 
 # ----------------------------------------------------------------------------
 
@@ -582,15 +581,15 @@ cdef class Pyrodigal:
             self.max_slen = new_length*8
 
         # find all the potential starts and stops, and sort them
-        self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, &self.tinf.raw)
+        self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, self.tinf.raw)
         qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
         # second dynamic programming, using the dicodon statistics as the scoring
         # function
-        node.score_nodes(seq, rseq, slen, self.nodes, self.nn, &self.tinf.raw, self.closed, False)
-        node.record_overlapping_starts(self.nodes, self.nn, &self.tinf.raw, True)
-        cdef int ipath = dprog.dprog(self.nodes, self.nn, &self.tinf.raw, True)
-        dprog.eliminate_bad_genes(self.nodes, self.nn, &self.tinf.raw)
+        node.score_nodes(seq, rseq, slen, self.nodes, self.nn, self.tinf.raw, self.closed, False)
+        node.record_overlapping_starts(self.nodes, self.nn, self.tinf.raw, True)
+        cdef int ipath = dprog.dprog(self.nodes, self.nn, self.tinf.raw, True)
+        dprog.eliminate_bad_genes(self.nodes, self.nn, self.tinf.raw)
 
         # reallocate memory for the nodes if this is the largest amount
         # of genes found so far
@@ -602,8 +601,8 @@ cdef class Pyrodigal:
 
         # extract the genes from the dynamic programming array
         self.ng = gene.add_genes(self.genes, self.nodes, ipath)
-        gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, &self.tinf.raw)
-        gene.record_gene_data(self.genes, self.ng, self.nodes, &self.tinf.raw, self._num_seq)
+        gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, self.tinf.raw)
+        gene.record_gene_data(self.genes, self.ng, self.nodes, self.tinf.raw, self._num_seq)
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
@@ -627,7 +626,7 @@ cdef class Pyrodigal:
         # (this reference should never be invalid since `self.tinf` is a
         # reference-counted Python object, which has at least the same lifetime
         # as the `Genes` instance)
-        genes.tinf = &self.tinf.raw
+        genes.tinf = self.tinf.raw
 
         # free resources
         memset(self.nodes, 0, self.nn*sizeof(_node))
@@ -683,8 +682,8 @@ cdef class Pyrodigal:
       sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
 
       # create the training structure and compute GC content
-      cdef _training tinf
-      memset(&tinf, 0, sizeof(_training));
+      cdef _training* tinf = <_training*> PyMem_Malloc(sizeof(_training))
+      memset(tinf, 0, sizeof(_training));
       tinf.gc = gc_content(seq, 0, slen-1)
       tinf.st_wt = st_wt
       tinf.trans_table = trans_table
@@ -698,7 +697,7 @@ cdef class Pyrodigal:
           self.max_slen = new_length*8
 
       # find all the potential starts and stops and sort them
-      self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, &tinf)
+      self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
       qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
       # scan all the ORFs looking for a potential GC bias in a particular
@@ -706,27 +705,27 @@ cdef class Pyrodigal:
       cdef int* gc_frame = calc_most_gc_frame(seq, slen)
       if not gc_frame:
           raise MemoryError()
-      node.record_gc_bias(gc_frame, self.nodes, self.nn, &tinf)
+      node.record_gc_bias(gc_frame, self.nodes, self.nn, tinf)
       free(gc_frame)
 
       # do an initial dynamic programming routine with just the GC frame bias
       # used as a scoring function.
-      node.record_overlapping_starts(self.nodes, self.nn, &tinf, 0)
-      cdef int ipath = dprog.dprog(self.nodes, self.nn, &tinf, 0)
+      node.record_overlapping_starts(self.nodes, self.nn, tinf, 0)
+      cdef int ipath = dprog.dprog(self.nodes, self.nn, tinf, 0)
 
       # gather dicodon statistics for the training set
-      node.calc_dicodon_gene(&tinf, seq, rseq, slen, self.nodes, ipath)
-      node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, &tinf)
+      node.calc_dicodon_gene(tinf, seq, rseq, slen, self.nodes, ipath)
+      node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, tinf)
 
       # determine if this organism uses Shine-Dalgarno and score the node
-      node.rbs_score(seq, rseq, slen, self.nodes, self.nn, &tinf)
-      node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, &tinf)
+      node.rbs_score(seq, rseq, slen, self.nodes, self.nn, tinf)
+      node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, tinf)
       if force_nonsd:
           tinf.uses_sd = False
       else:
-          node.determine_sd_usage(&tinf)
+          node.determine_sd_usage(tinf)
       if not tinf.uses_sd:
-          node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, &tinf)
+          node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, tinf)
 
       # reset internal buffers and free allocated memory
       PyMem_Free(seq)
@@ -737,4 +736,5 @@ cdef class Pyrodigal:
 
       # store the training information in a Python object so it can be
       # shared with reference counting in the later `find_genes` calls
-      self.tinf = TrainingInfo(tinf)
+      self.tinf = TrainingInfo.__new__(TrainingInfo)
+      self.tinf.raw = tinf
