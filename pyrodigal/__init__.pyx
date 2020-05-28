@@ -7,7 +7,7 @@
 # ----------------------------------------------------------------------------
 
 cimport libc.errno
-from libc.stdlib cimport qsort
+from libc.stdlib cimport free, qsort
 from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.unicode cimport PyUnicode_FromUnicode
@@ -17,7 +17,18 @@ from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport MAX_GENES, _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _node
+from pyrodigal.prodigal.sequence cimport calc_most_gc_frame
 from pyrodigal.prodigal.training cimport _training
+
+# ----------------------------------------------------------------------------
+
+import warnings
+
+
+# ----------------------------------------------------------------------------
+
+cdef size_t MIN_SINGLE_GENOME = 20000
+cdef size_t IDEAL_SINGLE_GENOME = 100000
 
 
 # ----------------------------------------------------------------------------
@@ -135,6 +146,15 @@ initialize_metagenomic_bins(META_BINS)
 
 # ----------------------------------------------------------------------------
 
+cdef class TrainingInfo:
+    cdef _training tinf
+
+    def __cinit__(self, _training tinf):
+        self.tinf = tinf
+
+
+# ----------------------------------------------------------------------------
+
 cdef class Genes:
     """A collection of all the genes found by Prodigal in a single sequence.
 
@@ -151,6 +171,7 @@ cdef class Genes:
     cdef _gene* genes
     cdef size_t ng
     # the training information
+    cdef TrainingInfo tinf_rc
     cdef _training* tinf
     # the sequence length and bitmaps
     cdef size_t slen
@@ -371,6 +392,9 @@ cdef class Pyrodigal:
     cdef _gene* genes
     cdef size_t max_genes
 
+    #
+    cdef TrainingInfo tinf_rc
+
     def __init__(self, meta=False, closed=False):
         """Instantiate and configure a new ORF finder.
 
@@ -420,10 +444,7 @@ cdef class Pyrodigal:
 
         """
         if not isinstance(sequence, str):
-            raise TypeError(
-                "sequence must be a string, "
-                f"not {type(sequence).__name__}"
-            )
+            raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
 
         cdef size_t slen = len(sequence)
         cdef bitmap_t seq = NULL
@@ -439,7 +460,7 @@ cdef class Pyrodigal:
         if self.meta:
             return self._find_genes_meta(slen, seq, useq, rseq)
         else:
-            raise NotImplementedError("single mode not implemented")
+            return self._find_genes_single(slen, seq, useq, rseq)
 
     cdef _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
         cdef size_t i
@@ -520,6 +541,7 @@ cdef class Pyrodigal:
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
+        genes.tinf_rc = None
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
@@ -549,3 +571,87 @@ cdef class Pyrodigal:
 
         #
         return genes
+
+    cdef _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
+        raise NotImplementedError("single mode not implemented")
+
+    def train(self, sequence, force_nonsd=False):
+      if self.meta:
+          raise RuntimeError("cannot use training sequence in metagenomic mode")
+      if not isinstance(sequence, str):
+          raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
+
+      # check we have enough nucleotides to train
+      cdef size_t slen = len(sequence)
+      if slen < MIN_SINGLE_GENOME:
+          raise ValueError(
+            f"sequence must be at least {MIN_SINGLE_GENOME} characters ({slen} found)"
+          )
+      elif slen < IDEAL_SINGLE_GENOME:
+          warnings.warn(
+            f"sequence should be at least {IDEAL_SINGLE_GENOME} characters ({slen} found)"
+          )
+
+      # convert sequence to bitmap for dynamic programming
+      cdef bitmap_t seq = NULL
+      cdef bitmap_t rseq = NULL
+      cdef bitmap_t useq = NULL
+      sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
+      if not seq or not useq or not rseq:
+          PyMem_Free(seq)
+          PyMem_Free(useq)
+          PyMem_Free(rseq)
+          raise MemoryError()
+
+      # create the training structure and compute GC content
+      cdef _training tinf
+      tinf.gc = sequence.gc_content(seq, 0, slen-1)
+
+      # check if we need to reallocate the node array
+      if slen > self.max_slen:
+          new_length = slen//8 + (slen%8 != 0)
+          self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
+          if not self.nodes:
+              raise MemoryError()
+          self.max_slen = new_length*8
+
+      # find all the potential starts and stops and sort them
+      self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, &tinf)
+      qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
+
+      # scan all the ORFs looking for a potential GC bias in a particular
+      # codon position, in order to acquire a good initial set of genes
+      cdef int* gc_frame = calc_most_gc_frame(seq, slen)
+      if not gc_frame:
+          raise MemoryError()
+      node.record_gc_bias(gc_frame, self.nodes, self.nn, &tinf)
+      free(gc_frame)
+
+      # do an initial dynamic programming routine with just the GC frame bias
+      # used as a scoring function.
+      node.record_overlapping_starts(self.nodes, self.nn, &tinf, 0)
+      cdef int ipath = dprog.dprog(self.nodes, self.nn, &tinf, 0)
+
+      # gather dicodon statistics for the training set
+      node.calc_dicodon_gene(&tinf, seq, rseq, slen, self.nodes, ipath)
+      node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, &tinf)
+
+      # determine if this organism uses Shine-Dalgarno and score the node
+      node.rbs_score(seq, rseq, slen, self.nodes, self.nn, &tinf)
+      node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, &tinf)
+      node.determine_sd_usage(&tinf)
+      if force_nonsd:
+          tinf.uses_sd = False
+      if not tinf.uses_sd:
+          node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, &tinf)
+
+      # reset internal buffers and free allocated memory
+      PyMem_Free(seq)
+      PyMem_Free(rseq)
+      PyMem_Free(useq)
+      memset(self.nodes, 0, self.nn*sizeof(_node))
+      self.nn = 0
+
+      # store the training information in a Python object so it can be
+      # shared with reference counting in the later `find_genes` calls
+      self.tinf_rc = TrainingInfo(tinf)

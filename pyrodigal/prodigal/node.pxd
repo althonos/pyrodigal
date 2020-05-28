@@ -56,3 +56,11 @@ cdef extern from "node.h" nogil:
     void calc_amino_bg(_training*, unsigned char*, unsigned char*, int, _node*, int)
 
     void score_nodes(unsigned char*, unsigned char*, int, _node*, int, _training*, int, int)
+    void rbs_score(unsigned char*, unsigned char*, int, _node *, int, _training *);
+
+    void raw_coding_score(bitmap_t seq, bitmap_t rseq, int slen, _node *nod, int nn, _training *tinf)
+
+    void determine_sd_usage(_training *tinf)
+
+    void train_starts_sd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
+    void train_starts_nonsd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
