@@ -17,7 +17,7 @@ from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport MAX_GENES, _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _node
-from pyrodigal.prodigal.sequence cimport calc_most_gc_frame
+from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content
 from pyrodigal.prodigal.training cimport _training
 
 # ----------------------------------------------------------------------------
@@ -407,8 +407,6 @@ cdef class Pyrodigal:
                 `False`.
 
         """
-        if not meta:
-            raise NotImplementedError("single mode not supported")
         self.meta = meta
         self.closed = closed
 
@@ -594,6 +592,16 @@ cdef class Pyrodigal:
         node.record_overlapping_starts(self.nodes, self.nn, &self.tinf.raw, True)
         cdef int ipath = dprog.dprog(self.nodes, self.nn, &self.tinf.raw, True)
         dprog.eliminate_bad_genes(self.nodes, self.nn, &self.tinf.raw)
+
+        # reallocate memory for the nodes if this is the largest amount
+        # of genes found so far
+        gene_count = count_genes(self.nodes, ipath)
+        if gene_count > self.max_genes:
+            self.genes = <_gene*> PyMem_Realloc(self.genes, gene_count*sizeof(_gene))
+            if not self.genes: raise MemoryError()
+            self.max_genes = gene_count
+
+        # extract the genes from the dynamic programming array
         self.ng = gene.add_genes(self.genes, self.nodes, ipath)
         gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, &self.tinf.raw)
         gene.record_gene_data(self.genes, self.ng, self.nodes, &self.tinf.raw, self._num_seq)
@@ -631,7 +639,7 @@ cdef class Pyrodigal:
         #
         return genes
 
-    def train(self, sequence, force_nonsd=False):
+    def train(self, sequence, force_nonsd=False, st_wt=4.35, trans_table=11):
       if self.meta:
           raise RuntimeError("cannot use training sequence in metagenomic mode")
       if not isinstance(sequence, str):
@@ -661,7 +669,10 @@ cdef class Pyrodigal:
 
       # create the training structure and compute GC content
       cdef _training tinf
-      tinf.gc = sequence.gc_content(seq, 0, slen-1)
+      memset(&tinf, 0, sizeof(_training));
+      tinf.gc = gc_content(seq, 0, slen-1)
+      tinf.st_wt = st_wt
+      tinf.trans_table = trans_table
 
       # check if we need to reallocate the node array
       if slen > self.max_slen:

@@ -1,20 +1,29 @@
+import abc
 import gzip
 import os
 import unittest
+import warnings
 
 import Bio.SeqIO
 from pyrodigal import Pyrodigal
 
 
 
-class TestPyrodigalMeta(unittest.TestCase):
+class _TestPyrodigalMode(object):
+
+    mode = None
+
+    @classmethod
+    @abc.abstractmethod
+    def find_genes(s):
+        return NotImplemented
 
     @classmethod
     def setUpClass(cls):
         data = os.path.realpath(os.path.join(__file__, "..", "data"))
         fna = os.path.join(data, "SRR492066.fna.gz")
-        meta_fna = os.path.join(data, "SRR492066.meta.fna.gz")
-        meta_faa = os.path.join(data, "SRR492066.meta.faa.gz")
+        meta_fna = os.path.join(data, f"SRR492066.{cls.mode}.fna.gz")
+        meta_faa = os.path.join(data, f"SRR492066.{cls.mode}.faa.gz")
 
         with gzip.open(fna, "rt") as f:
             cls.record = next(Bio.SeqIO.parse(f, "fasta"))
@@ -31,8 +40,7 @@ class TestPyrodigalMeta(unittest.TestCase):
                 if record.id.startswith("{}_".format(cls.record.id))
             ]
 
-        cls.p = Pyrodigal(meta=True)
-        cls.preds = cls.p.find_genes(str(cls.record.seq))
+        cls.preds = cls.find_genes(str(cls.record.seq))
 
     def test_translate(self):
         self.assertEqual(len(self.preds), len(self.proteins))
@@ -73,3 +81,24 @@ class TestPyrodigalMeta(unittest.TestCase):
             *_, raw_data = protein.description.split(" # ")
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             self.assertEqual(gene.start_type, data["start_type"])
+
+
+class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
+    mode = "meta"
+
+    @classmethod
+    def find_genes(cls, seq):
+        p = Pyrodigal(meta=True)
+        return p.find_genes(seq)
+
+
+class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
+    mode = "single"
+
+    @classmethod
+    def find_genes(cls, seq):
+        p = Pyrodigal(meta=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p.train(seq)
+        return p.find_genes(seq)
