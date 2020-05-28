@@ -21,8 +21,8 @@ class _TestPyrodigalMode(object):
     def setUpClass(cls):
         data = os.path.realpath(os.path.join(__file__, "..", "data"))
         fna = os.path.join(data, "SRR492066.fna.gz")
-        meta_fna = os.path.join(data, f"SRR492066.{cls.mode}.fna.gz")
-        meta_faa = os.path.join(data, f"SRR492066.{cls.mode}.faa.gz")
+        meta_fna = os.path.join(data, "SRR492066.{}.fna.gz".format(cls.mode))
+        meta_faa = os.path.join(data, "SRR492066.{}.faa.gz".format(cls.mode))
 
         with gzip.open(fna, "rt") as f:
             cls.record = next(Bio.SeqIO.parse(f, "fasta"))

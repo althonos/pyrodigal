@@ -83,6 +83,14 @@ for i, gene in enumerate(p.find_genes(str(record.seq))):
     print(textwrap.fill(record.translate()))
 ```
 
+To use `Pyrodigal` in single mode, you must explicitly call `Pyrodigal.train` 
+with the sequence you want to use for training before trying to find genes:
+```python
+p = pyrodigal.Pyrodigal()
+p.train(str(record.seq))
+genes = p.find_genes(str(record.seq))
+```
+
 ## 📜 License
 
 This library, like the original Prodigal software, is provided under the

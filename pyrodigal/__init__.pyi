@@ -1,4 +1,4 @@
-from typing import Iterator, Sequence
+from typing import Iterator, Optional, Sequence
 
 class Gene:
     @property

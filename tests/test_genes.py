@@ -1,6 +1,7 @@
 import collections.abc
 import gzip
 import os
+import sys
 import unittest
 
 import Bio.SeqIO
@@ -42,9 +43,11 @@ class TestGenes(unittest.TestCase):
         self.assertTrue(bool(self.genes))
         self.assertFalse(bool(self.p.find_genes("TTT")))
 
+    @unittest.skipIf(sys.implementation.name != 'cpython', 'can panic with PyPy')
     def test_collection_abc_subclass(self):
         self.assertIsInstance(self.genes, collections.abc.Sequence)
         self.assertIsInstance(self.genes, collections.abc.Sized)
         self.assertIsInstance(self.genes, collections.abc.Container)
         self.assertIsInstance(self.genes, collections.abc.Iterable)
-        self.assertIsInstance(self.genes, collections.abc.Reversible)
+        if sys.version_info >= (3, 6):
+            self.assertIsInstance(self.genes, collections.abc.Reversible)
