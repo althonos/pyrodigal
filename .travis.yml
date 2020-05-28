@@ -43,7 +43,6 @@ jobs:
   include:
     # Linux
     - python: pypy3
-      if: tag IS present
       <<: *test-linux
     - python: 3.5
       if: tag IS present
