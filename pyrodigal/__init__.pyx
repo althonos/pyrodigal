@@ -147,10 +147,10 @@ initialize_metagenomic_bins(META_BINS)
 # ----------------------------------------------------------------------------
 
 cdef class TrainingInfo:
-    cdef _training tinf
+    cdef _training raw
 
-    def __cinit__(self, _training tinf):
-        self.tinf = tinf
+    def __cinit__(self, _training raw):
+        self.raw = raw
 
 
 # ----------------------------------------------------------------------------
@@ -393,7 +393,7 @@ cdef class Pyrodigal:
     cdef size_t max_genes
 
     #
-    cdef TrainingInfo tinf_rc
+    cdef TrainingInfo tinf
 
     def __init__(self, meta=False, closed=False):
         """Instantiate and configure a new ORF finder.
@@ -443,6 +443,8 @@ cdef class Pyrodigal:
             `MemoryError`: when allocation of an internal buffers fails.
 
         """
+        if not self.meta and self.tinf is None:
+            raise RuntimeError("cannot find genes without having trained in single mode")
         if not isinstance(sequence, str):
             raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
 
@@ -573,7 +575,61 @@ cdef class Pyrodigal:
         return genes
 
     cdef _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
-        raise NotImplementedError("single mode not implemented")
+        # reallocate memory for the nodes if this is the biggest sequence
+        # processed by this object so far
+        if slen > self.max_slen:
+            new_length = slen//8 + (slen%8 != 0)
+            self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
+            if not self.nodes:
+                raise MemoryError()
+            self.max_slen = new_length*8
+
+        # find all the potential starts and stops, and sort them
+        self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, &self.tinf.raw)
+        qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
+
+        # second dynamic programming, using the dicodon statistics as the scoring
+        # function
+        node.score_nodes(seq, rseq, slen, self.nodes, self.nn, &self.tinf.raw, self.closed, False)
+        node.record_overlapping_starts(self.nodes, self.nn, &self.tinf.raw, True)
+        cdef int ipath = dprog.dprog(self.nodes, self.nn, &self.tinf.raw, True)
+        dprog.eliminate_bad_genes(self.nodes, self.nn, &self.tinf.raw)
+        self.ng = gene.add_genes(self.genes, self.nodes, ipath)
+        gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, &self.tinf.raw)
+        gene.record_gene_data(self.genes, self.ng, self.nodes, &self.tinf.raw, self._num_seq)
+
+        # make a `Genes` instance to store the results
+        cdef Genes genes = Genes.__new__(Genes)
+        genes.tinf_rc = self.tinf
+        # copy nodes
+        genes.nn = self.nn
+        genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
+        if not genes.nodes: raise MemoryError()
+        memcpy(genes.nodes, self.nodes, self.nn*sizeof(_node))
+        # copy genes
+        genes.ng = self.ng
+        genes.genes = <_gene*> PyMem_Malloc(self.ng*sizeof(_gene))
+        if not genes.genes: raise MemoryError()
+        memcpy(genes.genes, self.genes, self.ng*sizeof(_gene))
+        # take ownership of bitmaps
+        genes.slen = slen
+        genes.seq = seq
+        genes.rseq = rseq
+        genes.useq = useq
+        # keep reference to training information
+        # (this reference should never be invalid since `self.tinf` is a
+        # reference-counted Python object, which has at least the same lifetime
+        # as the `Genes` instance)
+        genes.tinf = &self.tinf.raw
+
+        # free resources
+        memset(self.nodes, 0, self.nn*sizeof(_node))
+        memset(self.genes, 0, self.ng*sizeof(_gene))
+        self.ng = self.nn = 0
+        self._num_seq += 1
+
+        #
+        return genes
 
     def train(self, sequence, force_nonsd=False):
       if self.meta:
@@ -654,4 +710,4 @@ cdef class Pyrodigal:
 
       # store the training information in a Python object so it can be
       # shared with reference counting in the later `find_genes` calls
-      self.tinf_rc = TrainingInfo(tinf)
+      self.tinf = TrainingInfo(tinf)
