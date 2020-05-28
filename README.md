@@ -13,11 +13,27 @@ finder for genomes, progenomes and metagenomes.*
 [![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/)
 [![GitHub issues](https://img.shields.io/github/issues/althonos/pyrodigal.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyrodigal/issues)
 [![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal.py/blob/master/CHANGELOG.md)
+[![Downloads](https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal)](https://pepy.tech/project/pyrodigal)
 
 <!-- [![AppVeyor](https://img.shields.io/appveyor/ci/althonos/pyrodigal/master?logo=appveyor&style=flat-square&maxAge=600)](https://ci.appveyor.com/project/althonos/pyrodigal) -->
 
 
 ## 🗺️ Overview
+
+Pyrodigal is a Python module that provides bindings to Prodigal using
+[Cython](https://cython.org/). It directly interacts with the Prodigal
+internals, which has the following advantages:
+
+- **single dependency**: Pyrodigal is distributed as a Python package, so you
+  can add it as a dependency to your project, and stop worrying about the
+  Prodigal binary being present on the end-user machine.
+- **no intermediate files**: everything happens in memory, in a Python object
+  you fully control, so you don't have to manually import and export sequences
+  to pass to the Prodigal CLI.
+- **no input formatting**: sequences are manipulated directly as strings, which
+  leverages the issue of formatting your input to FASTA for Prodigal.
+- **lower memory usage**: Pyrodigal is slightly more conservative when it comes
+  to using memory, which can help process very large sequences.
 
 ### 📋 Features
 
@@ -28,7 +44,7 @@ the user but offers more flexibility.
 **Roadmap**:
 
 - [x] Metagenomic mode
-- [ ] Single mode
+- [x] Single mode
 - [ ] External training file support (`-t` flag)
 - [ ] Region masking (`-m` flag)
 
