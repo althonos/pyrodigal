@@ -38,3 +38,10 @@ class Pyrodigal:
 
     def __init__(self, meta: bool = False, closed: bool = False) -> None: ...
     def find_genes(self, sequence: str) -> Genes: ...
+    def train(
+        self,
+        sequence: str,
+        force_nonsd: bool = False,
+        st_wt: float = 4.35,
+        trans_table: int = 11,
+    ) -> None: ...

@@ -440,8 +440,9 @@ cdef class Pyrodigal:
             `Genes`: A collection of all the genes found in the input.
 
         Raises:
-            `TypeError`: when ``sequence`` is not a string.
             `MemoryError`: when allocation of an internal buffers fails.
+            `RuntimeError`: on calling this method without `train` in *single* mode.
+            `TypeError`: when ``sequence`` is not a string.
 
         """
         if not self.meta and self.tinf is None:
@@ -638,10 +639,31 @@ cdef class Pyrodigal:
         return genes
 
     def train(self, sequence, force_nonsd=False, st_wt=4.35, trans_table=11):
+      """Search optimal parameters for the ORF finder using a training sequence.
+
+      Arguments:
+          sequence (`str`): The sequence to use, as a string of nucleotides.
+          force_nonsd (`bool`, optional): Set to ``True`` to bypass the heuristic
+              algorithm that tries to determine if the organism the training
+              sequence belongs to uses a Shine-Dalgarno motif or not.
+          st_wt (`float`, optional): The start score weight to use. The default
+              value has been manually selected by the PRODIGAL authors as an
+              appropriate value for 99% of genomes.
+          trans_table (`int`, optional): The translation table to use.
+
+      Raises:
+          `MemoryError`: when allocation of an internal buffers fails.
+          `RuntimeError`: when calling this method while in *metagenomic* mode.
+          `TypeError`: when ``sequence`` is not a string.
+          `ValueError`: when ``trans_table`` is not a valid translation table.
+
+      """
       if self.meta:
           raise RuntimeError("cannot use training sequence in metagenomic mode")
       if not isinstance(sequence, str):
           raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
+      if trans_table not in set((*range(1, 7), *range(9, 17), *range(21, 26))):
+          raise ValueError(f"{trans_table} is not a valid translation table index")
 
       # check we have enough nucleotides to train
       cdef size_t slen = len(sequence)
@@ -699,9 +721,10 @@ cdef class Pyrodigal:
       # determine if this organism uses Shine-Dalgarno and score the node
       node.rbs_score(seq, rseq, slen, self.nodes, self.nn, &tinf)
       node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, &tinf)
-      node.determine_sd_usage(&tinf)
       if force_nonsd:
           tinf.uses_sd = False
+      else:
+          node.determine_sd_usage(&tinf)
       if not tinf.uses_sd:
           node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, &tinf)
 
