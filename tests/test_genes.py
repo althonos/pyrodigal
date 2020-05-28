@@ -1,3 +1,4 @@
+import collections.abc
 import gzip
 import os
 import unittest
@@ -40,3 +41,10 @@ class TestGenes(unittest.TestCase):
     def test_bool(self):
         self.assertTrue(bool(self.genes))
         self.assertFalse(bool(self.p.find_genes("TTT")))
+
+    def test_collection_abc_subclass(self):
+        self.assertIsInstance(self.genes, collections.abc.Sequence)
+        self.assertIsInstance(self.genes, collections.abc.Sized)
+        self.assertIsInstance(self.genes, collections.abc.Container)
+        self.assertIsInstance(self.genes, collections.abc.Iterable)
+        self.assertIsInstance(self.genes, collections.abc.Reversible)
