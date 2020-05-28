@@ -90,6 +90,10 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         p = Pyrodigal(meta=True)
         return p.find_genes(seq)
 
+    def test_train(self):
+        p = Pyrodigal(meta=True)
+        self.assertRaises(RuntimeError, p.train, str(self.record.seq))
+
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
     mode = "single"
