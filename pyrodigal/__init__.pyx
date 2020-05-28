@@ -65,7 +65,10 @@ cdef void sequence_to_bitmap(
     rseq[0] = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
     useq[0] = <bitmap_t> PyMem_Malloc(ulen * sizeof(unsigned char))
     if not seq[0] or not useq[0] or not rseq[0]:
-        return
+        PyMem_Free(seq[0])
+        PyMem_Free(rseq[0])
+        PyMem_Free(useq[0])
+        raise MemoryError()
 
     cdef size_t i, j
     with nogil:
@@ -451,11 +454,6 @@ cdef class Pyrodigal:
         cdef bitmap_t rseq = NULL
         cdef bitmap_t useq = NULL
         sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
-        if not seq or not useq or not rseq:
-            PyMem_Free(seq)
-            PyMem_Free(useq)
-            PyMem_Free(rseq)
-            raise MemoryError()
 
         if self.meta:
             return self._find_genes_meta(slen, seq, useq, rseq)
@@ -661,11 +659,6 @@ cdef class Pyrodigal:
       cdef bitmap_t rseq = NULL
       cdef bitmap_t useq = NULL
       sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
-      if not seq or not useq or not rseq:
-          PyMem_Free(seq)
-          PyMem_Free(useq)
-          PyMem_Free(rseq)
-          raise MemoryError()
 
       # create the training structure and compute GC content
       cdef _training tinf

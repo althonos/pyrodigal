@@ -105,3 +105,12 @@ class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
     def test_train_not_called(self):
         p = Pyrodigal(meta=False)
         self.assertRaises(RuntimeError, p.find_genes, str(self.record.seq))
+
+    def test_training_info_deallocation(self):
+        p = Pyrodigal(meta=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p.train(str(self.record.seq))
+        genes = p.find_genes(str(self.record.seq))
+        del p # normally should not deallocate training info since it's RC
+        self.assertEqual(genes[0].translate(), str(self.proteins[0].seq))
