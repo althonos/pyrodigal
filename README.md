@@ -75,7 +75,7 @@ Using [Biopython](https://biopython.org/), load a sequence from a GenBank file,
 use Prodigal to find all genes it contains, and print the proteins in FASTA
 format:
 ```python
-record = Bio.SeqIO.read("sequence.fa", "genbank")
+record = Bio.SeqIO.read("sequence.gbk", "genbank")
 p = pyrodigal.Pyrodigal(meta=True)
 
 for i, gene in enumerate(p.find_genes(str(record.seq))):
