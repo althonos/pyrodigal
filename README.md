@@ -3,7 +3,7 @@
 *Python interface to [Prodigal](https://github.com/hyattpd/Prodigal/), an ORF
 finder for genomes, progenomes and metagenomes.*
 
-[![TravisCI](https://img.shields.io/travis/althonos/pyrodigal/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyrodigal/branches)
+[![TravisCI](https://img.shields.io/travis/com/althonos/pyrodigal/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyrodigal/branches)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
 [![PyPI](https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyrodigal)
