@@ -48,7 +48,7 @@ the user but offers more flexibility.
 - [ ] External training file support (`-t` flag)
 - [ ] Region masking (`-m` flag)
 
-### 📋 Memory
+### 🐏 Memory
 
 Contrary to the Prodigal command line, Pyrodigal attempts to be more conservative
 about memory usage. This means that most of the allocations will be lazy, and
