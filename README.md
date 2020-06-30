@@ -6,7 +6,8 @@ finder for genomes, progenomes and metagenomes.*
 [![TravisCI](https://img.shields.io/travis/com/althonos/pyrodigal/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyrodigal/branches)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
-[![PyPI](https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyrodigal)
+[![PyPI](https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyrodigal)
+[![Bioconda](https://img.shields.io/conda/vn/bioconda/pyrodigal?style=flat-square&maxAge=3600)](https://anaconda.org/bioconda/pyrodigal)
 [![Wheel](https://img.shields.io/pypi/wheel/pyrodigal.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyrodigal/#files)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pyrodigal.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyrodigal/#files)
 [![Python Implementations](https://img.shields.io/pypi/implementation/pyrodigal.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyrodigal/#files)
@@ -69,6 +70,21 @@ with multiprocessing.pool.ThreadPool() as pool:
     pool.map(lambda s: Pyrodigal(meta=True).find_genes(s), sequences)
 ```
 
+## 🔧 Installing
+
+Pyrodigal can be installed directly from PyPI, which hosts some pre-built
+CPython wheels for x86-64 UNIX platforms, as well as the code required to
+compile from source with Cython:
+```console
+$ pip install --user pyrodigal
+```
+
+Otherwise, Pyrodigal is also available as a [Bioconda](https://bioconda.github.io/)
+package:
+```console
+$ conda install -c bioconda pyrodigal
+```
+
 ## 💡 Example
 
 Using [Biopython](https://biopython.org/), load a sequence from a GenBank file,
@@ -83,7 +99,7 @@ for i, gene in enumerate(p.find_genes(str(record.seq))):
     print(textwrap.fill(record.translate()))
 ```
 
-To use `Pyrodigal` in single mode, you must explicitly call `Pyrodigal.train` 
+To use `Pyrodigal` in single mode, you must explicitly call `Pyrodigal.train`
 with the sequence you want to use for training before trying to find genes:
 ```python
 p = pyrodigal.Pyrodigal()
