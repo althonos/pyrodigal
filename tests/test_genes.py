@@ -43,6 +43,11 @@ class TestGenes(unittest.TestCase):
         self.assertTrue(bool(self.genes))
         self.assertFalse(bool(self.p.find_genes("TTT")))
 
+    def test_translation_table(self):
+        valid = set((*range(1, 7), *range(9, 17), *range(21, 26)))
+        for gene in self.genes:
+            self.assertIn(gene.translation_table, valid)
+
     @unittest.skipIf(sys.implementation.name != 'cpython', 'can panic with PyPy')
     def test_collection_abc_subclass(self):
         self.assertIsInstance(self.genes, collections.abc.Sequence)

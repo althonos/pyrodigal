@@ -337,6 +337,13 @@ cdef class Gene:
         cdef size_t length = j - i
         return float(i[8:length])
 
+    @property
+    def translation_table(self):
+        """`int`: The translation table used to translate the gene.
+        """
+        cdef int table = self.tinf[0].trans_table
+        return table
+
     cpdef translate(self):
         """Translate the gene into a protein sequence.
 
