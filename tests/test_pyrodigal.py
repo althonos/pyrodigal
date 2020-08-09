@@ -81,7 +81,6 @@ class _TestPyrodigalMode(object):
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             self.assertEqual(gene.start_type, data["start_type"])
 
-
 class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
     mode = "meta"
 
@@ -93,6 +92,26 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
     def test_train(self):
         p = Pyrodigal(meta=True)
         self.assertRaises(RuntimeError, p.train, str(self.record.seq))
+
+    def test_overflow(self):
+        seq = """
+        AACCAGGGCAATATCAGTACCGCGGGCAATGCAACCCTGACTGCCGGCGGTAACCTGAAC
+        AGCACTGGCAATCTGACTGTGGGCGGTGTTACCAACGGCACTGCTACTACTGGCAACATC
+        GCACTGACCGGTAACAATGCGCTGAGCGGTCCGGTCAATCTGAATGCGTCGAATGGCACG
+        GTGACCTTGAACACGACCGGCAATACCACGCTCGGTAACGTGACGGCACAAGGCAATGTG
+        ACGACCAATGTGTCCAACGGCAGTCTGACGGTTACCGGCAATACGACAGGTGCCAACACC
+        AACCTCAGTGCCAGCGGCAACCTGACCGTGGGTAACCAGGGCAATATCAGTACCGCAGGC
+        AATGCAACCCTGACGGCCGGCGACAACCTGACGAGCACTGGCAATCTGACTGTGGGCGGC
+        GTCACCAACGGCACGGCCACCACCGGCAACATCGCGCTGACCGGTAACAATGCACTGGCT
+        GGTCCTGTCAATCTGAACGCGCCGAACGGCACCGTGACCCTGAACACAACCGGCAATACC
+        ACGCTGGGTAATGTCACCGCACAAGGCAATGTGACGACTAATGTGTCCAACGGCAGCCTG
+        ACAGTCGCTGGCAATACCACAGGTGCCAACACCAACCTGAGTGCCAGCGGCAATCTGACC
+        GTGGGCAACCAGGGCAATATCAGTACCGCGGGCAATGCAACCCTGACTGCCGGCGGTAAC
+        CTGAGC
+        """
+        p = Pyrodigal(meta=True, closed=False)
+        genes = p.find_genes(seq.replace("\n", ""))
+        self.assertGreater(len(genes), 0)
 
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):

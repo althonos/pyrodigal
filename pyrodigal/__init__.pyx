@@ -475,11 +475,11 @@ cdef class Pyrodigal:
         # reallocate memory for the nodes if this is the biggest sequence
         # processed by this object so far
         if slen > self.max_slen:
-            new_length = slen//8 + (slen%8 != 0)
+            new_length = slen//4
             self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
             if not self.nodes:
                 raise MemoryError()
-            self.max_slen = new_length*8
+            self.max_slen = slen
 
         cdef size_t gc_count = 0
         cdef double gc, low, high
