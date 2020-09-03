@@ -1,0 +1,36 @@
+version: '{build}'
+clone_depth: 5
+environment:
+  matrix:
+  - PYTHON: "C:\\Python35-x64"
+    PYTHON_VERSION: "3.5"
+    PYTHON_ARCH: "64"
+  - PYTHON: "C:\\Python36-x64"
+    PYTHON_VERSION: "3.6"
+    PYTHON_ARCH: "64"
+  - PYTHON: "C:\\Python37-x64"
+    PYTHON_VERSION: "3.7"
+    PYTHON_ARCH: "64"
+  - PYTHON: "C:\\Python38-x64"
+    PYTHON_VERSION: "3.8"
+    PYTHON_ARCH: "64"
+
+install:
+- "git submodule update --init"
+- ps: Start-Process -FilePath "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" -ArgumentList "x64"
+- "%PYTHON%\\python.exe -m pip install cython"
+
+before_build:
+- "%PYTHON%\\python.exe -V"
+
+build_script:
+- "%PYTHON%\\python.exe setup.py build_ext --inplace --debug"
+
+test_script:
+- "%PYTHON%\\python.exe -m unittest discover -b -v"
+
+before_deploy:
+- "%WITH_ENV% %PYTHON%\\python.exe setup.py sdist bdist_wheel"
+
+deploy_script:
+- ps: .\ci\appveyor\deploy.ps1

@@ -54,9 +54,6 @@ cdef void sequence_to_bitmap(
         useq (bitmap_t*): An address where to put the bitmap storing the
           *unknown character* bitmap.
 
-    If this function returns and any of ``*seq``, ``*rseq`` or ``*useq`` is
-    NULL, it means there was a memory failure.
-
     """
     # allocate memory for the bitmaps
     cdef size_t blen = slen//4 + (slen%4 != 0)
@@ -154,6 +151,7 @@ cdef class TrainingInfo:
 
     def __dealloc__(self):
         PyMem_Free(self.raw)
+
 
 # ----------------------------------------------------------------------------
 

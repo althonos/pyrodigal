@@ -29,7 +29,10 @@ class build_ext(_build_ext):
 
     def build_extension(self, ext):
         if self.debug:
-            ext.extra_compile_args.append("-O0")
+            if sys.platform == "linux" or sys.platform == "darwin":
+                ext.extra_compile_args.append("-O0")
+            if sys.platform == "win32":
+                ext.extra_compile_args.append("/bigobj")
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
         _build_ext.build_extension(self, ext)
