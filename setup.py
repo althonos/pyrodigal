@@ -46,6 +46,8 @@ class build_ext(_build_ext):
                 if line.startswith(b"void initialize_metagenome"):
                     self._write_source_split(training_temp, index, lines)
                     index += 1
+                if line.lstrip().startswith(b"struct _training"):
+                    line = line.replace(b"struct _training", b"static const struct _training")
                 lines.append(line)
             self._write_source_split(training_temp, index, lines)
 
@@ -58,8 +60,6 @@ class build_ext(_build_ext):
         if self.debug:
             if sys.platform == "linux" or sys.platform == "darwin":
                 ext.extra_compile_args.append("-O0")
-            if sys.platform == "win32":
-                ext.extra_compile_args.append("/bigobj")
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
         _build_ext.build_extension(self, ext)
