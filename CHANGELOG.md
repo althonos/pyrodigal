@@ -5,7 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.2.4...HEAD
+
+
+## [v0.2.4] - 2020-09-04
+[v0.2.4]: https://github.com/althonos/pyrodigal/compare/v0.2.3...v0.2.4
+### Added
+- Precompiled wheels for Windows x86-64 platform.
+### Changed
+- Compilation of large `Prodigal/training.c` file is now done in chunks
+  and uses `static const` to reduce build time.
 
 
 ## [v0.2.3] - 2020-08-09

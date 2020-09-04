@@ -4,6 +4,7 @@
 finder for genomes, progenomes and metagenomes.*
 
 [![TravisCI](https://img.shields.io/travis/com/althonos/pyrodigal/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyrodigal/branches)
+[![AppVeyor](https://img.shields.io/appveyor/build/althonos/pyrodigal/master.svg?logo=appveyor&maxAge=600&style=flat-square)](https://ci.appveyor.com/project/althonos/pyrodigal/history)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
 [![PyPI](https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyrodigal)
@@ -73,8 +74,8 @@ with multiprocessing.pool.ThreadPool() as pool:
 ## 🔧 Installing
 
 Pyrodigal can be installed directly from PyPI, which hosts some pre-built
-CPython wheels for x86-64 UNIX platforms, as well as the code required to
-compile from source with Cython:
+CPython wheels for x86-64 Unix and Windows platforms, as well as the code
+required to compile from source with Cython:
 ```console
 $ pip install --user pyrodigal
 ```
