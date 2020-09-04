@@ -30,7 +30,8 @@ test_script:
 - "%PYTHON%\\python.exe -m unittest discover -b -v"
 
 before_deploy:
-- "%WITH_ENV% %PYTHON%\\python.exe setup.py sdist bdist_wheel"
+- "%PYTHON%\\python.exe setup.py sdist bdist_wheel"
+- "%PYTHON%\\python.exe -m twine check dist\\*"
 
 deploy_script:
 - ps: .\ci\appveyor\deploy.ps1
