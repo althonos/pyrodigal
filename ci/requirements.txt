@@ -4,6 +4,6 @@ cython ~=0.29.16
 
 auditwheel
 twine
-setuptools
+setuptools >=45.0.0
 
 -r ../tests/requirements.txt
