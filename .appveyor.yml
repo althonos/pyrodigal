@@ -17,16 +17,16 @@ environment:
 
 install:
 - "git submodule update --init"
-- ps: Start-Process -FilePath "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" -ArgumentList "x64"
-- "%PYTHON%\\python.exe -m pip install cython"
+- "%PYTHON%\\python.exe -m pip install -r ci\\requirements.txt"
 
 before_build:
 - "%PYTHON%\\python.exe -V"
 
 build_script:
-- "%PYTHON%\\python.exe setup.py build_ext --inplace --debug"
+- "%PYTHON%\\python.exe setup.py build_ext --inplace"
 
 test_script:
+- "%PYTHON%\\python.exe -m pip install -r tests\\requirements.txt"
 - "%PYTHON%\\python.exe -m unittest discover -b -v"
 
 before_deploy:
