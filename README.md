@@ -72,11 +72,11 @@ with multiprocessing.pool.ThreadPool() as pool:
 
 ## 🔧 Installing
 
-Pyrodigal can be installed directly from PyPI, which hosts some pre-built
-CPython wheels for x86-64 Unix and Windows platforms, as well as the code
-required to compile from source with Cython:
+Pyrodigal can be installed directly from [PyPI](https://pypi.org/project/pyrodigal/),
+which hosts some pre-built CPython wheels for x86-64 Unix and Windows platforms,
+as well as the code required to compile from source with Cython:
 ```console
-$ pip install --user pyrodigal
+$ pip install pyrodigal
 ```
 
 Otherwise, Pyrodigal is also available as a [Bioconda](https://bioconda.github.io/)
@@ -87,9 +87,9 @@ $ conda install -c bioconda pyrodigal
 
 ## 💡 Example
 
-Using [Biopython](https://biopython.org/), load a sequence from a GenBank file,
-use Prodigal to find all genes it contains, and print the proteins in FASTA
-format:
+Using [Biopython](https://biopython.org/), load a sequence from a
+[GenBank](http://www.insdc.org/files/feature_table.html) file, import Pyrodigal
+to find all genes it contains, and print the proteins in FASTA format:
 ```python
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 p = pyrodigal.Pyrodigal(meta=True)

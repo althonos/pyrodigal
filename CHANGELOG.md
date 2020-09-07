@@ -4,8 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.3.0...HEAD
+
+
+## [v0.3.0] - 2020-09-07
+[v0.3.0]: https://github.com/althonos/pyrodigal/compare/v0.2.4...v0.3.0
+### Added
+- Thread-safety for all `Pyrodigal` methods
+### Fixed
+- Reduced total amount of memory used to allocated dynamic programming 
+  nodes for a given sequence.
 
 
 ## [v0.2.4] - 2020-09-04
