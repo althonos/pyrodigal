@@ -1,6 +1,7 @@
 import abc
 import gzip
 import os
+import textwrap
 import unittest
 import warnings
 
@@ -94,6 +95,7 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         self.assertRaises(RuntimeError, p.train, str(self.record.seq))
 
     def test_overflow(self):
+        # > 180195.SAMN03785337.LFLS01000089
         seq = """
         AACCAGGGCAATATCAGTACCGCGGGCAATGCAACCCTGACTGCCGGCGGTAACCTGAAC
         AGCACTGGCAATCTGACTGTGGGCGGTGTTACCAACGGCACTGCTACTACTGGCAACATC
@@ -110,8 +112,11 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         CTGAGC
         """
         p = Pyrodigal(meta=True, closed=False)
-        genes = p.find_genes(seq.replace("\n", ""))
-        self.assertGreater(len(genes), 0)
+        genes = p.find_genes(textwrap.dedent(seq).replace("\n", ""))
+        self.assertEqual(len(genes), 1)
+        self.assertEqual(genes[0].start_type, "Edge")
+        self.assertTrue(genes[0].partial_begin)
+        self.assertTrue(genes[0].partial_end)
 
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
