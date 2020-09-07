@@ -29,7 +29,7 @@ import warnings
 
 cdef size_t MIN_SINGLE_GENOME = 20000
 cdef size_t IDEAL_SINGLE_GENOME = 100000
-
+cdef size_t MIN_NODES = 98
 
 # ----------------------------------------------------------------------------
 
@@ -465,6 +465,15 @@ cdef class Pyrodigal:
         else:
             return self._find_genes_single(slen, seq, useq, rseq)
 
+    cdef _reallocate_nodes(self, size_t slen):
+        cdef size_t new_length = slen//8 + (slen%8 != 0)
+        if new_length < MIN_NODES:
+            new_length = MIN_NODES
+        self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
+        if not self.nodes:
+            raise MemoryError()
+        self.max_slen = new_length*8
+
     cdef _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
         cdef size_t i
         cdef size_t gene_count
@@ -473,11 +482,7 @@ cdef class Pyrodigal:
         # reallocate memory for the nodes if this is the biggest sequence
         # processed by this object so far
         if slen > self.max_slen:
-            new_length = slen//4
-            self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
-            if not self.nodes:
-                raise MemoryError()
-            self.max_slen = slen
+            self._reallocate_nodes(slen)
 
         cdef size_t gc_count = 0
         cdef double gc, low, high
@@ -579,11 +584,7 @@ cdef class Pyrodigal:
         # reallocate memory for the nodes if this is the biggest sequence
         # processed by this object so far
         if slen > self.max_slen:
-            new_length = slen//8 + (slen%8 != 0)
-            self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
-            if not self.nodes:
-                raise MemoryError()
-            self.max_slen = new_length*8
+            self._reallocate_nodes(slen)
 
         # find all the potential starts and stops, and sort them
         self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, self.tinf.raw)
@@ -695,11 +696,7 @@ cdef class Pyrodigal:
 
       # check if we need to reallocate the node array
       if slen > self.max_slen:
-          new_length = slen//8 + (slen%8 != 0)
-          self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
-          if not self.nodes:
-              raise MemoryError()
-          self.max_slen = new_length*8
+          self._reallocate_nodes(slen)
 
       # find all the potential starts and stops and sort them
       self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
