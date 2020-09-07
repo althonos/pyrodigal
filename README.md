@@ -63,8 +63,8 @@ a little bit more overhead to compute the size of buffers in advance.
 prevent parallel calls to their methods from overwriting the internal buffers.
 However, a better solution to process sequences in parallel is to use a
 consumer/worker pattern, and have on `Pyrodigal` instance in each worker.
-worker. Using a pool spawning `Pyrodigal` instances on the fly is also fine,
-but prevents recycling internal buffers:
+Using a pool spawning `Pyrodigal` instances on the fly is also fine,
+but prevents recycling memory:
 ```python
 with multiprocessing.pool.ThreadPool() as pool:
     pool.map(lambda s: Pyrodigal(meta=True).find_genes(s), sequences)
