@@ -23,7 +23,7 @@ from pyrodigal.prodigal.training cimport _training
 # ----------------------------------------------------------------------------
 
 import warnings
-
+import threading
 
 # ----------------------------------------------------------------------------
 
@@ -386,6 +386,7 @@ cdef class Pyrodigal:
     """
     #
     cdef public bint closed
+    cdef public object lock
     cdef readonly bint meta
     cdef readonly size_t _num_seq
 
@@ -416,6 +417,7 @@ cdef class Pyrodigal:
         """
         self.meta = meta
         self.closed = closed
+        self.lock = threading.Lock()
 
     def __cinit__(self, meta=False, closed=False):
         self._num_seq = 1
@@ -460,10 +462,11 @@ cdef class Pyrodigal:
         cdef bitmap_t useq = NULL
         sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
 
-        if self.meta:
-            return self._find_genes_meta(slen, seq, useq, rseq)
-        else:
-            return self._find_genes_single(slen, seq, useq, rseq)
+        with self.lock:
+            if self.meta:
+                return self._find_genes_meta(slen, seq, useq, rseq)
+            else:
+                return self._find_genes_single(slen, seq, useq, rseq)
 
     cdef _reallocate_nodes(self, size_t slen):
         cdef size_t new_length = slen//8 + (slen%8 != 0)
@@ -694,49 +697,52 @@ cdef class Pyrodigal:
       tinf.st_wt = st_wt
       tinf.trans_table = trans_table
 
-      # check if we need to reallocate the node array
-      if slen > self.max_slen:
-          self._reallocate_nodes(slen)
+      cdef int* gc_frame;
+      cdef int ipath;
+      with self.lock:
+          # check if we need to reallocate the node array
+          if slen > self.max_slen:
+              self._reallocate_nodes(slen)
 
-      # find all the potential starts and stops and sort them
-      self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
-      qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
+          # find all the potential starts and stops and sort them
+          self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
+          qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
-      # scan all the ORFs looking for a potential GC bias in a particular
-      # codon position, in order to acquire a good initial set of genes
-      cdef int* gc_frame = calc_most_gc_frame(seq, slen)
-      if not gc_frame:
-          raise MemoryError()
-      node.record_gc_bias(gc_frame, self.nodes, self.nn, tinf)
-      free(gc_frame)
+          # scan all the ORFs looking for a potential GC bias in a particular
+          # codon position, in order to acquire a good initial set of genes
+          gc_frame = calc_most_gc_frame(seq, slen)
+          if not gc_frame:
+              raise MemoryError()
+          node.record_gc_bias(gc_frame, self.nodes, self.nn, tinf)
+          free(gc_frame)
 
-      # do an initial dynamic programming routine with just the GC frame bias
-      # used as a scoring function.
-      node.record_overlapping_starts(self.nodes, self.nn, tinf, 0)
-      cdef int ipath = dprog.dprog(self.nodes, self.nn, tinf, 0)
+          # do an initial dynamic programming routine with just the GC frame bias
+          # used as a scoring function.
+          node.record_overlapping_starts(self.nodes, self.nn, tinf, 0)
+          ipath = dprog.dprog(self.nodes, self.nn, tinf, 0)
 
-      # gather dicodon statistics for the training set
-      node.calc_dicodon_gene(tinf, seq, rseq, slen, self.nodes, ipath)
-      node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, tinf)
+          # gather dicodon statistics for the training set
+          node.calc_dicodon_gene(tinf, seq, rseq, slen, self.nodes, ipath)
+          node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, tinf)
 
-      # determine if this organism uses Shine-Dalgarno and score the node
-      node.rbs_score(seq, rseq, slen, self.nodes, self.nn, tinf)
-      node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, tinf)
-      if force_nonsd:
-          tinf.uses_sd = False
-      else:
-          node.determine_sd_usage(tinf)
-      if not tinf.uses_sd:
-          node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, tinf)
+          # determine if this organism uses Shine-Dalgarno and score the node
+          node.rbs_score(seq, rseq, slen, self.nodes, self.nn, tinf)
+          node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, tinf)
+          if force_nonsd:
+              tinf.uses_sd = False
+          else:
+              node.determine_sd_usage(tinf)
+          if not tinf.uses_sd:
+              node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, tinf)
 
-      # reset internal buffers and free allocated memory
-      PyMem_Free(seq)
-      PyMem_Free(rseq)
-      PyMem_Free(useq)
-      memset(self.nodes, 0, self.nn*sizeof(_node))
-      self.nn = 0
+          # reset internal buffers and free allocated memory
+          PyMem_Free(seq)
+          PyMem_Free(rseq)
+          PyMem_Free(useq)
+          memset(self.nodes, 0, self.nn*sizeof(_node))
+          self.nn = 0
 
-      # store the training information in a Python object so it can be
-      # shared with reference counting in the later `find_genes` calls
-      self.tinf = TrainingInfo.__new__(TrainingInfo)
-      self.tinf.raw = tinf
+          # store the training information in a Python object so it can be
+          # shared with reference counting in the later `find_genes` calls
+          self.tinf = TrainingInfo.__new__(TrainingInfo)
+          self.tinf.raw = tinf
