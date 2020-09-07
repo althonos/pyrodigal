@@ -1,3 +1,4 @@
+import threading
 from typing import Iterator, Optional, Sequence
 
 class Gene:
@@ -36,6 +37,7 @@ class Genes(Sequence[Gene]):
 class Pyrodigal:
     closed: bool
     meta: bool
+    lock: threading.Lock
     _num_seq: int
 
     def __init__(self, meta: bool = False, closed: bool = False) -> None: ...
