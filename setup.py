@@ -38,6 +38,11 @@ class build_ext(_build_ext):
     """
 
     def build_extension(self, ext):
+        # show the compiler being used
+        log.info("building {} with {} compiler".format(
+            ext.name, self.compiler.compiler_type
+        ))
+
         # make sure the C libraries have been built already
         self.run_command("build_clib")
         _clib_cmd = self.get_finalized_command("build_clib")
