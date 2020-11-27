@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.3.2...HEAD
+
+## [v0.3.2] - 2020-11-27
+[v0.3.2]: https://github.com/althonos/pyrodigal/compare/v0.3.1...v0.3.2
+
+### Fixed
+- Broken compilation of PyPy wheels in Travis-CI.
+
 
 ## [v0.3.1] - 2020-11-27
 
