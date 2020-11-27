@@ -1,7 +1,3 @@
-dist: bionic
-language: python
-cache: pip
-
 stages:
   - name: Test (Linux)
   - name: Test (OSX)
@@ -16,7 +12,10 @@ env:
   dist: bionic
   stage: Test (Linux)
   language: python
-  cache: pip
+  cache:
+    pip: true
+    directories:
+      - $TRAVIS_BUILD_DIR/build
   services: docker
   before_install: ci/travis/manylinux/before_install.sh
   install: ci/travis/manylinux/install.sh
@@ -33,6 +32,7 @@ env:
     directories:
       - $HOME/Library/Caches/Homebrew
       - $HOME/.pyenv_cache
+      - $TRAVIS_BUILD_DIR/build
   install: ci/travis/osx/install.sh
   script: ci/travis/osx/script.sh
   before_cache: ci/travis/osx/before_cache.sh
@@ -55,6 +55,8 @@ jobs:
       <<: *test-linux
     - python: 3.8
       <<: *test-linux
+    - python: 3.9
+      <<: *test-linux
     # OSX
     - env: PYTHON=python3.5
       name: "Python: 3.5"
@@ -70,6 +72,7 @@ jobs:
       <<: *test-osx
     - env: PYTHON=python3.8
       name: "Python: 3.8"
+      if: tag IS present
       <<: *test-osx
 
 deploy:
