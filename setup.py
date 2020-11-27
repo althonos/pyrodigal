@@ -4,11 +4,17 @@ import os
 import sys
 
 import setuptools
-from Cython.Build import cythonize
+from distutils import log
+from distutils.command.clean import clean as _clean
 from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.build_clib import build_clib as _build_clib
 from setuptools.command.sdist import sdist as _sdist
 from setuptools.extension import Extension, Library
+
+try:
+    from Cython.Build import cythonize
+except ImportError as err:
+    cythonize = err
 
 
 class sdist(_sdist):
@@ -32,19 +38,57 @@ class build_ext(_build_ext):
     """
 
     def build_extension(self, ext):
+        # make sure the C libraries have been built already
+        self.run_command("build_clib")
+        _clib_cmd = self.get_finalized_command("build_clib")
+
         if self.debug:
-            if sys.platform == "linux" or sys.platform == "darwin":
+            if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
                 ext.extra_compile_args.append("-O0")
+            elif self.compiler.compiler_type == "msvc":
+                ext.extra_compile_args.append("/Od")
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
+
+        # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
 
     def run(self):
-        self.run_command("build_clib")
+        # check `cythonize` is available
+        if isinstance(cythonize, ImportError):
+            raise RuntimeError("Cython is required to run `build_ext` command") from cythonize
+
+        # use debug directives with Cython if building in debug mode
+        cython_args = {"include_path": ["include"], "compiler_directives": {}}
+        if self.force:
+            cython_args["force"] = True
+        if self.debug:
+            cython_args["annotate"] = True
+            cython_args["compiler_directives"]["warn.undeclared"] = True
+            cython_args["compiler_directives"]["warn.unreachable"] = True
+            cython_args["compiler_directives"]["warn.maybe_uninitialized"] = True
+            cython_args["compiler_directives"]["warn.unused"] = True
+            cython_args["compiler_directives"]["warn.unused_arg"] = True
+            cython_args["compiler_directives"]["warn.unused_result"] = True
+            cython_args["compiler_directives"]["warn.multiple_declarators"] = True
+        else:
+            cython_args["compiler_directives"]["boundscheck"] = False
+            cython_args["compiler_directives"]["wraparound"] = False
+            cython_args["compiler_directives"]["cdivision"] = True
+
+        # cythonize the extensions
+        self.extensions = cythonize(self.extensions, **cython_args)
+
+        # patch the extensions (needed for `_build_ext.run` to work)
+        for ext in self.extensions:
+            ext._needs_stub = False
+
+        # build the extensions as normal
         _build_ext.run(self)
 
+
 class build_clib(_build_clib):
-    """A custom `build_clib` that compiles out of source.
+    """A custom `build_clib` that splits the `training.c` file from Prodigal.
     """
 
     # --- Compatibility with base `build_clib` command ---
@@ -124,26 +168,47 @@ class build_clib(_build_clib):
             debug=self.debug,
         )
 
-libraries = [
-    Library(
-        "prodigal",
-        sources=glob.glob(os.path.join("Prodigal", "*.c")),
-        include_dirs=["Prodigal"],
-    )
-]
 
-extensions = [
-    Extension(
-        "pyrodigal._pyrodigal",
-        sources=["pyrodigal/__init__.pyx"],
-        include_dirs=["Prodigal"],
-        libraries=["prodigal"],
-    ),
-]
+class clean(_clean):
+    """A `clean` that removes intermediate files created by Cython.
+    """
+
+    def run(self):
+
+        source_dir = os.path.join(os.path.dirname(__file__), "pyrodigal")
+
+        patterns = ["*.html"]
+        if self.all:
+            patterns.extend(["*.so", "*.c"])
+
+        for pattern in patterns:
+            for file in glob.glob(os.path.join(source_dir, pattern)):
+                log.info("removing {!r}".format(file))
+                os.remove(file)
+
+        _clean.run(self)
 
 
 setuptools.setup(
-    libraries=libraries,
-    ext_modules=cythonize(extensions, annotate=True),
-    cmdclass=dict(sdist=sdist, build_ext=build_ext, build_clib=build_clib),
+    libraries=[
+        Library(
+            "prodigal",
+            sources=glob.glob(os.path.join("Prodigal", "*.c")),
+            include_dirs=["Prodigal"],
+        )
+    ],
+    ext_modules=[
+        Extension(
+            "pyrodigal._pyrodigal",
+            sources=["pyrodigal/__init__.pyx"],
+            include_dirs=["Prodigal"],
+            libraries=["prodigal"],
+        )
+    ],
+    cmdclass={
+        "sdist": sdist,
+        "build_ext": build_ext,
+        "build_clib": build_clib,
+        "clean": clean
+    }
 )
