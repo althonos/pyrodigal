@@ -193,7 +193,18 @@ setuptools.setup(
     libraries=[
         Library(
             "prodigal",
-            sources=glob.glob(os.path.join("Prodigal", "*.c")),
+            sources=[
+                os.path.join("Prodigal", base)
+                for base in [
+                    "bitmap.c",
+                    "dprog.c",
+                    "gene.c",
+                    "metagenomic.c",
+                    "node.c",
+                    "sequence.c",
+                    "training.c"
+                ]
+            ],
             include_dirs=["Prodigal"],
         )
     ],
