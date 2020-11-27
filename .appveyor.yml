@@ -27,7 +27,12 @@ build_script:
 
 test_script:
 - "%PYTHON%\\python.exe -m pip install -r tests\\requirements.txt"
-- "%PYTHON%\\python.exe -m unittest discover -b -v"
+- "%PYTHON%\\python.exe -m coverage run -m unittest discover -b -v"
+
+after_test:
+- "%PYTHON%\\python.exe -m coverage xml"
+- "%PYTHON%\\python.exe -m coverage report"
+- "%PYTHON%\\python.exe -m codecov"
 
 before_deploy:
 - "%PYTHON%\\python.exe setup.py sdist bdist_wheel"
