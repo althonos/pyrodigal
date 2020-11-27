@@ -47,6 +47,7 @@ class build_ext(_build_ext):
         self.run_command("build_clib")
         _clib_cmd = self.get_finalized_command("build_clib")
 
+        # add debug flags if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
                 ext.extra_compile_args.append("-O0")
@@ -157,6 +158,14 @@ class build_clib(_build_clib):
             )
 
     def build_library(self, library):
+        # add debug flags if we are building in debug mode
+        if self.debug:
+            if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
+                library.extra_compile_args.append("-O0")
+            elif self.compiler.compiler_type == "msvc":
+                library.extra_compile_args.append("/Od")
+
+        # compile and link as usual
         objects = self.compiler.compile(
             library.sources,
             output_dir=self.build_temp,

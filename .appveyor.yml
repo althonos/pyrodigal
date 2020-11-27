@@ -15,6 +15,9 @@ environment:
     PYTHON_VERSION: "3.8"
     PYTHON_ARCH: "64"
 
+cache:
+  - build -> appveyor.yml
+
 install:
 - "git submodule update --init"
 - "%PYTHON%\\python.exe -m pip install -r ci\\requirements.txt"
@@ -23,7 +26,8 @@ before_build:
 - "%PYTHON%\\python.exe -V"
 
 build_script:
-- "%PYTHON%\\python.exe setup.py build_ext --inplace"
+- "%PYTHON%\\python.exe setup.py build_clib --debug"
+- "%PYTHON%\\python.exe setup.py build_ext  --inplace"
 
 test_script:
 - "%PYTHON%\\python.exe -m pip install -r tests\\requirements.txt"
@@ -35,6 +39,7 @@ after_test:
 - "%PYTHON%\\python.exe -m codecov"
 
 before_deploy:
+- "%PYTHON%\\python.exe setup.py clean --all"
 - "%PYTHON%\\python.exe setup.py sdist bdist_wheel"
 - "%PYTHON%\\python.exe -m twine check dist\\*"
 
