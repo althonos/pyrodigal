@@ -8,6 +8,6 @@ __doc__ = _pyrodigal.__doc__
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
 __license__ = "GPLv3"
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 _Sequence.register(Genes)
