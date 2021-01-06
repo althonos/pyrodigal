@@ -59,8 +59,8 @@ class build_ext(_build_ext):
         # add path to static library as an extra object to make sure linking
         # works on OSX as well
         ext.extra_objects = [
-            os.path.join(self.build_temp, self.compiler.library_filename(lib))
-            for lib in _clib_cmd.get_library_names()
+            os.path.join(_clib_cmd.build_clib, self.compiler.library_filename(lib))
+            for lib in ext.libraries
         ]
 
         # build the rest of the extension as normal
