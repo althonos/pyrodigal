@@ -56,6 +56,13 @@ class build_ext(_build_ext):
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
 
+        # add path to static library as an extra object to make sure linking
+        # works on OSX as well
+        ext.extra_objects = [
+            os.path.join(self.build_temp, self.compiler.library_filename(lib))
+            for lib in _clib_cmd.get_library_names()
+        ]
+
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
 
