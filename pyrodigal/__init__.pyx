@@ -31,6 +31,8 @@ cdef size_t MIN_SINGLE_GENOME = 20000
 cdef size_t IDEAL_SINGLE_GENOME = 100000
 cdef size_t MIN_NODES = 98
 
+_TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
+
 # ----------------------------------------------------------------------------
 
 cdef void sequence_to_bitmap(
@@ -364,7 +366,14 @@ cdef class Gene:
             `str`: The proteins sequence as a string using the right translation
             table and the standard single letter alphabet for proteins.
 
+        Raises:
+            `ValueError`: when ``translation_table`` is not a valid number.
+
         """
+        # if given one, check the translation table is valid
+        if translation_table is not None and translation_table not in _TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
+
         # create a new PyUnicode string of the right length to hold the protein
         cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
@@ -695,7 +704,7 @@ cdef class Pyrodigal:
           raise RuntimeError("cannot use training sequence in metagenomic mode")
       if not isinstance(sequence, str):
           raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
-      if translation_table not in set((*range(1, 7), *range(9, 17), *range(21, 26))):
+      if translation_table not in _TRANSLATION_TABLES:
           raise ValueError(f"{translation_table} is not a valid translation table index")
 
       # check we have enough nucleotides to train
