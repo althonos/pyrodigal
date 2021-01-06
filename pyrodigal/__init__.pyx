@@ -152,6 +152,16 @@ cdef class TrainingInfo:
     def __dealloc__(self):
         PyMem_Free(self.raw)
 
+    @property
+    def translation_table(self):
+        """`int`: The translation table used during training.
+        """
+        return self._training[0].trans_table
+
+    @translation_table.setter
+    def translation_table(self, table):
+        self._training[0].trans_table = table
+
 
 # ----------------------------------------------------------------------------
 
@@ -337,7 +347,7 @@ cdef class Gene:
 
     @property
     def translation_table(self):
-        """`int`: The translation table used to translate the gene.
+        """`int`: The translation table used to find the gene.
         """
         cdef int table = self.tinf[0].trans_table
         return table
@@ -646,7 +656,7 @@ cdef class Pyrodigal:
         #
         return genes
 
-    def train(self, sequence, force_nonsd=False, st_wt=4.35, trans_table=11):
+    def train(self, sequence, force_nonsd=False, st_wt=4.35, translation_table=11):
       """Search optimal parameters for the ORF finder using a training sequence.
 
       Arguments:
@@ -657,21 +667,21 @@ cdef class Pyrodigal:
           st_wt (`float`, optional): The start score weight to use. The default
               value has been manually selected by the PRODIGAL authors as an
               appropriate value for 99% of genomes.
-          trans_table (`int`, optional): The translation table to use.
+          translation_table (`int`, optional): The translation table to use.
 
       Raises:
           `MemoryError`: when allocation of an internal buffers fails.
           `RuntimeError`: when calling this method while in *metagenomic* mode.
           `TypeError`: when ``sequence`` is not a string.
-          `ValueError`: when ``trans_table`` is not a valid translation table.
+          `ValueError`: when ``translation_table`` is not a valid number.
 
       """
       if self.meta:
           raise RuntimeError("cannot use training sequence in metagenomic mode")
       if not isinstance(sequence, str):
           raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
-      if trans_table not in set((*range(1, 7), *range(9, 17), *range(21, 26))):
-          raise ValueError(f"{trans_table} is not a valid translation table index")
+      if translation_table not in set((*range(1, 7), *range(9, 17), *range(21, 26))):
+          raise ValueError(f"{translation_table} is not a valid translation table index")
 
       # check we have enough nucleotides to train
       cdef size_t slen = len(sequence)
@@ -695,7 +705,7 @@ cdef class Pyrodigal:
       memset(tinf, 0, sizeof(_training));
       tinf.gc = gc_content(seq, 0, slen-1)
       tinf.st_wt = st_wt
-      tinf.trans_table = trans_table
+      tinf.trans_table = translation_table
 
       cdef int* gc_frame;
       cdef int ipath;

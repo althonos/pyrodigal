@@ -47,5 +47,5 @@ class Pyrodigal:
         sequence: str,
         force_nonsd: bool = False,
         st_wt: float = 4.35,
-        trans_table: int = 11,
+        translation_table: int = 11,
     ) -> None: ...
