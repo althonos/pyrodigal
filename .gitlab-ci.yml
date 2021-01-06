@@ -1,6 +1,7 @@
 stages:
   - test
   - deploy
+  - release
 
 variables:
   GIT_DEPTH: 100
@@ -106,3 +107,13 @@ deploy:python3.9:
   variables:
     python: /opt/python/cp39-cp39/bin/python
   <<: *deploy
+
+release:
+  image: ruby
+  stage: release
+  only:
+    - tags
+  before_script:
+    - gem install chandler
+  script:
+    - chandler push --github="$TRAVIS_REPO_SLUG" --changelog="CHANGELOG.md"
