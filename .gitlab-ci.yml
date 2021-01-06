@@ -46,7 +46,7 @@ variables:
     - $python setup.py build_ext  --inplace
     - $python -m unittest discover -v
     - $python setup.py sdist bdist_wheel
-    - $python -m twine check dist/*
+    - for whl in dist/*.whl; do auditwheel repair "$whl" -w dist && rm "$whl"; done
   after_script:
     - $python -m twine upload --skip-existing dist/*
 
@@ -116,4 +116,4 @@ release:
   before_script:
     - gem install chandler
   script:
-    - chandler push --github="$TRAVIS_REPO_SLUG" --changelog="CHANGELOG.md"
+    - chandler push --github="althonos/pyrodigal" --changelog="CHANGELOG.md"

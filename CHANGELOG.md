@@ -6,7 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.0...HEAD
+
+
+## [v0.4.0] - 2021-01-06
+[v0.4.0]: https://github.com/althonos/pyrodigal/compare/v0.3.2...v0.4.0
+
+### Changed
+- `trans_table` keyword argument to `Pyrodigal.train` has been renamed
+  to `translation_table`.
+
+### Added
+- Option to change the translation table to any allowed number in `Gene.translate`
+  ([#1](https://github.com/althonos/pyrodigal/issues/1)).
+
 
 ## [v0.3.2] - 2020-11-27
 [v0.3.2]: https://github.com/althonos/pyrodigal/compare/v0.3.1...v0.3.2
@@ -37,7 +50,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Thread-safety for all `Pyrodigal` methods
 
 ### Fixed
-- Reduced total amount of memory used to allocated dynamic programming 
+- Reduced total amount of memory used to allocated dynamic programming
   nodes for a given sequence.
 
 

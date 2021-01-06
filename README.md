@@ -3,7 +3,7 @@
 *Python interface to [Prodigal](https://github.com/hyattpd/Prodigal/), an ORF
 finder for genomes, progenomes and metagenomes.*
 
-[![TravisCI](https://img.shields.io/travis/com/althonos/pyrodigal/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyrodigal/branches)
+[![GitLabCI](https://img.shields.io/gitlab/pipeline/larralde/pyrodigal/master?gitlab_url=https%3A%2F%2Fgit.embl.de&logo=gitlab&style=flat-square&maxAge=600)](https://git.embl.de/larralde/pyrodigal/-/pipelines)
 [![AppVeyor](https://img.shields.io/appveyor/build/althonos/pyrodigal/master.svg?logo=appveyor&maxAge=600&style=flat-square)](https://ci.appveyor.com/project/althonos/pyrodigal/history)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
@@ -38,9 +38,8 @@ internals, which has the following advantages:
 
 ### 📋 Features
 
-The library now features everything needed to run Prodigal in metagenomic mode.
-It does not yet support single mode, which requires more configuration from
-the user but offers more flexibility.
+The library now features everything needed to run Prodigal in single or
+metagenomic mode. It is still missing some features of the CLI:
 
 **Roadmap**:
 
