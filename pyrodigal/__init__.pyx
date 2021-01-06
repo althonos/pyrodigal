@@ -352,12 +352,17 @@ cdef class Gene:
         cdef int table = self.tinf[0].trans_table
         return table
 
-    cpdef translate(self):
+    cpdef translate(self, translation_table=None):
         """Translate the gene into a protein sequence.
 
+        Arguments:
+            translation_table (`int`, optional): An alternative translation table
+                to use to translate the gene. Use ``None`` (the default) to
+                translate using the translation table this gene was found with.
+
         Returns:
-          `str`: The proteins sequence as a string using the right translation
-          table and the standard single letter alphabet for proteins.
+            `str`: The proteins sequence as a string using the right translation
+            table and the standard single letter alphabet for proteins.
 
         """
         # create a new PyUnicode string of the right length to hold the protein
@@ -377,16 +382,26 @@ cdef class Gene:
             end = self.slen + 1 - self.gene.begin
             seq = self.rseq
 
+        # change the translation table (without allocating a new training info
+        # structure) if required
+        cdef int _orig_table = self.tinf.trans_table
+        if translation_table is not None:
+            self.tinf[0].trans_table = translation_table
+
         # copy the aminoacids to the sequence buffer
         cdef size_t i = 0
         cdef size_t j = begin
-        while j < end:
-            (<Py_UNICODE*> string)[i] = sequence.amino(seq[0], j-1, self.tinf, i==0)
-            j += 3
-            i += 1
 
-        # return the string containing the protein sequence
-        return string
+        try:
+            while j < end:
+                (<Py_UNICODE*> string)[i] = sequence.amino(seq[0], j-1, self.tinf, i==0)
+                j += 3
+                i += 1
+
+            # return the string containing the protein sequence
+            return string
+        finally:
+            self.tinf[0].trans_table = _orig_table
 
 
 # ----------------------------------------------------------------------------
