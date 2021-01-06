@@ -1,6 +1,6 @@
 stages:
   - test
-  - bdist
+  - deploy
 
 variables:
   GIT_DEPTH: 100
@@ -33,6 +33,21 @@ variables:
     reports:
       cobertura: coverage.xml
 
+.deploy: &deploy
+  image: quay.io/pypa/manylinux2010_x86_64
+  stage: deploy
+  only:
+  - tags
+  before_script:
+    - $python -m pip install -U -r ci/requirements.txt
+  script:
+    - $python setup.py build_clib
+    - $python setup.py build_ext  --inplace
+    - $python -m unittest discover -v
+    - $python setup.py sdist bdist_wheel
+    - $python -m twine check dist/*
+  after_script:
+    - $python -m twine upload --skip-existing dist/*
 
 # --- Stages -------------------------------------------------------------------
 
@@ -63,3 +78,31 @@ test:python3.9:
   variables:
     python: /opt/python/cp39-cp39/bin/python
   <<: *test
+
+deploy:python3.6:
+  environment:
+    name: Python 3.6
+  variables:
+    python: /opt/python/cp36-cp36m/bin/python
+  <<: *deploy
+
+deploy:python3.7:
+  environment:
+    name: Python 3.7
+  variables:
+    python: /opt/python/cp37-cp37m/bin/python
+  <<: *deploy
+
+deploy:python3.8:
+  environment:
+    name: Python 3.8
+  variables:
+    python: /opt/python/cp38-cp38/bin/python
+  <<: *deploy
+
+deploy:python3.9:
+  environment:
+    name: Python 3.9
+  variables:
+    python: /opt/python/cp39-cp39/bin/python
+  <<: *deploy
