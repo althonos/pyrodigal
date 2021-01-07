@@ -6,7 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.1...HEAD
+
+
+## [v0.4.1] - 2021-01-07
+[v0.4.0]: https://github.com/althonos/pyrodigal/compare/v0.4.0...v0.4.1
+
+### Removed
+- Python 3.5 from the project metadata (the code was only compatible with
+  Python 3.6+ already because of *f-strings*).
+
+### Fixed
+- Broken linking of static `libprodigal` against the `_pyrodigal` extension
+  on some OSX environments ([bioconda/bioconda-recipes#25568](https://github.com/bioconda/bioconda-recipes/pull/25568)).
 
 
 ## [v0.4.0] - 2021-01-06

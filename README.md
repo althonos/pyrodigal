@@ -29,12 +29,13 @@ internals, which has the following advantages:
   can add it as a dependency to your project, and stop worrying about the
   Prodigal binary being present on the end-user machine.
 - **no intermediate files**: everything happens in memory, in a Python object
-  you fully control, so you don't have to manually import and export sequences
-  to pass to the Prodigal CLI.
+  you fully control, so you don't have to invoke the Prodigal CLI using a
+  sub-process and temporary files.
 - **no input formatting**: sequences are manipulated directly as strings, which
   leverages the issue of formatting your input to FASTA for Prodigal.
 - **lower memory usage**: Pyrodigal is slightly more conservative when it comes
-  to using memory, which can help process very large sequences.
+  to using memory, which can help process very large sequences. It also lets
+  you save some more memory when running several *meta*-mode analyses
 
 ### 📋 Features
 
@@ -88,7 +89,7 @@ $ conda install -c bioconda pyrodigal
 
 Using [Biopython](https://biopython.org/), load a sequence from a
 [GenBank](http://www.insdc.org/files/feature_table.html) file, import Pyrodigal
-to find all genes it contains, and print the proteins in FASTA format:
+to find all genes it contains, and print the proteins in pseudo-FASTA format:
 ```python
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 p = pyrodigal.Pyrodigal(meta=True)
