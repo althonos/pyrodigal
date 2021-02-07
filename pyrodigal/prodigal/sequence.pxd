@@ -21,11 +21,17 @@ cdef extern from "sequence.h" nogil:
     # complement of `seq` into `rseq`, ignoring chars set a ``
     void rcom_seq(const bitmap_t seq, bitmap_t rseq, bitmap_t useq, int slen)
 
-    char is_a(bitmap_t seq, int n)
-    char is_c(bitmap_t seq, int n)
-    char is_g(bitmap_t seq, int n)
-    char is_t(bitmap_t seq, int n)
-    char is_gc(bitmap_t seq, int n)
+    bint is_a(bitmap_t seq, int n)
+    bint is_c(bitmap_t seq, int n)
+    bint is_g(bitmap_t seq, int n)
+    bint is_t(bitmap_t seq, int n)
+    bint is_gc(bitmap_t seq, int n)
+
+    bint is_stop(bitmap_t, int, _training*)
+    bint is_start(bitmap_t, int, _training*)
+    bint is_atg(bitmap_t, int);
+    bint is_gtg(bitmap_t, int);
+    bint is_ttg(bitmap_t, int);
 
     double gc_content(bitmap_t seq, int a, int b)
 

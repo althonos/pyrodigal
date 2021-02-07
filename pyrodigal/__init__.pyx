@@ -17,7 +17,7 @@ from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport MAX_GENES, _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _node
-from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content
+from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content, _mask
 from pyrodigal.prodigal.training cimport _training
 
 # ----------------------------------------------------------------------------
@@ -29,7 +29,7 @@ import threading
 
 cdef size_t MIN_SINGLE_GENOME = 20000
 cdef size_t IDEAL_SINGLE_GENOME = 100000
-cdef size_t MIN_NODES = 98
+cdef size_t MIN_NODES = 64
 
 _TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 
@@ -100,6 +100,8 @@ cdef void sequence_to_bitmap(
 cdef size_t count_genes(_node* nodes, int path) nogil:
     """Count the number of genes found in the node list.
 
+    Adapted from the `add_genes` function in ``genes.c``.
+
     Arguments:
         nodes (_node*): An array of dynamic programming nodes.
         path (int): An index found by `dprog.dprog`.
@@ -125,6 +127,118 @@ cdef size_t count_genes(_node* nodes, int path) nogil:
         path = nodes[path].tracef
 
     return ctr
+
+
+cdef size_t count_nodes(
+    bitmap_t seq,
+    bitmap_t rseq,
+    size_t slen,
+    bint closed,
+    _mask* mlist,
+    int nm,
+    _training* tinf
+) nogil:
+    """Count the number of nodes to be added for the given sequence.
+
+    Adapted from the `add_nodes` function in ``nodes.c``.
+
+    Arguments:
+        seq (bitmap_t): The input sequence.
+        rseq (bitmap_t): The reverse-complement of the input sequence.
+        slen (size_t): The input sequence length.
+        closed (bool): Whether or not the sequence has closed ends.
+        mlist (_mask*): The sequence mask, to ignore certain regions.
+        nm (int): The length of the sequence mask.
+        tinf (_training*): The training info to use to detect START and
+            STOP codons.
+
+    Returns:
+        size_t: The number of nodess that can be created from the sequence.
+
+    """
+    cdef size_t  i     = 0
+    cdef size_t  nn    = 0
+    cdef size_t  slmod = slen%3
+
+    cdef bint[3]   saw_start
+    cdef size_t[3] last
+    cdef size_t[3] min_dist
+
+    # Forward strand nodes
+    for i in range(3):
+        last[(i+slmod)%3] = slen + i
+        saw_start[i%3] = False;
+        min_dist[i%3] = node.MIN_EDGE_GENE;
+        if not closed:
+            while last[(i+slmod)%3] + 3 > slen:
+                last[(i+slmod)%3] -= 3
+
+    for i in range(slen-3, -1, -1):
+        if sequence.is_stop(seq, i, tinf):
+            if saw_start[i%3]:
+                nn += 1
+            min_dist[i%3] = node.MIN_GENE;
+            last[i%3] = i;
+            saw_start[i%3] = False;
+            continue;
+
+        if (last[i%3] >= slen):
+            continue
+
+        if not node.cross_mask(i, last[i%3], mlist, nm):
+            if (
+                    sequence.is_start(seq, i, tinf)
+                and (last[i%3] - i + 3) >= min_dist[i%3]
+                and (sequence.is_atg(seq, i) or sequence.is_gtg(seq, i) or sequence.is_ttg(seq, i))
+            ):
+                saw_start[i%3] = True;
+                nn += 1
+            elif i <= 2 and not closed and (last[i%3] - i) > node.MIN_EDGE_GENE:
+                saw_start[i%3] = True;
+                nn += 1
+
+    for i in range(3):
+        if saw_start[i%3]:
+            nn += 1
+
+    # Reverse strand nodes
+    for i in range(3):
+        last[(i+slmod)%3] = slen + i;
+        saw_start[i%3] = False;
+        min_dist[i%3] = node.MIN_EDGE_GENE;
+        if not closed:
+            while last[(i+slmod)%3] + 3 > slen:
+                last[(i+slmod)%3] -= 3;
+
+    for i in range(slen-3, -1, -1):
+        if sequence.is_stop(rseq, i, tinf):
+            if saw_start[i%3]:
+                nn += 1
+            min_dist[i%3] = node.MIN_GENE;
+            last[i%3] = i;
+            saw_start[i%3] = 0;
+            continue;
+
+        if(last[i%3] >= slen):
+            continue
+
+        if not node.cross_mask(slen-last[i%3]-1, slen-i-1, mlist, nm):
+            if (
+                    sequence.is_start(rseq, i, tinf)
+                and (last[i%3] - i + 3) >= min_dist[i%3]
+                and (sequence.is_atg(rseq, i) or sequence.is_gtg(rseq, i) or sequence.is_ttg(rseq, i))
+            ):
+                saw_start[i%3] = 1;
+                nn += 1
+            elif i <= 2 and not closed and (last[i%3] - i) > node.MIN_EDGE_GENE:
+                saw_start[i%3] = 1;
+                nn += 1
+
+    for i in range(3):
+        if saw_start[i%3]:
+            nn += 1
+
+    return nn;
 
 
 # ----------------------------------------------------------------------------
@@ -427,7 +541,7 @@ cdef class Pyrodigal:
     #
     cdef size_t nn
     cdef _node* nodes
-    cdef size_t max_slen
+    cdef size_t max_nodes
 
     #
     cdef size_t ng
@@ -456,7 +570,7 @@ cdef class Pyrodigal:
     def __cinit__(self, meta=False, closed=False):
         self._num_seq = 1
         # node array, uninitialized on object creation to reduce memory usage
-        self.max_slen = 0
+        self.max_nodes = 0
         self.nn = 0
         self.nodes = NULL
         # gene array, uninitialized on object creation to reduce memory usage
@@ -502,24 +616,26 @@ cdef class Pyrodigal:
             else:
                 return self._find_genes_single(slen, seq, useq, rseq)
 
-    cdef _reallocate_nodes(self, size_t slen):
-        cdef size_t new_length = slen//8 + (slen%8 != 0)
-        if new_length < MIN_NODES:
-            new_length = MIN_NODES
-        self.nodes = <_node*> PyMem_Realloc(self.nodes, new_length*sizeof(_node))
-        if not self.nodes:
-            raise MemoryError()
-        self.max_slen = new_length*8
+    cdef void _reallocate_genes(self, size_t new_genes) nogil:
+        with gil:
+            self.genes = <_gene*> PyMem_Realloc(self.genes, new_genes*sizeof(_gene))
+            if not self.genes:
+                raise MemoryError()
+            self.max_genes = new_genes
+
+    cdef void _reallocate_nodes(self, size_t new_nodes) nogil:
+        with gil:
+            self.nodes = <_node*> PyMem_Realloc(self.nodes, new_nodes*sizeof(_node))
+            if not self.nodes:
+                raise MemoryError()
+            self.max_nodes = new_nodes
 
     cdef _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
         cdef size_t i
         cdef size_t gene_count
         cdef size_t new_length
+        cdef size_t nodes_count
 
-        # reallocate memory for the nodes if this is the biggest sequence
-        # processed by this object so far
-        if slen > self.max_slen:
-            self._reallocate_nodes(slen)
 
         cdef size_t gc_count = 0
         cdef double gc, low, high
@@ -545,6 +661,11 @@ cdef class Pyrodigal:
             for i in range(NUM_META):
                 # recreate the node list if the translation table changed
                 if i == 0 or META_BINS[i].tinf.trans_table != META_BINS[i-1].tinf.trans_table:
+                    # count the number of nodes to be added, reallocate if needed
+                    nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, META_BINS[i].tinf)
+                    if nodes_count > self.max_nodes:
+                        self._reallocate_nodes(nodes_count)
+                    # add the dynamic programming nodes
                     memset(self.nodes, 0, self.nn*sizeof(_node))
                     self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[i].tinf)
                     qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
@@ -568,11 +689,7 @@ cdef class Pyrodigal:
                     # of genes found so far
                     gene_count = count_genes(self.nodes, ipath)
                     if gene_count > self.max_genes:
-                        with gil:
-                            self.genes = <_gene*> PyMem_Realloc(self.genes, gene_count*sizeof(_gene))
-                            if not self.genes:
-                                raise MemoryError()
-                        self.max_genes = gene_count
+                        self._reallocate_genes(gene_count)
                     # extract the genes from the dynamic programming array
                     self.ng = gene.add_genes(self.genes, self.nodes, ipath)
                     gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, META_BINS[i].tinf)
@@ -614,38 +731,43 @@ cdef class Pyrodigal:
         self.ng = self.nn = 0
         self._num_seq += 1
 
-        #
+        # return the `Genes` instance
         return genes
 
     cdef _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
-        # reallocate memory for the nodes if this is the biggest sequence
-        # processed by this object so far
-        if slen > self.max_slen:
-            self._reallocate_nodes(slen)
 
-        # find all the potential starts and stops, and sort them
-        self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, self.tinf.raw)
-        qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
+        cdef int    ipath
+        cdef size_t nodes_count
+        cdef size_t gene_count
 
-        # second dynamic programming, using the dicodon statistics as the scoring
-        # function
-        node.score_nodes(seq, rseq, slen, self.nodes, self.nn, self.tinf.raw, self.closed, False)
-        node.record_overlapping_starts(self.nodes, self.nn, self.tinf.raw, True)
-        cdef int ipath = dprog.dprog(self.nodes, self.nn, self.tinf.raw, True)
-        dprog.eliminate_bad_genes(self.nodes, self.nn, self.tinf.raw)
+        with nogil:
+            # reallocate memory for the nodes if this is the biggest sequence
+            # processed by this object so far
+            nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, self.tinf.raw)
+            if nodes_count > self.max_nodes:
+                self._reallocate_nodes(nodes_count)
 
-        # reallocate memory for the nodes if this is the largest amount
-        # of genes found so far
-        gene_count = count_genes(self.nodes, ipath)
-        if gene_count > self.max_genes:
-            self.genes = <_gene*> PyMem_Realloc(self.genes, gene_count*sizeof(_gene))
-            if not self.genes: raise MemoryError()
-            self.max_genes = gene_count
+            # find all the potential starts and stops, and sort them
+            self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, self.tinf.raw)
+            qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
-        # extract the genes from the dynamic programming array
-        self.ng = gene.add_genes(self.genes, self.nodes, ipath)
-        gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, self.tinf.raw)
-        gene.record_gene_data(self.genes, self.ng, self.nodes, self.tinf.raw, self._num_seq)
+            # second dynamic programming, using the dicodon statistics as the scoring
+            # function
+            node.score_nodes(seq, rseq, slen, self.nodes, self.nn, self.tinf.raw, self.closed, False)
+            node.record_overlapping_starts(self.nodes, self.nn, self.tinf.raw, True)
+            ipath = dprog.dprog(self.nodes, self.nn, self.tinf.raw, True)
+            dprog.eliminate_bad_genes(self.nodes, self.nn, self.tinf.raw)
+
+            # reallocate memory for the nodes if this is the largest amount
+            # of genes found so far
+            gene_count = count_genes(self.nodes, ipath)
+            if gene_count > self.max_genes:
+                self._reallocate_genes(gene_count)
+
+            # extract the genes from the dynamic programming array
+            self.ng = gene.add_genes(self.genes, self.nodes, ipath)
+            gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, self.tinf.raw)
+            gene.record_gene_data(self.genes, self.ng, self.nodes, self.tinf.raw, self._num_seq)
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
