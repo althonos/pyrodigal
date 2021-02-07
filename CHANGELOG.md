@@ -6,11 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.2...HEAD
+
+## [v0.4.2] - 2021-02-07
+[v0.4.2]: https://github.com/althonos/pyrodigal/compare/v0.4.1...v0.4.2
+
+### Fixed
+- Buffer overflow coming from the node array, caused by an incorrect 
+  estimation of the node count from the sequence length.
 
 
 ## [v0.4.1] - 2021-01-07
-[v0.4.0]: https://github.com/althonos/pyrodigal/compare/v0.4.0...v0.4.1
+[v0.4.1]: https://github.com/althonos/pyrodigal/compare/v0.4.0...v0.4.1
 
 ### Removed
 - Python 3.5 from the project metadata (the code was only compatible with
