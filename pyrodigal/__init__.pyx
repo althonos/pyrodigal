@@ -29,7 +29,8 @@ import threading
 
 cdef size_t MIN_SINGLE_GENOME = 20000
 cdef size_t IDEAL_SINGLE_GENOME = 100000
-cdef size_t MIN_NODES = 64
+cdef size_t MIN_GENES = 8
+cdef size_t MIN_NODES = MIN_GENES * 8
 
 _TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 
@@ -617,18 +618,24 @@ cdef class Pyrodigal:
                 return self._find_genes_single(slen, seq, useq, rseq)
 
     cdef void _reallocate_genes(self, size_t new_genes) nogil:
+        cdef size_t new_size = MIN_GENES if self.genes == NULL else self.max_genes
+        while new_size < new_genes:
+            new_size *= 2
         with gil:
-            self.genes = <_gene*> PyMem_Realloc(self.genes, new_genes*sizeof(_gene))
+            self.genes = <_gene*> PyMem_Realloc(self.genes, new_size*sizeof(_gene))
             if not self.genes:
                 raise MemoryError()
-            self.max_genes = new_genes
+            self.max_genes = new_size
 
     cdef void _reallocate_nodes(self, size_t new_nodes) nogil:
+        cdef size_t new_size = MIN_NODES if self.nodes == NULL else self.max_nodes
+        while new_size < new_nodes:
+            new_size *= 2
         with gil:
-            self.nodes = <_node*> PyMem_Realloc(self.nodes, new_nodes*sizeof(_node))
+            self.nodes = <_node*> PyMem_Realloc(self.nodes, new_size*sizeof(_node))
             if not self.nodes:
                 raise MemoryError()
-            self.max_nodes = new_nodes
+            self.max_nodes = new_size
 
     cdef _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
         cdef size_t i
