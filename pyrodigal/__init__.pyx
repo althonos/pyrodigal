@@ -860,12 +860,15 @@ cdef class Pyrodigal:
       tinf.st_wt = st_wt
       tinf.trans_table = translation_table
 
-      cdef int* gc_frame;
-      cdef int ipath;
+      cdef int*   gc_frame;
+      cdef int    ipath;
+      cdef size_t nodes_count
       with self.lock:
-          # check if we need to reallocate the node array
-          if slen > self.max_slen:
-              self._reallocate_nodes(slen)
+          # reallocate memory for the nodes if this is the biggest sequence
+          # processed by this object so far
+          nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, tinf)
+          if nodes_count > self.max_nodes:
+              self._reallocate_nodes(nodes_count)
 
           # find all the potential starts and stops and sort them
           self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
