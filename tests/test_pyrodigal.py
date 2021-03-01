@@ -82,6 +82,7 @@ class _TestPyrodigalMode(object):
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             self.assertEqual(gene.start_type, data["start_type"])
 
+
 class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
     mode = "meta"
 
@@ -117,6 +118,13 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         self.assertEqual(genes[0].start_type, "Edge")
         self.assertTrue(genes[0].partial_begin)
         self.assertTrue(genes[0].partial_end)
+
+    def test_short_sequence(self):
+        seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
+        p = Pyrodigal(meta=True)
+        genes = p.find_genes(seq)
+        self.assertEqual(len(genes), 0)
+        self.assertRaises(StopIteration, next, iter(genes))
 
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):

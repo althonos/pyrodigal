@@ -688,7 +688,7 @@ cdef class Pyrodigal:
                 ipath = dprog.dprog(self.nodes, self.nn, META_BINS[i].tinf, 1)
 
                 # update if the current bin gave a better score
-                if self.nodes[ipath].score > max_score:
+                if self.nn > 0 and self.nodes[ipath].score > max_score:
                     max_phase = i
                     max_score = self.nodes[ipath].score
                     dprog.eliminate_bad_genes(self.nodes, ipath, META_BINS[i].tinf)
