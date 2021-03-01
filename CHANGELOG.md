@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.3...HEAD
+
+
+## [v0.4.3] - 2021-03-01
+[v0.4.3]: https://github.com/althonos/pyrodigal/compare/v0.4.2...v0.4.3
+
+### Fixed 
+- Buffer overflow when running in `meta` mode on a sequence too small to have any dynamic programming nodes.
+
 
 ## [v0.4.2] - 2021-02-07
 [v0.4.2]: https://github.com/althonos/pyrodigal/compare/v0.4.1...v0.4.2
