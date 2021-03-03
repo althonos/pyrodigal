@@ -58,6 +58,7 @@ class build_ext(_build_ext):
 
         # add path to static library as an extra object to make sure linking
         # works on OSX as well
+        ext.library_dirs.append(_clib_cmd.build_clib)
         ext.extra_objects = [
             os.path.join(_clib_cmd.build_clib, self.compiler.library_filename(lib))
             for lib in ext.libraries
