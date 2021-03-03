@@ -43,10 +43,6 @@ class build_ext(_build_ext):
             ext.name, self.compiler.compiler_type
         ))
 
-        # make sure the C libraries have been built already
-        self.run_command("build_clib")
-        _clib_cmd = self.get_finalized_command("build_clib")
-
         # add debug flags if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
@@ -56,13 +52,15 @@ class build_ext(_build_ext):
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
 
-        # add path to static library as an extra object to make sure linking
-        # works on OSX as well
-        ext.library_dirs.append(_clib_cmd.build_clib)
-        ext.extra_objects = [
-            os.path.join(_clib_cmd.build_clib, self.compiler.library_filename(lib))
-            for lib in ext.libraries
-        ]
+        # on OSX, force to build the library sources to fix linking issues
+        _clib_cmd = self.get_finalized_command("build_clib")
+        if sys.platform == "darwin":
+            for libname in ext.libraries:
+                lib = next(lib for lib in _clib_cmd.libraries if lib.name == libname)
+                ext.sources.extend(lib.sources)
+        # on other platforms we can just build the C library
+        else:
+            self.run_command("build_clib")
 
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
