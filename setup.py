@@ -53,14 +53,12 @@ class build_ext(_build_ext):
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
 
         # on OSX, force to build the library sources to fix linking issues
+        self.run_command("build_clib")
         _clib_cmd = self.get_finalized_command("build_clib")
         if sys.platform == "darwin":
             for libname in ext.libraries:
                 lib = next(lib for lib in _clib_cmd.libraries if lib.name == libname)
                 ext.sources.extend(lib.sources)
-        # on other platforms we can just build the C library
-        else:
-            self.run_command("build_clib")
 
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
