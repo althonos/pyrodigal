@@ -4,7 +4,6 @@ cython ~=0.29.16
 
 wheel
 auditwheel
-twine
 setuptools >=46.4.0
 
 -r ../tests/requirements.txt
