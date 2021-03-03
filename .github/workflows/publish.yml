@@ -1,0 +1,112 @@
+name: Package
+
+on:
+  - push
+  - pull_request
+
+jobs:
+
+  wheel-linux:
+    runs-on: ubuntu-latest
+    name: Build Linux wheels
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Build manylinux wheels
+      uses: RalfG/python-wheels-manylinux-build@v0.3.3
+      with:
+        build-requirements: 'setuptools'
+        python-versions: 'cp35-cp35m cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
+    - name: Store built wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/*
+
+  wheel-osx:
+    runs-on: macos-latest
+    name: Build OSX wheels
+    strategy:
+      matrix:
+        python-version:
+        - 3.5
+        - 3.6
+        - 3.7
+        - 3.8
+        - 3.9
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install build package
+      run: python -m pip install -U build pip setuptools
+    - name: Build wheel distribution
+      run: python -m build --wheel --outdir dist
+    - name: Store built wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/*
+
+  sdist:
+    runs-on: ubuntu-latest
+    name: Build source distribution
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install build requirements
+      run: python -m pip install -r ci/requirements.txt
+    - name: Build wheel distribution
+      run: python setup.py sdist
+    - name: Store built wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/*
+
+  upload:
+    environment: PyPI
+    runs-on: ubuntu-latest
+    name: Upload
+    needs:
+    - sdist
+    - wheel-linux
+    - wheel-osx
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v1
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.9
+    - name: Install build package
+      run: python -m pip install -U build
+    - name: Build source tarball
+      run: python -m build --sdist --outdir dist
+    - name: Download built wheels
+      uses: actions/download-artifact@v2
+      with:
+          name: dist
+          path: dist
+    - name: Remove unsupported wheels
+      run: rm dist/*-linux_x86_64.whl
+    - name: Publish distributions to PyPI
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        skip_existing: true
