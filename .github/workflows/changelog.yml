@@ -1,4 +1,4 @@
-name: Update releases
+name: Changelog
 
 on:
   push:
