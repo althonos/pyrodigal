@@ -5,8 +5,9 @@ import textwrap
 import unittest
 import warnings
 
-import Bio.SeqIO
 from pyrodigal import Pyrodigal
+
+from .fasta import parse
 
 
 class TestGene(unittest.TestCase):
@@ -24,17 +25,17 @@ class TestGene(unittest.TestCase):
         meta_faa = os.path.join(data, "SRR492066.meta.faa.gz")
 
         with gzip.open(fna, "rt") as f:
-            cls.record = next(Bio.SeqIO.parse(f, "fasta"))
+            cls.record = next(parse(f))
         with gzip.open(meta_faa, "rt") as f:
             cls.proteins = [
                 record
-                for record in Bio.SeqIO.parse(f, "fasta")
+                for record in parse(f)
                 if record.id.startswith("{}_".format(cls.record.id))
             ]
         with gzip.open(meta_fna, "rt") as f:
             cls.genes = [
                 record
-                for record in Bio.SeqIO.parse(f, "fasta")
+                for record in parse(f)
                 if record.id.startswith("{}_".format(cls.record.id))
             ]
 

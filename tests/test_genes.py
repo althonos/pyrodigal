@@ -4,9 +4,9 @@ import os
 import sys
 import unittest
 
-import Bio.SeqIO
 from pyrodigal import Pyrodigal
 
+from .fasta import parse
 
 
 class TestGenes(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestGenes(unittest.TestCase):
         meta_faa = os.path.join(data, "SRR492066.meta.faa.gz")
 
         with gzip.open(fna, "rt") as f:
-            cls.record = next(Bio.SeqIO.parse(f, "fasta"))
+            cls.record = next(parse(f))
 
         cls.p = Pyrodigal(meta=True)
         cls.genes = cls.p.find_genes(str(cls.record.seq))

@@ -1,9 +1,6 @@
 coverage ~=5.0
 codecov ~=2.0
 cython ~=0.29.16
-
 wheel
 auditwheel
 setuptools >=46.4.0
-
--r ../tests/requirements.txt

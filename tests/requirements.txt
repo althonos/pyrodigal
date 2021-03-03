@@ -1,2 +1,0 @@
-biopython ~=1.76  ;  python_version >= '3.6'
-biopython ==1.76  ;  python_version == '3.5'

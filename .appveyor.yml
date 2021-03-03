@@ -34,7 +34,6 @@ build_script:
 - "%PYTHON%\\python.exe setup.py build_ext  --inplace"
 
 test_script:
-- "%PYTHON%\\python.exe -m pip install -r tests\\requirements.txt"
 - "%PYTHON%\\python.exe -m coverage run -m unittest discover -b -v"
 
 after_test:
