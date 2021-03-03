@@ -6,13 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.4...HEAD
+
+
+## [v0.4.4] - 2021-03-03
+[v0.4.4]: https://github.com/althonos/pyrodigal/compare/v0.4.3...v0.4.4
+
+### Fixed
+- Mark package as OS-independent.
+
+### Added
+- Support for Python 3.5.
+- Compilation of PyPy wheels on OSX.
 
 
 ## [v0.4.3] - 2021-03-01
 [v0.4.3]: https://github.com/althonos/pyrodigal/compare/v0.4.2...v0.4.3
 
-### Fixed 
+### Fixed
 - Buffer overflow when running in `meta` mode on a sequence too small to have any dynamic programming nodes.
 
 
@@ -20,7 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [v0.4.2]: https://github.com/althonos/pyrodigal/compare/v0.4.1...v0.4.2
 
 ### Fixed
-- Buffer overflow coming from the node array, caused by an incorrect 
+- Buffer overflow coming from the node array, caused by an incorrect
   estimation of the node count from the sequence length.
 
 
