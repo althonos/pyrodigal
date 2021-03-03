@@ -25,6 +25,7 @@ cache:
 install:
 - "git submodule update --init"
 - "%PYTHON%\\python.exe -m pip install -r ci\\requirements.txt"
+- "%PYTHON%\\python.exe -m pip install twine"
 
 before_build:
 - "%PYTHON%\\python.exe -V"
