@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.5...HEAD
+
+
+## [v0.4.5] - 2021-03-03
+[v0.4.5]: https://github.com/althonos/pyrodigal/compare/v0.4.4...v0.4.5
+
+### Fixed
+- Compilation of OSX and Windows wheels.
 
 
 ## [v0.4.4] - 2021-03-03
