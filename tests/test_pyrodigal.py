@@ -123,11 +123,16 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
     def test_short_sequences(self):
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
         p = Pyrodigal(meta=True)
-        for i in range(len(seq)):
+        for i in range(1, len(seq)):
             genes = p.find_genes(seq[:i])
             self.assertEqual(len(genes), 0)
             self.assertRaises(StopIteration, next, iter(genes))
 
+    def test_empty_sequence(self):
+        p = Pyrodigal(meta=True)
+        genes = p.find_genes("")
+        self.assertEqual(len(genes), 0)
+        self.assertRaises(StopIteration, next, iter(genes))
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
     mode = "single"
@@ -152,3 +157,23 @@ class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
         genes = p.find_genes(str(self.record.seq))
         del p # normally should not deallocate training info since it's RC
         self.assertEqual(genes[0].translate(), str(self.proteins[0].seq))
+
+    def test_short_sequences(self):
+        seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
+        p = Pyrodigal(meta=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p.train(str(self.record.seq[:20000]))
+        for i in range(1, len(seq)):
+            genes = p.find_genes(seq[:i])
+            self.assertEqual(len(genes), 0)
+            self.assertRaises(StopIteration, next, iter(genes))
+
+    def test_empty_sequence(self):
+        p = Pyrodigal(meta=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p.train(str(self.record.seq[:20000]))
+        genes = p.find_genes("")
+        self.assertEqual(len(genes), 0)
+        self.assertRaises(StopIteration, next, iter(genes))

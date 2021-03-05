@@ -658,7 +658,7 @@ cdef class Pyrodigal:
             # compute the GC% of the sequence
             for i in range(slen):
                 gc_count += sequence.is_gc(seq, i)
-            gc = (<double> gc_count) / slen
+            gc = (<double> gc_count) / slen if slen > 0 else 0.0
 
             # compute the min/max acceptable gc for the sequence to only
             # use appropriate metagenomic bins
@@ -760,15 +760,19 @@ cdef class Pyrodigal:
                 self._reallocate_nodes(nodes_count)
 
             # find all the potential starts and stops, and sort them
+            memset(self.nodes, 0, self.nn*sizeof(_node))
             self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, self.tinf.raw)
             qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
             # second dynamic programming, using the dicodon statistics as the scoring
             # function
+            node.reset_node_scores(self.nodes, self.nn)
             node.score_nodes(seq, rseq, slen, self.nodes, self.nn, self.tinf.raw, self.closed, False)
             node.record_overlapping_starts(self.nodes, self.nn, self.tinf.raw, True)
             ipath = dprog.dprog(self.nodes, self.nn, self.tinf.raw, True)
-            dprog.eliminate_bad_genes(self.nodes, self.nn, self.tinf.raw)
+
+            if self.nn > 0:
+                dprog.eliminate_bad_genes(self.nodes, self.nn, self.tinf.raw)
 
             # reallocate memory for the nodes if this is the largest amount
             # of genes found so far
