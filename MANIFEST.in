@@ -2,8 +2,8 @@ include COPYING
 include CHANGELOG.md
 include README.md
 
-recursive-include tests *.py *.txt
-recursive-include tests/data *
+recursive-include pyrodigal/tests      *.py *.txt
+recursive-include pyrodigal/tests/data *
 
 recursive-include Prodigal *.c *.h *.md VERSION LICENSE CHANGES Makefile
 recursive-include pyrodigal *.py *.pyi *.pyx *.pxd _version.txt py.typed
