@@ -120,12 +120,13 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         self.assertTrue(genes[0].partial_begin)
         self.assertTrue(genes[0].partial_end)
 
-    def test_short_sequence(self):
+    def test_short_sequences(self):
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
         p = Pyrodigal(meta=True)
-        genes = p.find_genes(seq)
-        self.assertEqual(len(genes), 0)
-        self.assertRaises(StopIteration, next, iter(genes))
+        for i in range(len(seq)):
+            genes = p.find_genes(seq[:i])
+            self.assertEqual(len(genes), 0)
+            self.assertRaises(StopIteration, next, iter(genes))
 
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):

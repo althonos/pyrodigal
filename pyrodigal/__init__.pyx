@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 
 cimport libc.errno
+from libc.stdio cimport printf
 from libc.stdlib cimport free, qsort
 from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
@@ -154,7 +155,7 @@ cdef size_t count_nodes(
             STOP codons.
 
     Returns:
-        size_t: The number of nodess that can be created from the sequence.
+        size_t: The number of nodes that can be created from the sequence.
 
     """
     cdef size_t  i     = 0
@@ -164,6 +165,11 @@ cdef size_t count_nodes(
     cdef bint[3]   saw_start
     cdef size_t[3] last
     cdef size_t[3] min_dist
+
+    # If sequence is smaller than a codon, there is no nodes so
+    # we can early return here
+    if slen < 3:
+        return 0
 
     # Forward strand nodes
     for i in range(3):
@@ -643,14 +649,13 @@ cdef class Pyrodigal:
         cdef size_t new_length
         cdef size_t nodes_count
 
-
         cdef size_t gc_count = 0
         cdef double gc, low, high
         cdef double max_score = -100
         cdef size_t max_phase = 0
 
         with nogil:
-          # compute the GC% of the sequence
+            # compute the GC% of the sequence
             for i in range(slen):
                 gc_count += sequence.is_gc(seq, i)
             gc = (<double> gc_count) / slen
