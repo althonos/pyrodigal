@@ -52,13 +52,13 @@ class build_ext(_build_ext):
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
 
-        # on OSX, force to build the library sources to fix linking issues
-        self.run_command("build_clib")
-        _clib_cmd = self.get_finalized_command("build_clib")
+        # on OSX, force to rebuild the library sources to fix linking issues
         if sys.platform == "darwin":
-            for libname in ext.libraries:
-                lib = next(lib for lib in _clib_cmd.libraries if lib.name == libname)
-                ext.sources.extend(lib.sources)
+            _clib_cmd = self.get_finalized_command("build_clib")
+            sources = _clib_cmd.libraries[0].sources.copy()
+            sources.remove(_clib_cmd.training_file)
+            sources.extend(sorted(glob.iglob(os.path.join(_clib_cmd.training_temp, "*.c"))))
+            ext.sources.extend(sources)
 
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
@@ -93,6 +93,12 @@ class build_ext(_build_ext):
         for ext in self.extensions:
             ext._needs_stub = False
 
+        # compile the C library
+        _clib_cmd = self.get_finalized_command("build_clib")
+        _clib_cmd.debug = self.debug
+        _clib_cmd.force = self.force
+        _clib_cmd.run()
+
         # build the extensions as normal
         _build_ext.run(self)
 
@@ -111,6 +117,16 @@ class build_clib(_build_clib):
 
     def get_source_files(self):
         return [ source for lib in self.libraries for source in lib.sources ]
+
+    # --- Compatibility with `setuptools.Command`
+
+    def finalize_options(self):
+        _build_clib.finalize_options(self)
+        # extract the training file and the temporary folder where to split
+        # the training profiles
+        lib = self.libraries[0]
+        self.training_file = next(s for s in lib.sources if os.path.basename(s) == "training.c")
+        self.training_temp = os.path.join(self.build_temp, "training")
 
     # --- Build code ---
 
@@ -139,15 +155,12 @@ class build_clib(_build_clib):
     def run(self):
         # split the huge `training.c` file in small chunks with individual
         # functions so that it can compile even on low-memory machines
-        lib = self.libraries[0]
-        training_file = next(s for s in lib.sources if os.path.basename(s) == "training.c")
-        training_temp = os.path.join(self.build_temp, "training")
-        self.make_file([training_file], training_temp, self.split_training_source, (training_file, training_temp))
-
-        # patch the library sources to use the split training files
-        lib.sources.remove(training_file)
-        lib.sources.extend(sorted(glob.glob(os.path.join(training_temp, "*.c"))))
-
+        self.make_file(
+            [self.training_file],
+            self.training_temp,
+            self.split_training_source,
+            (self.training_file, self.training_temp)
+        )
         # build the library as normal
         _build_clib.run(self)
 
@@ -169,18 +182,33 @@ class build_clib(_build_clib):
             elif self.compiler.compiler_type == "msvc":
                 library.extra_compile_args.append("/Od")
 
-        # compile and link as usual
-        objects = self.compiler.compile(
-            library.sources,
+        # compile Prodigal
+        sources_lib = library.sources.copy()
+        sources_lib.remove(self.training_file)
+        objects_lib = self.compiler.compile(
+            sources_lib,
             output_dir=self.build_temp,
-            include_dirs=library.include_dirs + [self.build_clib],
+            include_dirs=library.include_dirs,
             macros=library.define_macros,
             debug=self.debug,
             depends=library.depends,
             extra_preargs=library.extra_compile_args,
         )
+
+        # compile `training.c` source files
+        sources_training = sorted(glob.iglob(os.path.join(self.training_temp, "*.c")))
+        objects_training = self.compiler.compile(
+            sources_training,
+            include_dirs=library.include_dirs,
+            macros=library.define_macros,
+            debug=self.debug,
+            depends=library.depends,
+            extra_preargs=library.extra_compile_args,
+        )
+
+        # link into a static library
         self.compiler.create_static_lib(
-            objects,
+            objects_lib + objects_training,
             library.name,
             output_dir=self.build_clib,
             debug=self.debug,
