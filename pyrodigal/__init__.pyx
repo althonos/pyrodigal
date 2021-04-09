@@ -37,13 +37,13 @@ _TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 
 # ----------------------------------------------------------------------------
 
-cdef void sequence_to_bitmap(
+cdef int sequence_to_bitmap(
     const Py_UNICODE* text,
     size_t slen,
     bitmap_t* seq,
     bitmap_t* rseq,
     bitmap_t* useq
-):
+) except 1:
     """Create bitmaps from a textual sequence in ``text``.
 
     Arguments:
@@ -97,6 +97,10 @@ cdef void sequence_to_bitmap(
 
         # compute reverse complement
         sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
+
+    # return zero so that the interpreter does not have to
+    # check for an exception
+    return 0
 
 
 cdef size_t count_genes(_node* nodes, int path) nogil:
@@ -589,7 +593,7 @@ cdef class Pyrodigal:
         PyMem_Free(self.nodes)
         PyMem_Free(self.genes)
 
-    def find_genes(self, sequence):
+    cpdef Genes find_genes(self, object sequence):
         """Find all the genes in the input DNA sequence.
 
         Arguments:
@@ -643,7 +647,7 @@ cdef class Pyrodigal:
                 raise MemoryError()
             self.max_nodes = new_size
 
-    cdef _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
+    cdef Genes _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
         cdef size_t i
         cdef size_t gene_count
         cdef size_t new_length
@@ -746,7 +750,7 @@ cdef class Pyrodigal:
         # return the `Genes` instance
         return genes
 
-    cdef _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
+    cdef Genes _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
 
         cdef int    ipath
         cdef size_t nodes_count
