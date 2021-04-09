@@ -772,7 +772,7 @@ cdef class Pyrodigal:
             ipath = dprog.dprog(self.nodes, self.nn, self.tinf.raw, True)
 
             if self.nn > 0:
-                dprog.eliminate_bad_genes(self.nodes, self.nn, self.tinf.raw)
+                dprog.eliminate_bad_genes(self.nodes, ipath, self.tinf.raw)
 
             # reallocate memory for the nodes if this is the largest amount
             # of genes found so far
