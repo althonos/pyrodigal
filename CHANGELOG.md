@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.7...HEAD
+
+
+## [v0.4.7] - 2021-04-09
+[v0.4.7]: https://github.com/althonos/pyrodigal/compare/v0.4.6...v0.4.7
+
+### Fixed
+- `Pyrodigal.find_genes` segfaulting on some sequences when called in `single` mode ([#2](https://github.com/althonos/pyrodigal/issues/2)).
+- `MemoryError` potentially not being properly raised on allocation issues for sequence bitmaps.
 
 
 ## [v0.4.6] - 2021-03-05
