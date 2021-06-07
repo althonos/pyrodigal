@@ -59,7 +59,7 @@ jobs:
     - name: Update pip
       run: python -m pip install -U pip wheel setuptools
     - name: Install Python requirements
-      run: python -m pip install -r ci/requirements.txt
+      run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build C extension
       run: python setup.py build_ext --inplace --debug
     - name: Test with coverage
@@ -125,7 +125,7 @@ jobs:
     - name: Update pip
       run: python -m pip install -U pip wheel setuptools
     - name: Install Python requirements
-      run: python -m pip install -r ci/requirements.txt
+      run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build C extension
       run: python setup.py build_ext --inplace --debug
     - name: Test with coverage
@@ -185,7 +185,7 @@ jobs:
     - name: Update pip
       run: python -m pip install -U pip wheel setuptools
     - name: Install Python requirements
-      run: python -m pip install -r ci/requirements.txt
+      run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build C extension
       run: python setup.py build_ext --inplace
     - name: Test with coverage

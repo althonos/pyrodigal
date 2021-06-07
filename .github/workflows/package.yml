@@ -39,7 +39,7 @@ jobs:
         options: -v ${{ github.workspace }}:/io -e TERM=$TERM
         shell: bash
         run: |
-          ${{ matrix.pyo3-python }} -m pip install -U -r /io/ci/requirements.txt
+          ${{ matrix.pyo3-python }} -m pip install -U -r /io/.github/workflows/requirements.txt
           ${{ matrix.pyo3-python }} -m pip wheel -vv /io -w /tmp
           for whl in /tmp/*.whl; do ${{ matrix.pyo3-python }} -m auditwheel repair $whl -w /io/dist; done
     - name: Store built wheels
@@ -101,7 +101,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install Python requirements
-      run: python -m pip install -r ci/requirements.txt
+      run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build wheel distribution
       run: python setup.py bdist_wheel
     - name: Store built wheels
@@ -164,7 +164,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         architecture: x64
     - name: Install Python requirements
-      run: python -m pip install -r ci/requirements.txt
+      run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build wheel distribution
       run: python setup.py bdist_wheel
     - name: Store built wheels
@@ -216,7 +216,7 @@ jobs:
       with:
         python-version: 3.9
     - name: Install build requirements
-      run: python -m pip install -r ci/requirements.txt
+      run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build wheel distribution
       run: python setup.py sdist
     - name: Store built wheels
