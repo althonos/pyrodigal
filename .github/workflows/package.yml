@@ -55,14 +55,14 @@ jobs:
     - wheel-linux
     strategy:
       matrix:
-        include:
-          - python-version: 3.5
-          - python-version: 3.6
-          - python-version: 3.7
-          - python-version: 3.8
-          - python-version: 3.9
-          - python-version: pypy-3.6
-          - python-version: pypy-3.7
+        python-version:
+        - 3.5
+        - 3.6
+        - 3.7
+        - 3.8
+        - 3.9
+        - pypy-3.6
+        - pypy-3.7
     steps:
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -96,20 +96,6 @@ jobs:
       uses: actions/checkout@v2
       with:
         submodules: true
-    - name: Cache Python requirements
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Cache built C files
-      uses: actions/cache@v2
-      with:
-        path: build
-        key: ${{ runner.os }}-build-${{ hashFiles('Prodigal/*') }}
-        restore-keys: |
-          ${{ runner.os }}-build-
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -131,14 +117,77 @@ jobs:
     - wheel-osx
     strategy:
       matrix:
-        include:
-          - python-version: 3.5
-          - python-version: 3.6
-          - python-version: 3.7
-          - python-version: 3.8
-          - python-version: 3.9
-          - python-version: pypy-3.6
-          - python-version: pypy-3.7
+        python-version:
+        - 3.5
+        - 3.6
+        - 3.7
+        - 3.8
+        - 3.9
+        - pypy-3.6
+        - pypy-3.7
+    steps:
+    - name: Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Download built wheels
+      uses: actions/download-artifact@v2
+      with:
+          name: dist
+          path: dist
+    - name: Install built wheel
+      run: python -m pip install --no-index --find-links=dist pyrodigal
+    - name: Run tests without coverage
+      run: python -m unittest pyrodigal.tests -vv
+
+  wheel-windows:
+    runs-on: windows-latest
+    name: Build Windows wheels
+    strategy:
+      matrix:
+        python-version:
+        - 3.5
+        - 3.6
+        - 3.7
+        - 3.8
+        - 3.9
+        - pypy-3.6
+        - pypy-3.7
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+    - name: Install Python requirements
+      run: python -m pip install -r ci/requirements.txt
+    - name: Build wheel distribution
+      run: python setup.py bdist_wheel
+    - name: Store built wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/*
+
+  test-windows:
+    runs-on: windows-latest
+    name: Test Windows wheels
+    needs:
+    - wheel-windows
+    strategy:
+      matrix:
+        python-version:
+        - 3.5
+        - 3.6
+        - 3.7
+        - 3.8
+        - 3.9
+        - pypy-3.6
+        - pypy-3.7
     steps:
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -186,6 +235,8 @@ jobs:
     - test-linux
     - wheel-osx
     - test-osx
+    - wheel-windows
+    - test-windows
     steps:
     - name: Download built wheels
       uses: actions/download-artifact@v2
