@@ -61,7 +61,7 @@ a little bit more overhead to compute the size of buffers in advance.
 `pyrodigal.Pyrodigal` instances are thread-safe, and use an internal lock to
 prevent parallel calls to their methods from overwriting the internal buffers.
 However, a better solution to process sequences in parallel is to use a
-consumer/worker pattern, and have on `Pyrodigal` instance in each worker.
+consumer/worker pattern, and have one `Pyrodigal` instance in each worker.
 Using a pool spawning `Pyrodigal` instances on the fly is also fine,
 but prevents recycling memory:
 ```python
@@ -88,14 +88,14 @@ $ conda install -c bioconda pyrodigal
 
 Using [Biopython](https://biopython.org/), load a sequence from a
 [GenBank](http://www.insdc.org/files/feature_table.html) file, import Pyrodigal
-to find all genes it contains, and print the proteins in pseudo-FASTA format:
+to find all the genes it contains, and print the proteins in two-line FASTA format:
 ```python
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 p = pyrodigal.Pyrodigal(meta=True)
 
 for i, gene in enumerate(p.find_genes(str(record.seq))):
-    print(f"> {record.id}_{i+1}")
-    print(textwrap.fill(record.translate()))
+    print(f">{record.id}_{i+1}")
+    print(record.translate())
 ```
 
 To use `Pyrodigal` in single mode, you must explicitly call `Pyrodigal.train`
@@ -107,7 +107,7 @@ p.train(str(record.seq))
 genes = p.find_genes(str(record.seq))
 ```
 
-## 📜 License
+## ⚖️ License
 
 This library, like the original Prodigal software, is provided under the
 [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/).
