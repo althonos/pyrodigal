@@ -86,9 +86,12 @@ $ conda install -c bioconda pyrodigal
 
 ## 💡 Example
 
-Using [Biopython](https://biopython.org/), load a sequence from a
-[GenBank](http://www.insdc.org/files/feature_table.html) file, import Pyrodigal
-to find all the genes it contains, and print the proteins in two-line FASTA format:
+Load a sequence from a [GenBank](http://www.insdc.org/files/feature_table.html)
+file, use Pyrodigal to find all the genes it contains, and print the proteins
+in two-line FASTA format:
+
+### 🔬 [Biopython](https://github.com/biopython/biopython)
+
 ```python
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 p = pyrodigal.Pyrodigal(meta=True)
@@ -107,7 +110,31 @@ p.train(str(record.seq))
 genes = p.find_genes(str(record.seq))
 ```
 
+## 💭 Feedback
+
+### ⚠️ Issue Tracker
+
+Found a bug ? Have an enhancement request ? Head over to the [GitHub issue
+tracker](https://github.com/althonos/pyrodigal/issues) if you need to report
+or ask something. If you are filing in on a bug, please include as much
+information as you can about the issue, and try to recreate the same bug
+in a simple, easily reproducible situation.
+
+### 🏗️ Contributing
+
+Contributions are more than welcome! See
+[`CONTRIBUTING.md`](https://github.com/althonos/pyrodigal/blob/master/CONTRIBUTING.md)
+for more details.
+
+
 ## ⚖️ License
 
-This library, like the original Prodigal software, is provided under the
-[GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/).
+This library is provided under the [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/). The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd)
+and is distributed under the terms of the GPLv3 as well. See `Prodigal/LICENSE`
+for more information.
+
+*This project is in no way not affiliated, sponsored, or otherwise endorsed
+by the [original Prodigal authors](https://github.com/hyattpd). It was developed
+by [Martin Larralde](https://github.com/althonos/) during his PhD project
+at the [European Molecular Biology Laboratory](https://www.embl.de/) in
+the [Zeller team](https://github.com/zellerlab).*
