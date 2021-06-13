@@ -37,6 +37,12 @@ class build_ext(_build_ext):
     """A `build_ext` that disables optimizations if compiled in debug mode.
     """
 
+    def finalize_options(self):
+        _build_ext.finalize_options(self)
+        self._clib_cmd = self.get_finalized_command("build_clib")
+        self._clib_cmd.debug = self.debug
+        self._clib_cmd.force = self.force
+
     def build_extension(self, ext):
         # show the compiler being used
         log.info("building {} with {} compiler".format(
@@ -51,14 +57,16 @@ class build_ext(_build_ext):
                 ext.extra_compile_args.append("/Od")
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
+        else:
+            ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
 
-        # on OSX, force to rebuild the library sources to fix linking issues
-        if sys.platform == "darwin":
-            _clib_cmd = self.get_finalized_command("build_clib")
-            sources = _clib_cmd.libraries[0].sources.copy()
-            sources.remove(_clib_cmd.training_file)
-            sources.extend(sorted(glob.iglob(os.path.join(_clib_cmd.training_temp, "*.c"))))
-            ext.sources.extend(sources)
+        # update link and include directories
+        for name in ext.libraries:
+            lib = self._clib_cmd.get_library(name)
+            # ext.include_dirs.extend(lib.include_dirs)
+            ext.extra_objects.append(self.compiler.library_filename(
+                lib.name, output_dir=self._clib_cmd.build_clib
+            ))
 
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
@@ -89,15 +97,13 @@ class build_ext(_build_ext):
         # cythonize the extensions
         self.extensions = cythonize(self.extensions, **cython_args)
 
-        # patch the extensions (needed for `_build_ext.run` to work)
+        # patch the extensions (somehow needed for `_build_ext.run` to work)
         for ext in self.extensions:
             ext._needs_stub = False
 
         # compile the C library
-        _clib_cmd = self.get_finalized_command("build_clib")
-        _clib_cmd.debug = self.debug
-        _clib_cmd.force = self.force
-        _clib_cmd.run()
+        if not self.distribution.have_run.get("build_clib", False):
+            self._clib_cmd.run()
 
         # build the extensions as normal
         _build_ext.run(self)
@@ -117,6 +123,9 @@ class build_clib(_build_clib):
 
     def get_source_files(self):
         return [ source for lib in self.libraries for source in lib.sources ]
+
+    def get_library(self, name):
+        return next(lib for lib in self.libraries if lib.name == name)
 
     # --- Compatibility with `setuptools.Command`
 
