@@ -21,7 +21,7 @@ from pyrodigal.prodigal.node cimport _node
 from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content, _mask
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._utils cimport _mini_training
-from pyrodigal._unicode cimport Py_UCS4, PyUnicode_New, PyUnicode_ReadChar, PyUnicode_WriteChar
+from pyrodigal._unicode cimport *
 
 
 # ----------------------------------------------------------------------------
@@ -589,9 +589,6 @@ cdef class Gene:
         cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
 
-        # create a Unicode object of the right dimension
-        cdef object protein = PyUnicode_New(prot_length, 0x7F)
-
         # extract the boundaries / bitmap depending on
         cdef bitmap_t* seq
         cdef size_t begin, end
@@ -616,15 +613,31 @@ cdef class Gene:
             tinf = <_training*> &mini_tinf
             assert tinf.trans_table == translation_table
 
-        # safely copy the aminoacids to the sequence buffer
+        # create an empty protein string - PyPy won't let us
+        # edit it if we use PyUnicode_New so we have to make
+        # a buffer and manually copy afterwards
+        IF SYS_IMPLEMENTATION_NAME == "cpython":
+            cdef object protein = PyUnicode_New(prot_length, 0x7F)
+        ELSE:
+            cdef char* buffer = <char*> malloc(sizeof(char)*prot_length)
+
+        # fill the buffer using the amino acids
+        cdef size_t i = 0
+        cdef size_t j = begin
         cdef Py_UCS4 aa
-        cdef size_t  i = 0
-        cdef size_t  j = begin
         while j < end:
-            aa = sequence.amino(seq[0], j-1, tinf, i==0)
-            PyUnicode_WriteChar(protein, i, aa)
+            IF SYS_IMPLEMENTATION_NAME == "cpython":
+                aa = sequence.amino(seq[0], j-1, tinf, i==0)
+                PyUnicode_WriteChar(protein, i, aa)
+            ELSE:
+                buffer[i] = sequence.amino(seq[0], j-1, tinf, i==0)
             j += 3
             i += 1
+
+        # free the buffer
+        IF SYS_IMPLEMENTATION_NAME != "cpython":
+            cdef object protein = PyUnicode_FromStringAndSize(buffer, prot_length)
+            free(buffer)
 
         # return the string containing the protein sequence
         return protein

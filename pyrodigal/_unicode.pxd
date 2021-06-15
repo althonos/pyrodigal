@@ -8,3 +8,6 @@ cdef extern from *:
     object PyUnicode_New(Py_ssize_t, Py_UCS4)
     int PyUnicode_WriteChar(object, Py_ssize_t, Py_UCS4) except -1
     Py_UCS4 PyUnicode_ReadChar(object, Py_ssize_t)
+
+    object PyUnicode_FromStringAndSize(const char*, Py_ssize_t)
+    int PyUnicode_READY(object) except -1

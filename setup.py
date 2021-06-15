@@ -77,7 +77,13 @@ class build_ext(_build_ext):
             raise RuntimeError("Cython is required to run `build_ext` command") from cythonize
 
         # use debug directives with Cython if building in debug mode
-        cython_args = {"include_path": ["include"], "compiler_directives": {}}
+        cython_args = {
+            "include_path": ["include"],
+            "compiler_directives": {},
+            "compile_time_env": {
+                "SYS_IMPLEMENTATION_NAME": sys.implementation.name
+            }
+        }
         if self.force:
             cython_args["force"] = True
         if self.debug:
