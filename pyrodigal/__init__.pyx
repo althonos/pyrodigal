@@ -8,10 +8,10 @@
 
 cimport libc.errno
 from libc.stdio cimport printf
-from libc.stdlib cimport free, qsort
+from libc.stdlib cimport malloc, free, qsort
 from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-from cpython.unicode cimport PyUnicode_FromUnicode
+from cpython.unicode cimport PyUnicode_DecodeASCII
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
@@ -38,8 +38,7 @@ _TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 # ----------------------------------------------------------------------------
 
 cdef int sequence_to_bitmap(
-    const unsigned char[:] text,
-    size_t slen,
+    object text,
     bitmap_t* seq,
     bitmap_t* rseq,
     bitmap_t* useq
@@ -47,10 +46,9 @@ cdef int sequence_to_bitmap(
     """Create bitmaps from a textual sequence in ``text``.
 
     Arguments:
-        text (byte buffer): A pointer to the raw byte buffer storing
-            the sequence. Characters other than 'ATGC' or 'atgc' will be
-            ignored and added to the ``useq`` bitmap.
-        slen (size_t): The length of the input sequence.
+        text (byte buffer): A byte buffer storing the sequence.
+            Characters other than 'ATGC' or 'atgc' will be ignored and added
+            to the ``useq`` bitmap.
         seq (bitmap_t*): An address where to put the bitmap storing the
           sequence.
         rseq (bitmap_t*): An address where to put the bitmap storing the
@@ -60,8 +58,9 @@ cdef int sequence_to_bitmap(
 
     """
     # allocate memory for the bitmaps
-    cdef size_t blen = text.shape[0]//4 + (text.shape[0]%4 != 0)
-    cdef size_t ulen = text.shape[0]//8 + (text.shape[0]%8 != 0)
+    cdef size_t slen = len(text)
+    cdef size_t blen = slen//4 + (slen%4 != 0)
+    cdef size_t ulen = slen//8 + (slen%8 != 0)
     seq[0] = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
     rseq[0] = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
     useq[0] = <bitmap_t> PyMem_Malloc(ulen * sizeof(unsigned char))
@@ -71,38 +70,70 @@ cdef int sequence_to_bitmap(
         PyMem_Free(useq[0])
         raise MemoryError()
 
-    cdef unsigned char letter
-    cdef size_t i, j
-    with nogil:
-        # clear memory
-        memset(seq[0], 0, blen * sizeof(unsigned char))
-        memset(rseq[0], 0, blen * sizeof(unsigned char))
-        memset(useq[0], 0, ulen * sizeof(unsigned char))
+    # clear memory
+    memset(seq[0], 0,  blen * sizeof(unsigned char))
+    memset(rseq[0], 0, blen * sizeof(unsigned char))
+    memset(useq[0], 0, ulen * sizeof(unsigned char))
 
-        # fill the bitmaps depending on the sequence
-        for i,j in enumerate(range(0, text.shape[0]*2, 2)):
-            letter = text[i]
-            if letter == b'A' or letter == b'a':
-                pass
-            elif letter == b'T' or letter == b't':
-                bitmap.set(seq[0], j)
-                bitmap.set(seq[0], j+1)
-            elif letter == b'G' or letter == b'g':
-                bitmap.set(seq[0], j)
-            elif letter == b'C' or letter == b'c':
-                bitmap.set(seq[0], j+1)
-            else:
-                bitmap.set(useq[0], i)
-            j += 2
-            i += 1
+    # fill the bitmaps
+    if isinstance(text, str):
+        fill_bitmap_str(text, seq, useq)
+    else:
+        fill_bitmap_bytes(text, seq, useq)
 
-        # compute reverse complement
-        sequence.rcom_seq(seq[0], rseq[0], useq[0], text.shape[0])
-
-    # return zero so that the interpreter does not have to
-    # check for an exception
+    # compute reverse complement and returned
+    sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
     return 0
 
+
+cdef int fill_bitmap_str(
+    object sequence,
+    bitmap_t* seq,
+    bitmap_t* useq,
+) except 1:
+    cdef ssize_t i, j
+    for i,j in enumerate(range(0, len(sequence)*2, 2)):
+        letter = sequence[i]
+        if letter == 'A' or letter == 'a':
+            pass
+        elif letter == 'T' or letter == 't':
+            bitmap.set(seq[0], j)
+            bitmap.set(seq[0], j+1)
+        elif letter == 'G' or letter == 'g':
+            bitmap.set(seq[0], j)
+        elif letter == 'C' or letter == 'c':
+            bitmap.set(seq[0], j+1)
+        else:
+            bitmap.set(useq[0], i)
+        j += 2
+        i += 1
+
+
+cdef int fill_bitmap_bytes(
+    const unsigned char[:] text,
+    bitmap_t* seq,
+    bitmap_t* useq
+) nogil except 1:
+    cdef unsigned char letter
+    cdef ssize_t i, j
+    for i,j in enumerate(range(0, text.shape[0]*2, 2)):
+        letter = text[i]
+        if letter == b'A' or letter == b'a':
+            pass
+        elif letter == b'T' or letter == b't':
+            bitmap.set(seq[0], j)
+            bitmap.set(seq[0], j+1)
+        elif letter == b'G' or letter == b'g':
+            bitmap.set(seq[0], j)
+        elif letter == b'C' or letter == b'c':
+            bitmap.set(seq[0], j+1)
+        else:
+            bitmap.set(useq[0], i)
+        j += 2
+        i += 1
+
+
+# ----------------------------------------------------------------------------
 
 cdef size_t count_genes(_node* nodes, int path) nogil:
     """Count the number of genes found in the node list.
@@ -503,7 +534,11 @@ cdef class Gene:
         # create a new PyUnicode string of the right length to hold the protein
         cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
-        cdef unicode string = PyUnicode_FromUnicode(NULL, prot_length)
+
+        # allocate a buffer to write the protein sequence
+        cdef char* buffer = <char*> malloc(sizeof(char) * prot_length)
+        if buffer == NULL:
+            raise MemoryError()
 
         # extract the boundaries / bitmap depending on
         cdef bitmap_t* seq
@@ -526,17 +561,18 @@ cdef class Gene:
         # copy the aminoacids to the sequence buffer
         cdef size_t i = 0
         cdef size_t j = begin
-
         try:
             while j < end:
-                (<Py_UNICODE*> string)[i] = sequence.amino(seq[0], j-1, self.tinf, i==0)
+                buffer[i] = sequence.amino(seq[0], j-1, self.tinf, i==0)
                 j += 3
                 i += 1
-
-            # return the string containing the protein sequence
-            return string
         finally:
             self.tinf[0].trans_table = _orig_table
+
+        # return the string containing the protein sequence
+        cdef unicode string = PyUnicode_DecodeASCII(buffer, prot_length, "strict")
+        free(buffer)
+        return string
 
 
 # ----------------------------------------------------------------------------
@@ -621,7 +657,7 @@ cdef class Pyrodigal:
         cdef bitmap_t seq = NULL
         cdef bitmap_t rseq = NULL
         cdef bitmap_t useq = NULL
-        sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
+        sequence_to_bitmap(sequence, &seq, &rseq, &useq)
 
         with self.lock:
             if self.meta:
@@ -868,7 +904,7 @@ cdef class Pyrodigal:
       cdef bitmap_t seq = NULL
       cdef bitmap_t rseq = NULL
       cdef bitmap_t useq = NULL
-      sequence_to_bitmap(sequence, slen, &seq, &rseq, &useq)
+      sequence_to_bitmap(sequence, &seq, &rseq, &useq)
 
       # create the training structure and compute GC content
       cdef _training* tinf = <_training*> PyMem_Malloc(sizeof(_training))
