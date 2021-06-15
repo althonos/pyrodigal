@@ -308,6 +308,7 @@ initialize_metagenomic_bins(META_BINS)
 # ----------------------------------------------------------------------------
 
 cdef class TrainingInfo:
+
     cdef _training* raw
 
     def __dealloc__(self):
@@ -320,9 +321,50 @@ cdef class TrainingInfo:
         return self.raw[0].trans_table
 
     @translation_table.setter
-    def translation_table(self, table):
+    def translation_table(self, int table):
+        if table not in _TRANSLATION_TABLES:
+            raise ValueError(f"{table} is not a valid translation table index")
         self.raw[0].trans_table = table
 
+    @property
+    def gc(self):
+        """`float`: The GC content of the training sequence.
+        """
+        return self.raw[0].gc
+
+    @gc.setter
+    def gc(self, double gc):
+        self.raw[0].gc = gc
+
+    @property
+    def bias(self):
+        """`tuple` of `float`: The GC frame bias for each of the 3 positions.
+        """
+        return tuple(self.raw[0].bias)
+
+    @bias.setter
+    def bias(self, object bias):
+        self.raw[0].bias[:] = *bias
+
+    @property
+    def type_weights(self):
+        """`tuple` of `float`: The weights for the ATG, GTG and TTG codons.
+        """
+        return tuple(self.raw[0].type_wt)
+
+    @type_weights.setter
+    def type_weights(self, object type_weights):
+        self.raw[0].type_wt[:] = *type_weights
+
+    @property
+    def uses_sd(self):
+        """`bool`: `True` if the sequence uses a Shine/Dalgarno motif.
+        """
+        return self.raw[0].uses_sd
+
+    @uses_sd.setter
+    def uses_sd(self, bint uses_sd):
+        self.raw[0].uses_sd = uses_sd
 
 # ----------------------------------------------------------------------------
 
@@ -576,6 +618,17 @@ cdef class Gene:
 
 cdef class Pyrodigal:
     """An efficient ORF finder for genomes, progenomes and metagenomes.
+
+    Attributes:
+        meta (`bool`): Whether or not this object is configured to
+            find genes using the metagenomic bins or manually created
+            training infos.
+        closed (`bool`): Whether or not proteins can run off edges when
+            finding genes in a sequence.
+        training_info (`~pyrodigal.TrainingInfo`): The object storing the
+            training information, or `None` if the object is in metagenomic
+            mode.
+
     """
     #
     cdef readonly bint   closed
@@ -594,7 +647,7 @@ cdef class Pyrodigal:
     cdef size_t max_genes
 
     #
-    cdef TrainingInfo tinf
+    cdef public TrainingInfo training_info
 
     def __init__(self, meta=False, closed=False):
         """Instantiate and configure a new ORF finder.
@@ -645,7 +698,7 @@ cdef class Pyrodigal:
             `TypeError`: When ``sequence`` does not implement the buffer protocol.
 
         """
-        if not self.meta and self.tinf is None:
+        if not self.meta and self.training_info is None:
             raise RuntimeError("cannot find genes without having trained in single mode")
         if isinstance(sequence, str):
             sequence = sequence.encode("ascii")
@@ -780,31 +833,32 @@ cdef class Pyrodigal:
 
     cdef Genes _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
 
-        cdef int    ipath
-        cdef size_t nodes_count
-        cdef size_t gene_count
+        cdef int        ipath
+        cdef size_t     nodes_count
+        cdef size_t     gene_count
+        cdef _training* tinf        = self.training_info.raw
 
         with nogil:
             # reallocate memory for the nodes if this is the biggest sequence
             # processed by this object so far
-            nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, self.tinf.raw)
+            nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, tinf)
             if nodes_count > self.max_nodes:
                 self._reallocate_nodes(nodes_count)
 
             # find all the potential starts and stops, and sort them
             memset(self.nodes, 0, self.nn*sizeof(_node))
-            self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, self.tinf.raw)
+            self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
             qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
             # second dynamic programming, using the dicodon statistics as the scoring
             # function
             node.reset_node_scores(self.nodes, self.nn)
-            node.score_nodes(seq, rseq, slen, self.nodes, self.nn, self.tinf.raw, self.closed, False)
-            node.record_overlapping_starts(self.nodes, self.nn, self.tinf.raw, True)
-            ipath = dprog.dprog(self.nodes, self.nn, self.tinf.raw, True)
+            node.score_nodes(seq, rseq, slen, self.nodes, self.nn, tinf, self.closed, False)
+            node.record_overlapping_starts(self.nodes, self.nn, tinf, True)
+            ipath = dprog.dprog(self.nodes, self.nn, tinf, True)
 
             if self.nn > 0:
-                dprog.eliminate_bad_genes(self.nodes, ipath, self.tinf.raw)
+                dprog.eliminate_bad_genes(self.nodes, ipath, tinf)
 
             # reallocate memory for the nodes if this is the largest amount
             # of genes found so far
@@ -814,12 +868,12 @@ cdef class Pyrodigal:
 
             # extract the genes from the dynamic programming array
             self.ng = gene.add_genes(self.genes, self.nodes, ipath)
-            gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, self.tinf.raw)
-            gene.record_gene_data(self.genes, self.ng, self.nodes, self.tinf.raw, self._num_seq)
+            gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, tinf)
+            gene.record_gene_data(self.genes, self.ng, self.nodes, tinf, self._num_seq)
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
-        genes._translation_table = self.tinf.translation_table
+        genes._translation_table = self.training_info.translation_table
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
@@ -947,5 +1001,5 @@ cdef class Pyrodigal:
 
           # store the training information in a Python object so it can be
           # shared with reference counting in the later `find_genes` calls
-          self.tinf = TrainingInfo.__new__(TrainingInfo)
-          self.tinf.raw = tinf
+          self.training_info = TrainingInfo.__new__(TrainingInfo)
+          self.training_info.raw = tinf
