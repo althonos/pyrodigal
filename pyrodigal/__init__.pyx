@@ -580,14 +580,12 @@ cdef class Gene:
         if translation_table is not None and translation_table not in _TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
 
-        # create a new PyUnicode string of the right length to hold the protein
+        # compute the right length to hold the protein
         cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
 
-        # allocate a buffer to write the protein sequence
-        cdef char* buffer = <char*> malloc(sizeof(char) * prot_length)
-        if buffer == NULL:
-            raise MemoryError()
+        # create a Unicode object of the right dimension
+        cdef unicode protein = PyUnicode_New(prot_length, 0x7F)
 
         # extract the boundaries / bitmap depending on
         cdef bitmap_t* seq
@@ -613,18 +611,18 @@ cdef class Gene:
             tinf = <_training*> &mini_tinf
             assert tinf.trans_table == translation_table
 
-        # copy the aminoacids to the sequence buffer
-        cdef size_t i = 0
-        cdef size_t j = begin
+        # safely copy the aminoacids to the sequence buffer
+        cdef Py_UCS4 aa
+        cdef size_t  i = 0
+        cdef size_t  j = begin
         while j < end:
-            buffer[i] = sequence.amino(seq[0], j-1, tinf, i==0)
+            aa = sequence.amino(seq[0], j-1, tinf, i==0)
+            PyUnicode_WriteChar(protein, i, aa)
             j += 3
             i += 1
 
         # return the string containing the protein sequence
-        cdef unicode string = PyUnicode_DecodeASCII(buffer, prot_length, "strict")
-        free(buffer)
-        return string
+        return protein
 
 
 # ----------------------------------------------------------------------------

@@ -15,3 +15,6 @@ cdef extern from *:
     Py_UCS1* PyUnicode_1BYTE_DATA(object)
     Py_UCS2* PyUnicode_2BYTE_DATA(object)
     Py_UCS4* PyUnicode_4BYTE_DATA(object)
+
+    object PyUnicode_New(Py_ssize_t, Py_UCS4)
+    int PyUnicode_WriteChar(object, Py_ssize_t, Py_UCS4)
