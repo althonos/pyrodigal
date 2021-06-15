@@ -20,6 +20,8 @@ from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initiali
 from pyrodigal.prodigal.node cimport _node
 from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content, _mask
 from pyrodigal.prodigal.training cimport _training
+from pyrodigal._utils cimport _mini_training
+
 
 # ----------------------------------------------------------------------------
 
@@ -315,11 +317,11 @@ cdef class TrainingInfo:
     def translation_table(self):
         """`int`: The translation table used during training.
         """
-        return self._training[0].trans_table
+        return self.raw[0].trans_table
 
     @translation_table.setter
     def translation_table(self, table):
-        self._training[0].trans_table = table
+        self.raw[0].trans_table = table
 
 
 # ----------------------------------------------------------------------------
@@ -340,8 +342,7 @@ cdef class Genes:
     cdef _gene* genes
     cdef size_t ng
     # the training information
-    cdef TrainingInfo tinf_rc
-    cdef _training* tinf
+    cdef int _translation_table
     # the sequence length and bitmaps
     cdef size_t slen
     cdef bitmap_t seq
@@ -394,7 +395,7 @@ cdef class Gene:
     cdef bitmap_t* rseq
     cdef bitmap_t* useq
     #
-    cdef _training* tinf
+    cdef int _translation_table
 
     def __cinit__(self, Genes genes, size_t index):
         if index > genes.ng:
@@ -406,7 +407,7 @@ cdef class Gene:
         self.seq = &genes.seq
         self.useq = &genes.useq
         self.rseq = &genes.rseq
-        self.tinf = genes.tinf
+        self._translation_table = genes._translation_table
 
     @property
     def _data(self):
@@ -508,8 +509,7 @@ cdef class Gene:
     def translation_table(self):
         """`int`: The translation table used to find the gene.
         """
-        cdef int table = self.tinf[0].trans_table
-        return table
+        return self._translation_table
 
     cpdef translate(self, translation_table=None):
         """Translate the gene into a protein sequence.
@@ -552,22 +552,19 @@ cdef class Gene:
             end = self.slen + 1 - self.gene.begin
             seq = self.rseq
 
-        # change the translation table (without allocating a new training info
-        # structure) if required
-        cdef int _orig_table = self.tinf.trans_table
-        if translation_table is not None:
-            self.tinf[0].trans_table = translation_table
+        # HACK: support changing the translation table (without allocating a
+        #       new a training info structure) by manipulating where the table
+        #       would be read from in the fields of the struct
+        cdef _mini_training tinf
+        tinf.trans_table = translation_table or self._translation_table
 
         # copy the aminoacids to the sequence buffer
         cdef size_t i = 0
         cdef size_t j = begin
-        try:
-            while j < end:
-                buffer[i] = sequence.amino(seq[0], j-1, self.tinf, i==0)
-                j += 3
-                i += 1
-        finally:
-            self.tinf[0].trans_table = _orig_table
+        while j < end:
+            buffer[i] = sequence.amino(seq[0], j-1, <_training*> &tinf, i==0)
+            j += 3
+            i += 1
 
         # return the string containing the protein sequence
         cdef unicode string = PyUnicode_DecodeASCII(buffer, prot_length, "strict")
@@ -581,9 +578,9 @@ cdef class Pyrodigal:
     """An efficient ORF finder for genomes, progenomes and metagenomes.
     """
     #
-    cdef public bint closed
-    cdef public object lock
-    cdef readonly bint meta
+    cdef readonly bint   closed
+    cdef readonly object lock
+    cdef readonly bint   meta
     cdef readonly size_t _num_seq
 
     #
@@ -757,7 +754,7 @@ cdef class Pyrodigal:
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
-        genes.tinf_rc = None
+        genes._translation_table = META_BINS[max_phase].tinf.trans_table
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
@@ -773,18 +770,11 @@ cdef class Pyrodigal:
         genes.seq = seq
         genes.rseq = rseq
         genes.useq = useq
-        # keep reference to training information
-        # (this reference should never be invalid since META_BINS has been
-        # allocated constantly and therefore will not be unallocated while
-        # `genes` exist )
-        genes.tinf = META_BINS[max_phase].tinf
-
         # free resources
         memset(self.nodes, 0, self.nn*sizeof(_node))
         memset(self.genes, 0, self.ng*sizeof(_gene))
         self.ng = self.nn = 0
         self._num_seq += 1
-
         # return the `Genes` instance
         return genes
 
@@ -829,7 +819,7 @@ cdef class Pyrodigal:
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
-        genes.tinf_rc = self.tinf
+        genes._translation_table = self.tinf.translation_table
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
@@ -845,12 +835,6 @@ cdef class Pyrodigal:
         genes.seq = seq
         genes.rseq = rseq
         genes.useq = useq
-        # keep reference to training information
-        # (this reference should never be invalid since `self.tinf` is a
-        # reference-counted Python object, which has at least the same lifetime
-        # as the `Genes` instance)
-        genes.tinf = self.tinf.raw
-
         # free resources
         memset(self.nodes, 0, self.nn*sizeof(_node))
         memset(self.genes, 0, self.ng*sizeof(_gene))
