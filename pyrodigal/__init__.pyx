@@ -21,6 +21,7 @@ from pyrodigal.prodigal.node cimport _node
 from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content, _mask
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._utils cimport _mini_training
+from pyrodigal._unicode cimport *
 
 
 # ----------------------------------------------------------------------------
@@ -77,56 +78,54 @@ cdef int sequence_to_bitmap(
     memset(rseq[0], 0, blen * sizeof(unsigned char))
     memset(useq[0], 0, ulen * sizeof(unsigned char))
 
+    cdef       int                kind  # if sequence is `str`
+    cdef const unsigned char[::1] mem   # else
+
     # fill the bitmaps
     if isinstance(text, str):
-        fill_bitmap_str(text, seq, useq)
-    else:
-        fill_bitmap_bytes(text, seq, useq)
+        kind = PyUnicode_KIND(text)
+        if kind == PyUnicode_1BYTE_KIND:
+            fill_bitmap(PyUnicode_1BYTE_DATA(text), slen, seq, useq)
+        elif kind == PyUnicode_2BYTE_KIND:
+            fill_bitmap(PyUnicode_2BYTE_DATA(text), slen, seq, useq)
+        elif kind == PyUnicode_4BYTE_KIND:
+            fill_bitmap(PyUnicode_4BYTE_DATA(text), slen, seq, useq)
+        else:
+            raise ValueError(f"Unsupported Unicode kind: {kind}")
+    elif slen > 0:
+        mem = text
+        fill_bitmap(<Py_UCS1*> &mem[0], slen, seq, useq)
 
     # compute reverse complement and returned
     sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
     return 0
 
 
-cdef int fill_bitmap_str(
-    object sequence,
+# Generic algorithm independent of the Unicode character size
+# used on the current system
+ctypedef fused rune:
+    Py_UCS1
+    Py_UCS2
+    Py_UCS4
+
+cdef int fill_bitmap(
+    rune* sequence,
+    size_t slen,
     bitmap_t* seq,
     bitmap_t* useq,
-) except 1:
-    cdef Py_UCS4 letter
-    cdef ssize_t i, j
-    for i,j in enumerate(range(0, len(sequence)*2, 2)):
-        letter = sequence[i]
-        if letter == 'A' or letter == 'a':
-            pass
-        elif letter == 'T' or letter == 't':
-            bitmap.set(seq[0], j)
-            bitmap.set(seq[0], j+1)
-        elif letter == 'G' or letter == 'g':
-            bitmap.set(seq[0], j)
-        elif letter == 'C' or letter == 'c':
-            bitmap.set(seq[0], j+1)
-        else:
-            bitmap.set(useq[0], i)
-
-
-cdef int fill_bitmap_bytes(
-    const unsigned char[:] text,
-    bitmap_t* seq,
-    bitmap_t* useq
 ) nogil except 1:
+    cdef size_t i, j
     cdef unsigned char letter
-    cdef ssize_t i, j
-    for i,j in enumerate(range(0, text.shape[0]*2, 2)):
-        letter = text[i]
-        if letter == b'A' or letter == b'a':
+    for i,j in enumerate(range(0, slen*2, 2)):
+        letter = sequence[i]
+        if letter == 65 or letter == 97: # A
             pass
-        elif letter == b'T' or letter == b't':
+        elif letter == 84 or letter == 116: # T
             bitmap.set(seq[0], j)
             bitmap.set(seq[0], j+1)
-        elif letter == b'G' or letter == b'g':
+        elif letter == 71 or letter == 103: # G
             bitmap.set(seq[0], j)
-        elif letter == b'C' or letter == b'c':
+        elif letter == 67 or letter == 99:
             bitmap.set(seq[0], j+1)
         else:
             bitmap.set(useq[0], i)
@@ -407,13 +406,12 @@ cdef class Genes:
     def __len__(self):
         return self.ng
 
-    def __getitem__(self, index):
-        cdef size_t index_
+    def __getitem__(self, ssize_t index):
         if index < 0:
-            index += self.ng
-        if index >= self.ng or index < 0:
+            index += <ssize_t> self.ng
+        if index >= <ssize_t> self.ng or index < 0:
             raise IndexError("list index out of range")
-        return self._gene(index)
+        return self._gene(<size_t> index)
 
     def __iter__(self):
         return (self._gene(i) for i in range(self.ng))
@@ -753,7 +751,6 @@ cdef class Pyrodigal:
     cdef Genes _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
         cdef size_t i
         cdef size_t gene_count
-        cdef size_t new_length
         cdef size_t nodes_count
 
         cdef size_t gc_count = 0
