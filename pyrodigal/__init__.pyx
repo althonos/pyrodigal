@@ -93,6 +93,7 @@ cdef int fill_bitmap_str(
     bitmap_t* seq,
     bitmap_t* useq,
 ) except 1:
+    cdef Py_UCS4 letter
     cdef ssize_t i, j
     for i,j in enumerate(range(0, len(sequence)*2, 2)):
         letter = sequence[i]
@@ -107,8 +108,6 @@ cdef int fill_bitmap_str(
             bitmap.set(seq[0], j+1)
         else:
             bitmap.set(useq[0], i)
-        j += 2
-        i += 1
 
 
 cdef int fill_bitmap_bytes(
@@ -131,8 +130,6 @@ cdef int fill_bitmap_bytes(
             bitmap.set(seq[0], j+1)
         else:
             bitmap.set(useq[0], i)
-        j += 2
-        i += 1
 
 
 # ----------------------------------------------------------------------------
@@ -424,7 +421,7 @@ cdef class Genes:
     def __reversed__(self):
         return (self._gene(self.ng-i) for i in range(1, self.ng+1))
 
-    cdef _gene(self, index):
+    cdef Gene _gene(self, size_t index):
         return Gene.__new__(Gene, self, index)
 
 
@@ -616,7 +613,7 @@ cdef class Gene:
         else:
             mini_tinf.trans_table = translation_table
             tinf = <_training*> &mini_tinf
-            assert (<_training*> &tinf).trans_table == translation_table
+            assert tinf.trans_table == translation_table
 
         # copy the aminoacids to the sequence buffer
         cdef size_t i = 0
@@ -683,7 +680,7 @@ cdef class Pyrodigal:
         self.closed = closed
         self.lock = threading.Lock()
 
-    def __cinit__(self, meta=False, closed=False):
+    def __cinit__(self):
         self._num_seq = 1
         # node array, uninitialized on object creation to reduce memory usage
         self.max_nodes = 0
