@@ -6,7 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.0...HEAD
+
+
+## [v0.5.0] - 2021-06-15
+[v0.5.0]: https://github.com/althonos/pyrodigal/compare/v0.4.7...v0.5.0
+
+### Added
+- `pyrodigal.TrainingInfo` class exposing variables obtained during training as an attribute to `Pyrodigal`, `Gene` and `Genes` instance.
+- Support for passing objects implementing the buffer protocol to `Pyrodigal.find_genes` and `Pyrodigal.train` instead of requiring `str` sequences.
+
+### Fixed
+- Potential data race on training info in case a `Gene.translate` with a non-default translation table was being translated at the same time as a `Pyrodigal.find_genes` call.
+- Spurious handling of Unicode strings causing potential issues on platform using a different base encoding.
 
 
 ## [v0.4.7] - 2021-04-09

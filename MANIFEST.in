@@ -1,5 +1,6 @@
 include COPYING
 include CHANGELOG.md
+include CONTRIBUTING.md
 include README.md
 
 recursive-include pyrodigal/tests      *.py *.txt
