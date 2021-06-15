@@ -21,7 +21,7 @@ from pyrodigal.prodigal.node cimport _node
 from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, gc_content, _mask
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._utils cimport _mini_training
-from pyrodigal._unicode cimport *
+from pyrodigal._unicode cimport Py_UCS4, PyUnicode_New, PyUnicode_ReadChar, PyUnicode_WriteChar
 
 
 # ----------------------------------------------------------------------------
