@@ -1019,4 +1019,5 @@ cdef class Pyrodigal:
           # store the training information in a Python object so it can be
           # shared with reference counting in the later `find_genes` calls
           self.training_info = TrainingInfo.__new__(TrainingInfo)
+          self.training_info.owned = True
           self.training_info.raw = tinf
