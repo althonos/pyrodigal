@@ -309,10 +309,12 @@ initialize_metagenomic_bins(META_BINS)
 
 cdef class TrainingInfo:
 
+    cdef bint       owned
     cdef _training* raw
 
     def __dealloc__(self):
-        PyMem_Free(self.raw)
+        if self.owned:
+            PyMem_Free(self.raw)
 
     @property
     def translation_table(self):
@@ -344,7 +346,7 @@ cdef class TrainingInfo:
 
     @bias.setter
     def bias(self, object bias):
-        self.raw[0].bias[:] = *bias
+        self.raw[0].bias = bias
 
     @property
     def type_weights(self):
@@ -354,7 +356,7 @@ cdef class TrainingInfo:
 
     @type_weights.setter
     def type_weights(self, object type_weights):
-        self.raw[0].type_wt[:] = *type_weights
+        self.raw[0].type_wt = type_weights
 
     @property
     def uses_sd(self):
@@ -366,6 +368,7 @@ cdef class TrainingInfo:
     def uses_sd(self, bint uses_sd):
         self.raw[0].uses_sd = uses_sd
 
+
 # ----------------------------------------------------------------------------
 
 cdef class Genes:
@@ -375,8 +378,14 @@ cdef class Genes:
     be accessed individually using an index, or iterated upon in forward or
     reverse mode. Genes are sorted by their leftmost coordinate, independently
     of the strand.
-    """
 
+    Attributes:
+        training_info (`pyrodigal.TrainingInfo`): A reference to the training
+            info these genes were obtained from.
+
+    """
+    # expose the training info
+    cdef readonly TrainingInfo training_info
     # the list of nodes in the input sequence
     cdef _node* nodes
     cdef size_t nn
@@ -425,6 +434,8 @@ cdef class Gene:
     """A single gene found by Prodigal within a DNA sequence.
     """
 
+    # a reference to the training info
+    cdef readonly TrainingInfo training_info
     # a hard reference to the Genes instance that created this object
     # to avoid the data referenced by other pointers to be deallocated.
     cdef Genes genes
@@ -449,6 +460,7 @@ cdef class Gene:
         self.seq = &genes.seq
         self.useq = &genes.useq
         self.rseq = &genes.rseq
+        self.training_info = genes.training_info
         self._translation_table = genes._translation_table
 
     @property
@@ -808,6 +820,10 @@ cdef class Pyrodigal:
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
         genes._translation_table = META_BINS[max_phase].tinf.trans_table
+        # expose the metagenomic training info
+        genes.training_info = TrainingInfo.__new__(TrainingInfo)
+        genes.training_info.owned = False
+        genes.training_info.raw = META_BINS[max_phase].tinf
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
@@ -873,6 +889,7 @@ cdef class Pyrodigal:
 
         # make a `Genes` instance to store the results
         cdef Genes genes = Genes.__new__(Genes)
+        genes.training_info = self.training_info
         genes._translation_table = self.training_info.translation_table
         # copy nodes
         genes.nn = self.nn
