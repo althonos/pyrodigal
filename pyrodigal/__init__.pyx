@@ -609,8 +609,14 @@ cdef class Gene:
         # HACK: support changing the translation table (without allocating a
         #       new a training info structure) by manipulating where the table
         #       would be read from in the fields of the struct
-        cdef _mini_training tinf
-        tinf.trans_table = translation_table or self._translation_table
+        cdef _mini_training mini_tinf
+        cdef _training* tinf
+        if translation_table is None:
+            tinf = self.training_info.raw
+        else:
+            mini_tinf.trans_table = translation_table
+            tinf = <_training*> &mini_tinf
+            assert (<_training*> &tinf).trans_table == translation_table
 
         # copy the aminoacids to the sequence buffer
         cdef size_t i = 0

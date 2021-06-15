@@ -62,6 +62,12 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# Valgrind files
+callgrind.out.*
+
+# Memprofile
+mprofile_*.dat
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
