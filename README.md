@@ -86,29 +86,50 @@ $ conda install -c bioconda pyrodigal
 
 ## 💡 Example
 
-Load a sequence from a [GenBank](http://www.insdc.org/files/feature_table.html)
-file, use Pyrodigal to find all the genes it contains, and print the proteins
-in two-line FASTA format:
+Lets load a sequence from a
+[GenBank](http://www.insdc.org/files/feature_table.html) file, use Pyrodigal
+to find all the genes it contains, and print the proteins in two-line FASTA
+format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
-
-```python
-record = Bio.SeqIO.read("sequence.gbk", "genbank")
-p = pyrodigal.Pyrodigal(meta=True)
-
-for i, gene in enumerate(p.find_genes(str(record.seq))):
-    print(f">{record.id}_{i+1}")
-    print(record.translate())
-```
 
 To use `Pyrodigal` in single mode, you must explicitly call `Pyrodigal.train`
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
 p = pyrodigal.Pyrodigal()
-p.train(str(record.seq))
-genes = p.find_genes(str(record.seq))
+p.train(bytes(record.seq))
+genes = p.find_genes(bytes(record.seq))
 ```
+
+However, in `meta` mode, you can find genes directly:
+```python
+record = Bio.SeqIO.read("sequence.gbk", "genbank")
+p = pyrodigal.Pyrodigal(meta=True)
+
+for i, gene in enumerate(p.find_genes(bytes(record.seq))):
+    print(f">{record.id}_{i+1}")
+    print(record.translate())
+```
+
+*On older versions of Biopython (before 1.79) you will need to use
+`record.seq.encode()` instead of `bytes(record.seq)`*.
+
+
+### 🧪 [Scikit-bio](https://github.com/biocore/scikit-bio)
+
+```python
+seq = next(skbio.io.read("sequence.gbk", "genbank"))
+p = pyrodigal.Pyrodigal(meta=True)
+
+for i, gene in enumerate(p.find_genes(seq.values.view('B'))):
+    print(f">{record.id}_{i+1}")
+    print(record.translate())
+```
+
+*We need to use the [`view`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.view.html)
+method to get the sequence viewable by Cython as an array of `unsigned char`.*
+
 
 ## 💭 Feedback
 
