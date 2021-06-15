@@ -622,7 +622,7 @@ cdef class Gene:
         cdef size_t i = 0
         cdef size_t j = begin
         while j < end:
-            buffer[i] = sequence.amino(seq[0], j-1, <_training*> &tinf, i==0)
+            buffer[i] = sequence.amino(seq[0], j-1, tinf, i==0)
             j += 3
             i += 1
 
