@@ -18,3 +18,4 @@ cdef extern from *:
 
     object PyUnicode_New(Py_ssize_t, Py_UCS4)
     int PyUnicode_WriteChar(object, Py_ssize_t, Py_UCS4)
+    Py_UCS4 PyUnicode_ReadChar(object, Py_ssize_t)

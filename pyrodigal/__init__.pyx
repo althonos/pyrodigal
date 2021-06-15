@@ -83,49 +83,54 @@ cdef int sequence_to_bitmap(
 
     # fill the bitmaps
     if isinstance(text, str):
-        kind = PyUnicode_KIND(text)
-        if kind == PyUnicode_1BYTE_KIND:
-            fill_bitmap(PyUnicode_1BYTE_DATA(text), slen, seq, useq)
-        elif kind == PyUnicode_2BYTE_KIND:
-            fill_bitmap(PyUnicode_2BYTE_DATA(text), slen, seq, useq)
-        elif kind == PyUnicode_4BYTE_KIND:
-            fill_bitmap(PyUnicode_4BYTE_DATA(text), slen, seq, useq)
-        else:
-            raise ValueError(f"Unsupported Unicode kind: {kind}")
+        fill_bitmap_from_unicode(text, seq, useq)
     elif slen > 0:
-        mem = text
-        fill_bitmap(<Py_UCS1*> &mem[0], slen, seq, useq)
+        fill_bitmap_from_buffer(text, seq, useq)
 
     # compute reverse complement and returned
     sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
     return 0
 
 
-# Generic algorithm independent of the Unicode character size
-# used on the current system
-ctypedef fused rune:
-    Py_UCS1
-    Py_UCS2
-    Py_UCS4
+cdef int fill_bitmap_from_unicode(
+    unicode sequence,
+    bitmap_t* seq,
+    bitmap_t* useq,
+) except 1:
+    cdef ssize_t i, j
+    cdef Py_UCS4 letter
+    for i,j in enumerate(range(0, len(sequence)*2, 2)):
+        letter = PyUnicode_ReadChar(sequence, i)
+        if letter == u'A' or letter == u'a':
+            pass
+        elif letter == u'T' or letter == u't':
+            bitmap.set(seq[0], j)
+            bitmap.set(seq[0], j+1)
+        elif letter == u'G' or letter == u'g':
+            bitmap.set(seq[0], j)
+        elif letter == u'C' or letter == u'c':
+            bitmap.set(seq[0], j+1)
+        else:
+            bitmap.set(useq[0], i)
 
-cdef int fill_bitmap(
-    rune* sequence,
-    size_t slen,
+
+cdef int fill_bitmap_from_buffer(
+    const unsigned char[:] sequence,
     bitmap_t* seq,
     bitmap_t* useq,
 ) nogil except 1:
-    cdef size_t i, j
+    cdef ssize_t i, j
     cdef unsigned char letter
-    for i,j in enumerate(range(0, slen*2, 2)):
+    for i,j in enumerate(range(0, sequence.shape[0]*2, 2)):
         letter = sequence[i]
-        if letter == 65 or letter == 97: # A
+        if letter == b'A' or letter == b'a':
             pass
-        elif letter == 84 or letter == 116: # T
+        elif letter == b'T' or letter == b't':
             bitmap.set(seq[0], j)
             bitmap.set(seq[0], j+1)
-        elif letter == 71 or letter == 103: # G
+        elif letter == b'G' or letter == b'g':
             bitmap.set(seq[0], j)
-        elif letter == 67 or letter == 99:
+        elif letter == b'C' or letter == b'c':
             bitmap.set(seq[0], j+1)
         else:
             bitmap.set(useq[0], i)
@@ -585,7 +590,7 @@ cdef class Gene:
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
 
         # create a Unicode object of the right dimension
-        cdef unicode protein = PyUnicode_New(prot_length, 0x7F)
+        cdef object protein = PyUnicode_New(prot_length, 0x7F)
 
         # extract the boundaries / bitmap depending on
         cdef bitmap_t* seq
