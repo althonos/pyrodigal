@@ -38,7 +38,7 @@ _TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 # ----------------------------------------------------------------------------
 
 cdef int sequence_to_bitmap(
-    const Py_UNICODE* text,
+    const unsigned char[:] text,
     size_t slen,
     bitmap_t* seq,
     bitmap_t* rseq,
@@ -47,7 +47,7 @@ cdef int sequence_to_bitmap(
     """Create bitmaps from a textual sequence in ``text``.
 
     Arguments:
-        text (const Py_UNICODE*): A pointer to the raw unicode buffer storing
+        text (byte buffer): A pointer to the raw byte buffer storing
             the sequence. Characters other than 'ATGC' or 'atgc' will be
             ignored and added to the ``useq`` bitmap.
         slen (size_t): The length of the input sequence.
@@ -60,8 +60,8 @@ cdef int sequence_to_bitmap(
 
     """
     # allocate memory for the bitmaps
-    cdef size_t blen = slen//4 + (slen%4 != 0)
-    cdef size_t ulen = slen//8 + (slen%8 != 0)
+    cdef size_t blen = text.shape[0]//4 + (text.shape[0]%4 != 0)
+    cdef size_t ulen = text.shape[0]//8 + (text.shape[0]%8 != 0)
     seq[0] = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
     rseq[0] = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
     useq[0] = <bitmap_t> PyMem_Malloc(ulen * sizeof(unsigned char))
@@ -71,6 +71,7 @@ cdef int sequence_to_bitmap(
         PyMem_Free(useq[0])
         raise MemoryError()
 
+    cdef unsigned char letter
     cdef size_t i, j
     with nogil:
         # clear memory
@@ -79,16 +80,16 @@ cdef int sequence_to_bitmap(
         memset(useq[0], 0, ulen * sizeof(unsigned char))
 
         # fill the bitmaps depending on the sequence
-        for i,j in enumerate(range(0, slen*2, 2)):
+        for i,j in enumerate(range(0, text.shape[0]*2, 2)):
             letter = text[i]
-            if letter == u'A' or letter == u'a':
+            if letter == b'A' or letter == b'a':
                 pass
-            elif letter == u'T' or letter == u't':
+            elif letter == b'T' or letter == b't':
                 bitmap.set(seq[0], j)
                 bitmap.set(seq[0], j+1)
-            elif letter == u'G' or letter == u'g':
+            elif letter == b'G' or letter == b'g':
                 bitmap.set(seq[0], j)
-            elif letter == u'C' or letter == u'c':
+            elif letter == b'C' or letter == b'c':
                 bitmap.set(seq[0], j+1)
             else:
                 bitmap.set(useq[0], i)
@@ -96,7 +97,7 @@ cdef int sequence_to_bitmap(
             i += 1
 
         # compute reverse complement
-        sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
+        sequence.rcom_seq(seq[0], rseq[0], useq[0], text.shape[0])
 
     # return zero so that the interpreter does not have to
     # check for an exception
@@ -597,23 +598,24 @@ cdef class Pyrodigal:
         """Find all the genes in the input DNA sequence.
 
         Arguments:
-            sequence (`str`): A DNA sequence to process. Letters not
-                corresponding to a usual nucleotide (not any of "ATGC") will
-                be ignored.
+            sequence (`str` or buffer): The nucleotide sequence to use,
+                either as a string of nucleotides, or as an object implementing
+                the buffer protocol. Letters not corresponding to an usual
+                nucleotide (not any of "ATGC") will be ignored.
 
         Returns:
             `Genes`: A collection of all the genes found in the input.
 
         Raises:
-            `MemoryError`: when allocation of an internal buffers fails.
-            `RuntimeError`: on calling this method without `train` in *single* mode.
-            `TypeError`: when ``sequence`` is not a string.
+            `MemoryError`: When allocation of an internal buffers fails.
+            `RuntimeError`: On calling this method without `train` in *single* mode.
+            `TypeError`: When ``sequence`` does not implement the buffer protocol.
 
         """
         if not self.meta and self.tinf is None:
             raise RuntimeError("cannot find genes without having trained in single mode")
-        if not isinstance(sequence, str):
-            raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
+        if isinstance(sequence, str):
+            sequence = sequence.encode("ascii")
 
         cdef size_t slen = len(sequence)
         cdef bitmap_t seq = NULL
@@ -826,7 +828,9 @@ cdef class Pyrodigal:
       """Search optimal parameters for the ORF finder using a training sequence.
 
       Arguments:
-          sequence (`str`): The sequence to use, as a string of nucleotides.
+          sequence (`str` or buffer): The nucleotide sequence to use, either
+              as a string of nucleotides, or as an object implementing the
+              buffer protocol.
           force_nonsd (`bool`, optional): Set to ``True`` to bypass the heuristic
               algorithm that tries to determine if the organism the training
               sequence belongs to uses a Shine-Dalgarno motif or not.
@@ -836,18 +840,18 @@ cdef class Pyrodigal:
           translation_table (`int`, optional): The translation table to use.
 
       Raises:
-          `MemoryError`: when allocation of an internal buffers fails.
-          `RuntimeError`: when calling this method while in *metagenomic* mode.
-          `TypeError`: when ``sequence`` is not a string.
-          `ValueError`: when ``translation_table`` is not a valid number.
+          `MemoryError`: When allocation of an internal buffers fails.
+          `RuntimeError`: When calling this method while in *metagenomic* mode.
+          `TypeError`: When ``sequence`` does not implement the buffer protocol.
+          `ValueError`: When ``translation_table`` is not a valid number.
 
       """
       if self.meta:
           raise RuntimeError("cannot use training sequence in metagenomic mode")
-      if not isinstance(sequence, str):
-          raise TypeError(f"sequence must be a string, not {type(sequence).__name__}")
       if translation_table not in _TRANSLATION_TABLES:
           raise ValueError(f"{translation_table} is not a valid translation table index")
+      if isinstance(sequence, str):
+          sequence = sequence.encode("ascii")
 
       # check we have enough nucleotides to train
       cdef size_t slen = len(sequence)

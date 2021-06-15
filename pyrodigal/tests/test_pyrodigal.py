@@ -42,23 +42,24 @@ class _TestPyrodigalMode(object):
             ]
 
         cls.preds = cls.find_genes(str(cls.record.seq))
+        cls.preds_bin = cls.find_genes(cls.record.seq.encode("ascii"))
 
-    def test_translate(self):
-        self.assertEqual(len(self.preds), len(self.proteins))
-        for gene, protein in zip(self.preds, self.proteins):
+    def assertTranslationsEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(proteins))
+        for gene, protein in zip(predictions, proteins):
             self.assertEqual(gene.translate(), str(protein.seq))
 
-    def test_coordinates(self):
-        self.assertEqual(len(self.preds), len(self.proteins))
-        for gene, protein in zip(self.preds, self.proteins):
+    def assertCoordinatesEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(proteins))
+        for gene, protein in zip(predictions, proteins):
             id_, start, end, strand, *_ = protein.description.split(" # ")
             self.assertEqual(gene.begin, int(start))
             self.assertEqual(gene.end, int(end))
             self.assertEqual(gene.strand, int(strand))
 
-    def test_rbs_motif(self):
-        self.assertEqual(len(self.preds), len(self.proteins))
-        for gene, protein in zip(self.preds, self.proteins):
+    def assertRbsMotifsEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(predictions))
+        for gene, protein in zip(predictions, proteins):
             *_, raw_data = protein.description.split(" # ")
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             if data["rbs_motif"] != "None":
@@ -66,9 +67,16 @@ class _TestPyrodigalMode(object):
             else:
                 self.assertIs(gene.rbs_motif, None)
 
-    def test_rbs_spacer(self):
-        self.assertEqual(len(self.preds), len(self.proteins))
-        for gene, protein in zip(self.preds, self.proteins):
+    def assertStartTypesEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(proteins))
+        for gene, protein in zip(predictions, proteins):
+            *_, raw_data = protein.description.split(" # ")
+            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            self.assertEqual(gene.start_type, data["start_type"])
+
+    def assertRbsSpacersEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(proteins))
+        for gene, protein in zip(predictions, proteins):
             *_, raw_data = protein.description.split(" # ")
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             if data["rbs_spacer"] != "None":
@@ -76,12 +84,25 @@ class _TestPyrodigalMode(object):
             else:
                 self.assertIs(gene.rbs_spacer, None)
 
+    def test_translate(self):
+        self.assertTranslationsEqual(self.preds, self.proteins)
+        self.assertTranslationsEqual(self.preds_bin, self.proteins)
+
+    def test_coordinates(self):
+        self.assertCoordinatesEqual(self.preds, self.proteins)
+        self.assertCoordinatesEqual(self.preds_bin, self.proteins)
+
+    def test_rbs_motif(self):
+        self.assertRbsMotifsEqual(self.preds, self.proteins)
+        self.assertRbsMotifsEqual(self.preds_bin, self.proteins)
+
+    def test_rbs_spacer(self):
+        self.assertRbsSpacersEqual(self.preds, self.proteins)
+        self.assertRbsSpacersEqual(self.preds, self.proteins)
+
     def test_start_type(self):
-        self.assertEqual(len(self.preds), len(self.proteins))
-        for gene, protein in zip(self.preds, self.proteins):
-            *_, raw_data = protein.description.split(" # ")
-            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
-            self.assertEqual(gene.start_type, data["start_type"])
+        self.assertStartTypesEqual(self.preds, self.proteins)
+        self.assertStartTypesEqual(self.preds_bin, self.proteins)
 
 
 class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
@@ -133,6 +154,7 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         genes = p.find_genes("")
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
+
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
     mode = "single"
