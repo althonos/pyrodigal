@@ -78,9 +78,6 @@ cdef int sequence_to_bitmap(
     memset(rseq[0], 0, blen * sizeof(unsigned char))
     memset(useq[0], 0, ulen * sizeof(unsigned char))
 
-    cdef       int                kind  # if sequence is `str`
-    cdef const unsigned char[::1] mem   # else
-
     # fill the bitmaps
     if isinstance(text, str):
         fill_bitmap_from_unicode(text, seq, useq)
@@ -729,8 +726,6 @@ cdef class Pyrodigal:
         """
         if not self.meta and self.training_info is None:
             raise RuntimeError("cannot find genes without having trained in single mode")
-        if isinstance(sequence, str):
-            sequence = sequence.encode("ascii")
 
         cdef size_t slen = len(sequence)
         cdef bitmap_t seq = NULL
@@ -957,8 +952,6 @@ cdef class Pyrodigal:
           raise RuntimeError("cannot use training sequence in metagenomic mode")
       if translation_table not in _TRANSLATION_TABLES:
           raise ValueError(f"{translation_table} is not a valid translation table index")
-      if isinstance(sequence, str):
-          sequence = sequence.encode("ascii")
 
       # check we have enough nucleotides to train
       cdef size_t slen = len(sequence)
