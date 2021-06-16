@@ -576,7 +576,7 @@ cdef class Gene:
         """
         return self._translation_table
 
-    cpdef translate(self, translation_table=None):
+    cpdef unicode translate(self, translation_table=None):
         """Translate the gene into a protein sequence.
 
         Arguments:
@@ -592,17 +592,37 @@ cdef class Gene:
             `ValueError`: when ``translation_table`` is not a valid number.
 
         """
-        # if given one, check the translation table is valid
-        if translation_table is not None and translation_table not in _TRANSLATION_TABLES:
-            raise ValueError(f"{translation_table} is not a valid translation table index")
+
+        cdef size_t         nucl_length
+        cdef size_t         prot_length
+        cdef size_t         begin
+        cdef size_t         end
+        cdef size_t         i
+        cdef size_t         j
+        cdef bitmap_t*      seq
+        cdef _mini_training mini_tinf
+        cdef _training*     tinf
+        cdef object         protein
+        cdef int            kind
+        cdef void*          data
+        cdef Py_UCS4        aa
+
+        # HACK: support changing the translation table (without allocating a
+        #       new a training info structure) by manipulating where the
+        #       table would be read from in the fields of the struct
+        if translation_table is None:
+            tinf = self.training_info.raw
+        else:
+            if translation_table not in _TRANSLATION_TABLES:
+              raise ValueError(f"{translation_table} is not a valid translation table index")
+            mini_tinf.trans_table = translation_table
+            tinf = <_training*> &mini_tinf
+            assert tinf.trans_table == translation_table
 
         # compute the right length to hold the protein
-        cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
-        cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
-
+        nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
+        prot_length = nucl_length//3 + (nucl_length%3 != 0)
         # extract the boundaries / bitmap depending on strand
-        cdef bitmap_t* seq
-        cdef size_t begin, end
         if self.nodes[self.gene.start_ndx].strand == 1:
             begin = self.gene.begin
             end = self.gene.end
@@ -611,34 +631,21 @@ cdef class Gene:
             begin = self.slen + 1 - self.gene.end
             end = self.slen + 1 - self.gene.begin
             seq = self.rseq
-
-        # HACK: support changing the translation table (without allocating a
-        #       new a training info structure) by manipulating where the
-        #       table would be read from in the fields of the struct
-        cdef _mini_training mini_tinf
-        cdef _training* tinf
-        if translation_table is None:
-            tinf = self.training_info.raw
-        else:
-            mini_tinf.trans_table = translation_table
-            tinf = <_training*> &mini_tinf
-            assert tinf.trans_table == translation_table
-
         # create an empty protein string that we can write to
         # with the appropriate functions
-        cdef object protein = PyUnicode_New(prot_length, 0x7F)
-        cdef int    kind    = PyUnicode_KIND(protein)
-        cdef void*  data    = PyUnicode_DATA(protein)
+        protein = PyUnicode_New(prot_length, 0x7F)
+        kind    = PyUnicode_KIND(protein)
+        data    = PyUnicode_DATA(protein)
 
         # fill the buffer using the amino acids
-        cdef size_t i = 0
-        cdef size_t j = begin
-        cdef Py_UCS4 aa
-        while j < end:
-            aa = sequence.amino(seq[0], j-1, tinf, i==0)
-            PyUnicode_WRITE(kind, data, i, aa)
-            j += 3
-            i += 1
+        with nogil:
+            i = 0
+            j = begin
+            while j < end:
+                aa = sequence.amino(seq[0], j-1, tinf, i==0)
+                PyUnicode_WRITE(kind, data, i, aa)
+                j += 3
+                i += 1
 
         # return the string containing the protein sequence
         return protein
