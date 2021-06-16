@@ -90,14 +90,28 @@ cdef int sequence_to_bitmap(
 
 
 cdef int fill_bitmap_from_unicode(
-    unicode sequence,
+    object sequence,
     bitmap_t* seq,
     bitmap_t* useq,
 ) except 1:
+
+    cdef int     kind
+    cdef void*   data
     cdef ssize_t i, j
     cdef Py_UCS4 letter
+
+    # make sure the unicode string is in canonical form,
+    # --> won't be needed anymore in Python 3.12
+    IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 12:
+        PyUnicode_READY(sequence)
+
+    # and get kind and data for efficient indexing
+    kind = PyUnicode_KIND(sequence)
+    data = PyUnicode_DATA(sequence)
+
+    # fill the bitmap
     for i,j in enumerate(range(0, len(sequence)*2, 2)):
-        letter = PyUnicode_ReadChar(sequence, i)
+        letter = PyUnicode_READ(kind, data, i)
         if letter == u'A' or letter == u'a':
             pass
         elif letter == u'T' or letter == u't':
@@ -586,7 +600,7 @@ cdef class Gene:
         cdef size_t nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         cdef size_t prot_length = nucl_length//3 + (nucl_length%3 != 0)
 
-        # extract the boundaries / bitmap depending on
+        # extract the boundaries / bitmap depending on strand
         cdef bitmap_t* seq
         cdef size_t begin, end
         if self.nodes[self.gene.start_ndx].strand == 1:
@@ -599,8 +613,8 @@ cdef class Gene:
             seq = self.rseq
 
         # HACK: support changing the translation table (without allocating a
-        #       new a training info structure) by manipulating where the table
-        #       would be read from in the fields of the struct
+        #       new a training info structure) by manipulating where the
+        #       table would be read from in the fields of the struct
         cdef _mini_training mini_tinf
         cdef _training* tinf
         if translation_table is None:
@@ -610,31 +624,21 @@ cdef class Gene:
             tinf = <_training*> &mini_tinf
             assert tinf.trans_table == translation_table
 
-        # create an empty protein string - PyPy won't let us
-        # edit it if we use PyUnicode_New so we have to make
-        # a buffer and manually copy afterwards
-        IF SYS_IMPLEMENTATION_NAME == "cpython":
-            cdef object protein = PyUnicode_New(prot_length, 0x7F)
-        ELSE:
-            cdef char* buffer = <char*> malloc(sizeof(char)*prot_length)
+        # create an empty protein string that we can write to
+        # with the appropriate functions
+        cdef object protein = PyUnicode_New(prot_length, 0x7F)
+        cdef int    kind    = PyUnicode_KIND(protein)
+        cdef void*  data    = PyUnicode_DATA(protein)
 
         # fill the buffer using the amino acids
         cdef size_t i = 0
         cdef size_t j = begin
         cdef Py_UCS4 aa
         while j < end:
-            IF SYS_IMPLEMENTATION_NAME == "cpython":
-                aa = sequence.amino(seq[0], j-1, tinf, i==0)
-                PyUnicode_WriteChar(protein, i, aa)
-            ELSE:
-                buffer[i] = sequence.amino(seq[0], j-1, tinf, i==0)
+            aa = sequence.amino(seq[0], j-1, tinf, i==0)
+            PyUnicode_WRITE(kind, data, i, aa)
             j += 3
             i += 1
-
-        # free the buffer
-        IF SYS_IMPLEMENTATION_NAME != "cpython":
-            cdef object protein = PyUnicode_FromStringAndSize(buffer, prot_length)
-            free(buffer)
 
         # return the string containing the protein sequence
         return protein

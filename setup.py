@@ -81,7 +81,10 @@ class build_ext(_build_ext):
             "include_path": ["include"],
             "compiler_directives": {},
             "compile_time_env": {
-                "SYS_IMPLEMENTATION_NAME": sys.implementation.name
+                "SYS_IMPLEMENTATION_NAME": sys.implementation.name,
+                "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
+                "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
+                "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
             }
         }
         if self.force:
