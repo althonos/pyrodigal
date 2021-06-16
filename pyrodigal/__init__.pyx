@@ -79,8 +79,17 @@ cdef int sequence_to_bitmap(
     memset(useq[0], 0, ulen * sizeof(unsigned char))
 
     # fill the bitmaps
+    cdef int     kind
+    cdef void*   data
     if isinstance(text, str):
-        fill_bitmap_from_unicode(text, seq, useq)
+        # make sure the unicode string is in canonical form,
+        # --> won't be needed anymore in Python 3.12
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 12:
+            PyUnicode_READY(text)
+        # get the raw unicode buffer
+        kind = PyUnicode_KIND(text)
+        data = PyUnicode_DATA(text)
+        fill_bitmap_from_unicode(kind, data, slen, seq, useq)
     elif slen > 0:
         fill_bitmap_from_buffer(text, seq, useq)
 
@@ -90,27 +99,18 @@ cdef int sequence_to_bitmap(
 
 
 cdef int fill_bitmap_from_unicode(
-    object sequence,
+    const int kind,
+    const void* data,
+    const ssize_t length,
     bitmap_t* seq,
     bitmap_t* useq,
-) except 1:
+) nogil except 1:
 
-    cdef int     kind
-    cdef void*   data
     cdef ssize_t i, j
     cdef Py_UCS4 letter
 
-    # make sure the unicode string is in canonical form,
-    # --> won't be needed anymore in Python 3.12
-    IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 12:
-        PyUnicode_READY(sequence)
-
-    # and get kind and data for efficient indexing
-    kind = PyUnicode_KIND(sequence)
-    data = PyUnicode_DATA(sequence)
-
     # fill the bitmap
-    for i,j in enumerate(range(0, len(sequence)*2, 2)):
+    for i,j in enumerate(range(0, length*2, 2)):
         letter = PyUnicode_READ(kind, data, i)
         if letter == u'A' or letter == u'a':
             pass

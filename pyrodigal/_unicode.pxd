@@ -16,7 +16,7 @@ cdef extern from *:
     int     PyUnicode_KIND(object)
     void*   PyUnicode_DATA(object)
     void    PyUnicode_WRITE(int kind, void *data, Py_ssize_t index, Py_UCS4 value)
-    Py_UCS4 PyUnicode_READ (int kind, void *data, Py_ssize_t index)
+    Py_UCS4 PyUnicode_READ (int kind, void *data, Py_ssize_t index) nogil
 
     object PyUnicode_FromStringAndSize(const char*, Py_ssize_t)
     object PyUnicode_FromKindAndData(int kind, const void *buffer, Py_ssize_t size)

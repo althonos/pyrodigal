@@ -1,7 +1,7 @@
 # 🔥 Pyrodigal [![Stars](https://img.shields.io/github/stars/althonos/pyrodigal.svg?style=social&maxAge=3600&label=Star)](https://github.com/althonos/pyrodigal/stargazers)
 
 *Cython bindings and Python interface to [Prodigal](https://github.com/hyattpd/Prodigal/), an ORF
-finder for genomes, progenomes and metagenomes.*
+finder for genomes and metagenomes.*
 
 [![Actions](https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/master?logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/pyrodigal/actions)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
