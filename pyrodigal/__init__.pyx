@@ -474,7 +474,11 @@ cdef class Gene:
 
     @property
     def _data(self):
-        return (<bytes> self.gene.gene_data).decode('ascii')
+        return self.gene.gene_data.decode('ascii')
+
+    @property
+    def _score_data(self):
+        return self.gene.score_data.decode('ascii')
 
     @property
     def begin(self):
@@ -573,6 +577,46 @@ cdef class Gene:
         """`int`: The translation table used to find the gene.
         """
         return self._translation_table
+
+    @property
+    def cscore(self):
+        """`float`: The coding score for the start node, based on 6-mer usage.
+        """
+        assert self.gene != NULL
+        assert self.nodes != NULL
+        return self.nodes[self.gene.start_ndx].cscore
+
+    @property
+    def rscore(self):
+        """`float`: The score for the RBS motif.
+        """
+        assert self.gene != NULL
+        assert self.nodes != NULL
+        return self.nodes[self.gene.start_ndx].rscore
+
+    @property
+    def sscore(self):
+        """`float`: The score for the strength of the start codon.
+        """
+        assert self.gene != NULL
+        assert self.nodes != NULL
+        return self.nodes[self.gene.start_ndx].sscore
+
+    @property
+    def tscore(self):
+        """`float`: The score for the codon kind (ATG/GTG/TTG).
+        """
+        assert self.gene != NULL
+        assert self.nodes != NULL
+        return self.nodes[self.gene.start_ndx].tscore
+
+    @property
+    def uscore(self):
+        """`float`: The score for the upstream regions.
+        """
+        assert self.gene != NULL
+        assert self.nodes != NULL
+        return self.nodes[self.gene.start_ndx].uscore
 
     cpdef unicode translate(self, translation_table=None):
         """Translate the gene into a protein sequence.
