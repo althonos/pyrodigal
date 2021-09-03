@@ -93,7 +93,7 @@ cdef int sequence_to_bitmap(
     elif slen > 0:
         fill_bitmap_from_buffer(text, seq, useq)
 
-    # compute reverse complement and returned
+    # compute reverse complement and return
     sequence.rcom_seq(seq[0], rseq[0], useq[0], slen)
     return 0
 
@@ -105,11 +105,8 @@ cdef int fill_bitmap_from_unicode(
     bitmap_t* seq,
     bitmap_t* useq,
 ) nogil except 1:
-
     cdef ssize_t i, j
     cdef Py_UCS4 letter
-
-    # fill the bitmap
     for i,j in enumerate(range(0, length*2, 2)):
         letter = PyUnicode_READ(kind, data, i)
         if letter == u'A' or letter == u'a':
@@ -122,6 +119,7 @@ cdef int fill_bitmap_from_unicode(
         elif letter == u'C' or letter == u'c':
             bitmap.set(seq[0], j+1)
         else:
+            bitmap.set(seq[0],  j+1)
             bitmap.set(useq[0], i)
 
 
@@ -144,6 +142,7 @@ cdef int fill_bitmap_from_buffer(
         elif letter == b'C' or letter == b'c':
             bitmap.set(seq[0], j+1)
         else:
+            bitmap.set(seq[0],  j+1)
             bitmap.set(useq[0], i)
 
 
@@ -309,7 +308,6 @@ cdef _metagenomic_bin META_BINS[NUM_META]
 cdef size_t _i
 for _i in range(NUM_META):
     memset(&META_BINS[_i], 0, sizeof(_metagenomic_bin))
-    strcpy(<char*> &META_BINS[_i].desc, "None")
     META_BINS[_i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
     if not META_BINS[_i].tinf:
         raise MemoryError()
@@ -783,8 +781,8 @@ cdef class Pyrodigal:
         with nogil:
             # compute the GC% of the sequence
             for i in range(slen):
-                gc_count += sequence.is_gc(seq, i)
-            gc = (<double> gc_count) / slen if slen > 0 else 0.0
+                gc_count += sequence.is_gc(seq, i) * (1 - bitmap.test(useq, i))
+            gc = (<double> gc_count) / (<double> slen) if slen > 0 else 0.0
 
             # compute the min/max acceptable gc for the sequence to only
             # use appropriate metagenomic bins
