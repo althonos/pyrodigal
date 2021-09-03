@@ -30,7 +30,7 @@ cdef extern from "node.h" nogil:
         int stop_val
         int star_ptr[3]
         int gc_bias
-        double gc_score
+        double gc_score[3]
         double cscore
         double gc_cont
         int rbs[2]
@@ -38,6 +38,7 @@ cdef extern from "node.h" nogil:
         double uscore
         double tscore
         double rscore
+        double sscore
         int traceb
         int tracef
         int ov_mark
