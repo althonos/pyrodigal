@@ -585,6 +585,9 @@ cdef class Gene:
     @property
     def cscore(self):
         """`float`: The coding score for the start node, based on 6-mer usage.
+
+        .. versionadded:: 0.5.1
+
         """
         assert self.gene != NULL
         assert self.nodes != NULL
@@ -604,6 +607,9 @@ cdef class Gene:
     @property
     def sscore(self):
         """`float`: The score for the strength of the start codon.
+
+        .. versionadded:: 0.5.1
+
         """
         assert self.gene != NULL
         assert self.nodes != NULL
@@ -612,6 +618,9 @@ cdef class Gene:
     @property
     def tscore(self):
         """`float`: The score for the codon kind (ATG/GTG/TTG).
+
+        .. versionadded:: 0.5.1
+
         """
         assert self.gene != NULL
         assert self.nodes != NULL
@@ -620,6 +629,9 @@ cdef class Gene:
     @property
     def uscore(self):
         """`float`: The score for the upstream regions.
+
+        .. versionadded:: 0.5.1
+
         """
         assert self.gene != NULL
         assert self.nodes != NULL

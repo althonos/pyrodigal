@@ -6,7 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.1...HEAD
+
+
+## [v0.5.1] - 2021-09-04
+[v0.5.1]: https://github.com/althonos/pyrodigal/compare/v0.5.0...v0.5.1
+
+### Added
+- Additional `Gene` properties to access the score
+
+### Changed
+- Use more efficient `PyUnicode` macros when reading or creating a string containing a nucleotide or a protein sequence.
+- Release the GIL when creating a bitmap for an `str` given as input to `Pyrodigal.find_genes`.
+- Release the GIL when creating the protein sequence returned by `Gene.translate`.
+
+### Fixed
+- `Pyrodigal.find_genes` and `Gene.translate` not behaving like Prodigal when handling sequences with unknown nucleotides.
 
 
 ## [v0.5.0] - 2021-06-15
