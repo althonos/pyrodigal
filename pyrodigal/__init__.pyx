@@ -448,15 +448,15 @@ cdef class Gene:
     # a hard reference to the Genes instance that created this object
     # to avoid the data referenced by other pointers to be deallocated.
     cdef Genes genes
-    #
+    # A reference to the nodes array and to the genes
     cdef _node* nodes
     cdef _gene* gene
-    #
+    # A reference to the input sequence
     cdef size_t slen
     cdef bitmap_t* seq
     cdef bitmap_t* rseq
     cdef bitmap_t* useq
-    #
+    # The translation table
     cdef int _translation_table
 
     def __cinit__(self, Genes genes, size_t index):
@@ -637,17 +637,22 @@ cdef class Gene:
 
         cdef size_t         nucl_length
         cdef size_t         prot_length
-        cdef size_t         begin
-        cdef size_t         end
         cdef size_t         i
         cdef size_t         j
-        cdef bitmap_t*      seq
         cdef _mini_training mini_tinf
         cdef _training*     tinf
         cdef object         protein
         cdef int            kind
         cdef void*          data
         cdef Py_UCS4        aa
+        cdef size_t         slen        = self.slen
+        cdef bitmap_t       useq        = self.useq[0]
+        cdef int            edge        = self.nodes[self.gene.start_ndx].edge
+        cdef int            strand      = self.nodes[self.gene.start_ndx].strand
+        cdef bitmap_t       seq
+        cdef size_t         begin
+        cdef size_t         end
+        cdef size_t         unk
 
         # HACK: support changing the translation table (without allocating a
         #       new a training info structure) by manipulating where the
@@ -664,30 +669,36 @@ cdef class Gene:
         # compute the right length to hold the protein
         nucl_length = (<size_t> self.gene.end) - (<size_t> self.gene.begin)
         prot_length = nucl_length//3 + (nucl_length%3 != 0)
-        # extract the boundaries / bitmap depending on strand
-        if self.nodes[self.gene.start_ndx].strand == 1:
-            begin = self.gene.begin
-            end = self.gene.end
-            seq = self.seq
-        else:
-            begin = self.slen + 1 - self.gene.end
-            end = self.slen + 1 - self.gene.begin
-            seq = self.rseq
         # create an empty protein string that we can write to
         # with the appropriate functions
         protein = PyUnicode_New(prot_length, 0x7F)
         kind    = PyUnicode_KIND(protein)
         data    = PyUnicode_DATA(protein)
 
-        # fill the buffer using the amino acids
+        # compute the offsets in the sequence bitmaps:
+        # - begin is the coordinates of the first nucleotide in the gene
+        # - unk is the coordinate of the first nucleotide in the useq bitmap
+        if strand == 1:
+            begin = self.gene.begin
+            end = self.gene.end
+            seq = self.seq[0]
+            unk = begin
+        else:
+            begin = self.slen + 1 - self.gene.end
+            end = self.slen + 1 - self.gene.begin
+            seq = self.rseq[0]
+            unk = slen + 1 - begin
+
+        # fill the sequence string, replacing residues with any unknown
+        # nucleotide in the codon with an "X".
         with nogil:
-            i = 0
-            j = begin
-            while j < end:
-                aa = sequence.amino(seq[0], j-1, tinf, i==0)
+            for i, j in enumerate(range(begin, end, 3)):
+                if bitmap.test(useq, unk-1) or bitmap.test(useq, unk) or bitmap.test(useq, unk+1):
+                    aa = "X"
+                else:
+                    aa = sequence.amino(seq, j-1, tinf, i==0 and edge==0)
                 PyUnicode_WRITE(kind, data, i, aa)
-                j += 3
-                i += 1
+                unk += 3 * strand
 
         # return the string containing the protein sequence
         return protein

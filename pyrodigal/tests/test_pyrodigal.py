@@ -155,6 +155,27 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
 
+    def test_unknown_letters(self):
+        # Commit 552721c fixed a bug where Pyrodigal was not correctly
+        # handling sequences of unknown letters, causing it to find genes
+        # inconsistently compared to Prodigal
+        data = os.path.realpath(os.path.join(__file__, "..", "data"))
+        src = os.path.join(data, "KK037166.fna.gz")
+        faa = os.path.join(data, "KK037166.{}.faa.gz".format(self.mode))
+
+        with gzip.open(src, "rt") as f:
+            record = next(parse(f))
+        with gzip.open(faa, "rt") as f:
+            proteins = [ record for record in parse(f) ]
+
+        predictions = self.find_genes(record.seq)
+        self.assertEqual(len(predictions), len(proteins))
+        for pred, protein in zip(predictions, proteins):
+            metadata = protein.description.split(" # ")
+            self.assertEqual(pred.begin, int(metadata[1]))
+            self.assertEqual(pred.end, int(metadata[2]))
+            self.assertEqual(pred.translate(), protein.seq)
+
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
     mode = "single"
