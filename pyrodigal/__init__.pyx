@@ -334,53 +334,63 @@ cdef class TrainingInfo:
     def translation_table(self):
         """`int`: The translation table used during training.
         """
-        return self.raw[0].trans_table
+        return self.raw.trans_table
 
     @translation_table.setter
     def translation_table(self, int table):
         if table not in _TRANSLATION_TABLES:
             raise ValueError(f"{table} is not a valid translation table index")
-        self.raw[0].trans_table = table
+        self.raw.trans_table = table
 
     @property
     def gc(self):
         """`float`: The GC content of the training sequence.
         """
-        return self.raw[0].gc
+        return self.raw.gc
 
     @gc.setter
     def gc(self, double gc):
-        self.raw[0].gc = gc
+        self.raw.gc = gc
 
     @property
     def bias(self):
         """`tuple` of `float`: The GC frame bias for each of the 3 positions.
         """
-        return tuple(self.raw[0].bias)
+        return tuple(self.raw.bias)
 
     @bias.setter
     def bias(self, object bias):
-        self.raw[0].bias = bias
+        self.raw.bias = bias
 
     @property
     def type_weights(self):
         """`tuple` of `float`: The weights for the ATG, GTG and TTG codons.
         """
-        return tuple(self.raw[0].type_wt)
+        return tuple(self.raw.type_wt)
 
     @type_weights.setter
     def type_weights(self, object type_weights):
-        self.raw[0].type_wt = type_weights
+        self.raw.type_wt = type_weights
 
     @property
     def uses_sd(self):
         """`bool`: `True` if the sequence uses a Shine/Dalgarno motif.
         """
-        return self.raw[0].uses_sd
+        return self.raw.uses_sd
 
     @uses_sd.setter
     def uses_sd(self, bint uses_sd):
-        self.raw[0].uses_sd = uses_sd
+        self.raw.uses_sd = uses_sd
+
+    @property
+    def start_weight(self):
+        """`float`: The start score weight to use for the training sequence.
+        """
+        return self.raw.st_wt
+
+    @start_weight.setter
+    def start_weight(self, double st_wt):
+        self.raw.st_wt = st_wt
 
 
 # ----------------------------------------------------------------------------
@@ -1011,7 +1021,7 @@ cdef class Pyrodigal:
         #
         return genes
 
-    cpdef object train(self, object sequence, bint force_nonsd=False, double st_wt=4.35, int translation_table=11):
+    cpdef TrainingInfo train(self, object sequence, bint force_nonsd=False, double st_wt=4.35, int translation_table=11):
         """train(self, sequence, force_nonsd=False, st_wt=4.35, translation_table=11)\n--
 
         Search optimal parameters for the ORF finder using a training sequence.
@@ -1119,4 +1129,5 @@ cdef class Pyrodigal:
         self.training_info.owned = True
         self.training_info.raw = tinf
 
-        return None
+        # return a reference to the training info freshly created.
+        return self.training_info
