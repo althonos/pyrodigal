@@ -188,6 +188,24 @@ class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
             p.train(seq)
         return p.find_genes(seq)
 
+    def test_train_info(self):
+        p = Pyrodigal(meta=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            info = p.train(self.record.seq)
+
+        self.assertEqual(info.translation_table, 11)
+        self.assertEqual(info.gc, 0.3010045159434068)
+        self.assertEqual(info.start_weight, 4.35)
+        self.assertEqual(info.bias[0], 2.6770525781861187)
+        self.assertEqual(info.bias[1], 0.17260535063729165)
+        self.assertEqual(info.bias[2], 0.1503420711765898)
+        self.assertEqual(info.type_weights[0], 0.71796361273324)
+        self.assertEqual(info.type_weights[1], -1.3722361344058844)
+        self.assertEqual(info.type_weights[2], -2.136731395763296)
+        self.assertTrue(info.uses_sd)
+
+
     def test_train_not_called(self):
         p = Pyrodigal(meta=False)
         self.assertRaises(RuntimeError, p.find_genes, str(self.record.seq))
