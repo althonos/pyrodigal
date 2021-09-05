@@ -104,46 +104,50 @@ cdef int fill_bitmap_from_unicode(
     const ssize_t length,
     bitmap_t* seq,
     bitmap_t* useq,
-) nogil except 1:
+) except 1:
     cdef ssize_t i, j
     cdef Py_UCS4 letter
-    for i,j in enumerate(range(0, length*2, 2)):
-        letter = PyUnicode_READ(kind, data, i)
-        if letter == u'A' or letter == u'a':
-            pass
-        elif letter == u'T' or letter == u't':
-            bitmap.set(seq[0], j)
-            bitmap.set(seq[0], j+1)
-        elif letter == u'G' or letter == u'g':
-            bitmap.set(seq[0], j)
-        elif letter == u'C' or letter == u'c':
-            bitmap.set(seq[0], j+1)
-        else:
-            bitmap.set(seq[0],  j+1)
-            bitmap.set(useq[0], i)
+    with nogil:
+        for i,j in enumerate(range(0, length*2, 2)):
+            letter = PyUnicode_READ(kind, data, i)
+            if letter == u'A' or letter == u'a':
+                pass
+            elif letter == u'T' or letter == u't':
+                bitmap.set(seq[0], j)
+                bitmap.set(seq[0], j+1)
+            elif letter == u'G' or letter == u'g':
+                bitmap.set(seq[0], j)
+            elif letter == u'C' or letter == u'c':
+                bitmap.set(seq[0], j+1)
+            else:
+                bitmap.set(seq[0],  j+1)
+                bitmap.set(useq[0], i)
+    return 0
 
 
 cdef int fill_bitmap_from_buffer(
     const unsigned char[:] sequence,
     bitmap_t* seq,
     bitmap_t* useq,
-) nogil except 1:
+) except 1:
     cdef ssize_t i, j
     cdef unsigned char letter
-    for i,j in enumerate(range(0, sequence.shape[0]*2, 2)):
-        letter = sequence[i]
-        if letter == b'A' or letter == b'a':
-            pass
-        elif letter == b'T' or letter == b't':
-            bitmap.set(seq[0], j)
-            bitmap.set(seq[0], j+1)
-        elif letter == b'G' or letter == b'g':
-            bitmap.set(seq[0], j)
-        elif letter == b'C' or letter == b'c':
-            bitmap.set(seq[0], j+1)
-        else:
-            bitmap.set(seq[0],  j+1)
-            bitmap.set(useq[0], i)
+    with nogil:
+        for i,j in enumerate(range(0, sequence.shape[0]*2, 2)):
+            letter = sequence[i]
+            if letter == b'A' or letter == b'a':
+                pass
+            elif letter == b'T' or letter == b't':
+                bitmap.set(seq[0], j)
+                bitmap.set(seq[0], j+1)
+            elif letter == b'G' or letter == b'g':
+                bitmap.set(seq[0], j)
+            elif letter == b'C' or letter == b'c':
+                bitmap.set(seq[0], j+1)
+            else:
+                bitmap.set(seq[0],  j+1)
+                bitmap.set(useq[0], i)
+    return 0
 
 
 # ----------------------------------------------------------------------------
@@ -589,6 +593,9 @@ cdef class Gene:
     @property
     def rscore(self):
         """`float`: The score for the RBS motif.
+
+        .. versionadded:: 0.5.1
+
         """
         assert self.gene != NULL
         assert self.nodes != NULL
@@ -771,7 +778,9 @@ cdef class Pyrodigal:
         PyMem_Free(self.genes)
 
     cpdef Genes find_genes(self, object sequence):
-        """Find all the genes in the input DNA sequence.
+        """find_genes(self, sequence )\n--
+
+        Find all the genes in the input DNA sequence.
 
         Arguments:
             sequence (`str` or buffer): The nucleotide sequence to use,
@@ -990,107 +999,112 @@ cdef class Pyrodigal:
         #
         return genes
 
-    def train(self, sequence, force_nonsd=False, st_wt=4.35, translation_table=11):
-      """Search optimal parameters for the ORF finder using a training sequence.
+    cpdef object train(self, object sequence, bint force_nonsd=False, double st_wt=4.35, int translation_table=11):
+        """train(self, sequence, force_nonsd=False, st_wt=4.35, translation_table=11)\n--
 
-      Arguments:
-          sequence (`str` or buffer): The nucleotide sequence to use, either
-              as a string of nucleotides, or as an object implementing the
-              buffer protocol.
-          force_nonsd (`bool`, optional): Set to ``True`` to bypass the heuristic
-              algorithm that tries to determine if the organism the training
-              sequence belongs to uses a Shine-Dalgarno motif or not.
-          st_wt (`float`, optional): The start score weight to use. The default
-              value has been manually selected by the PRODIGAL authors as an
-              appropriate value for 99% of genomes.
-          translation_table (`int`, optional): The translation table to use.
+        Search optimal parameters for the ORF finder using a training sequence.
 
-      Raises:
-          `MemoryError`: When allocation of an internal buffers fails.
-          `RuntimeError`: When calling this method while in *metagenomic* mode.
-          `TypeError`: When ``sequence`` does not implement the buffer protocol.
-          `ValueError`: When ``translation_table`` is not a valid number.
+        Arguments:
+            sequence (`str` or buffer): The nucleotide sequence to use, either
+                as a string of nucleotides, or as an object implementing the
+                buffer protocol.
+            force_nonsd (`bool`, optional): Set to ``True`` to bypass the heuristic
+                algorithm that tries to determine if the organism the training
+                sequence belongs to uses a Shine-Dalgarno motif or not.
+            st_wt (`float`, optional): The start score weight to use. The default
+                value has been manually selected by the PRODIGAL authors as an
+                appropriate value for 99% of genomes.
+            translation_table (`int`, optional): The translation table to use.
 
-      """
-      if self.meta:
-          raise RuntimeError("cannot use training sequence in metagenomic mode")
-      if translation_table not in _TRANSLATION_TABLES:
-          raise ValueError(f"{translation_table} is not a valid translation table index")
+        Raises:
+            `MemoryError`: When allocation of an internal buffers fails.
+            `RuntimeError`: When calling this method while in *metagenomic* mode.
+            `TypeError`: When ``sequence`` does not implement the buffer protocol.
+            `ValueError`: When ``translation_table`` is not a valid number.
 
-      # check we have enough nucleotides to train
-      cdef size_t slen = len(sequence)
-      if slen < MIN_SINGLE_GENOME:
-          raise ValueError(
-            f"sequence must be at least {MIN_SINGLE_GENOME} characters ({slen} found)"
-          )
-      elif slen < IDEAL_SINGLE_GENOME:
-          warnings.warn(
-            f"sequence should be at least {IDEAL_SINGLE_GENOME} characters ({slen} found)"
-          )
+        """
+        if self.meta:
+            raise RuntimeError("cannot use training sequence in metagenomic mode")
+        if translation_table not in _TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
 
-      # convert sequence to bitmap for dynamic programming
-      cdef bitmap_t seq = NULL
-      cdef bitmap_t rseq = NULL
-      cdef bitmap_t useq = NULL
-      sequence_to_bitmap(sequence, &seq, &rseq, &useq)
+        # check we have enough nucleotides to train
+        cdef size_t slen = len(sequence)
+        if slen < MIN_SINGLE_GENOME:
+            raise ValueError(
+              f"sequence must be at least {MIN_SINGLE_GENOME} characters ({slen} found)"
+            )
+        elif slen < IDEAL_SINGLE_GENOME:
+            warnings.warn(
+              f"sequence should be at least {IDEAL_SINGLE_GENOME} characters ({slen} found)"
+            )
 
-      # create the training structure and compute GC content
-      cdef _training* tinf = <_training*> PyMem_Malloc(sizeof(_training))
-      memset(tinf, 0, sizeof(_training));
-      tinf.gc = gc_content(seq, 0, slen-1)
-      tinf.st_wt = st_wt
-      tinf.trans_table = translation_table
+        # convert sequence to bitmap for dynamic programming
+        cdef bitmap_t seq = NULL
+        cdef bitmap_t rseq = NULL
+        cdef bitmap_t useq = NULL
+        sequence_to_bitmap(sequence, &seq, &rseq, &useq)
 
-      cdef int*   gc_frame;
-      cdef int    ipath;
-      cdef size_t nodes_count
-      with self.lock:
-          # reallocate memory for the nodes if this is the biggest sequence
-          # processed by this object so far
-          nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, tinf)
-          if nodes_count > self.max_nodes:
-              self._reallocate_nodes(nodes_count)
+        # create the training structure and compute GC content
+        cdef _training* tinf = <_training*> PyMem_Malloc(sizeof(_training))
+        memset(tinf, 0, sizeof(_training));
+        tinf.gc = gc_content(seq, 0, slen-1)
+        tinf.st_wt = st_wt
+        tinf.trans_table = translation_table
 
-          # find all the potential starts and stops and sort them
-          self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
-          qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
+        cdef int*   gc_frame;
+        cdef int    ipath;
+        cdef size_t nodes_count
+        with self.lock:
+            with nogil:
+                # reallocate memory for the nodes if this is the biggest sequence
+                # processed by this object so far
+                nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, tinf)
+                if nodes_count > self.max_nodes:
+                    self._reallocate_nodes(nodes_count)
 
-          # scan all the ORFs looking for a potential GC bias in a particular
-          # codon position, in order to acquire a good initial set of genes
-          gc_frame = calc_most_gc_frame(seq, slen)
-          if not gc_frame:
-              raise MemoryError()
-          node.record_gc_bias(gc_frame, self.nodes, self.nn, tinf)
-          free(gc_frame)
+                # find all the potential starts and stops and sort them
+                self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
+                qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
-          # do an initial dynamic programming routine with just the GC frame bias
-          # used as a scoring function.
-          node.record_overlapping_starts(self.nodes, self.nn, tinf, 0)
-          ipath = dprog.dprog(self.nodes, self.nn, tinf, 0)
+                # scan all the ORFs looking for a potential GC bias in a particular
+                # codon position, in order to acquire a good initial set of genes
+                gc_frame = calc_most_gc_frame(seq, slen)
+                if not gc_frame:
+                    raise MemoryError()
+                node.record_gc_bias(gc_frame, self.nodes, self.nn, tinf)
+                free(gc_frame)
 
-          # gather dicodon statistics for the training set
-          node.calc_dicodon_gene(tinf, seq, rseq, slen, self.nodes, ipath)
-          node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, tinf)
+                # do an initial dynamic programming routine with just the GC frame bias
+                # used as a scoring function.
+                node.record_overlapping_starts(self.nodes, self.nn, tinf, 0)
+                ipath = dprog.dprog(self.nodes, self.nn, tinf, 0)
 
-          # determine if this organism uses Shine-Dalgarno and score the node
-          node.rbs_score(seq, rseq, slen, self.nodes, self.nn, tinf)
-          node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, tinf)
-          if force_nonsd:
-              tinf.uses_sd = False
-          else:
-              node.determine_sd_usage(tinf)
-          if not tinf.uses_sd:
-              node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, tinf)
+                # gather dicodon statistics for the training set
+                node.calc_dicodon_gene(tinf, seq, rseq, slen, self.nodes, ipath)
+                node.raw_coding_score(seq, rseq, slen, self.nodes, self.nn, tinf)
 
-          # reset internal buffers and free allocated memory
-          PyMem_Free(seq)
-          PyMem_Free(rseq)
-          PyMem_Free(useq)
-          memset(self.nodes, 0, self.nn*sizeof(_node))
-          self.nn = 0
+                # determine if this organism uses Shine-Dalgarno and score the node
+                node.rbs_score(seq, rseq, slen, self.nodes, self.nn, tinf)
+                node.train_starts_sd(seq, rseq, slen, self.nodes, self.nn, tinf)
+                if force_nonsd:
+                    tinf.uses_sd = False
+                else:
+                    node.determine_sd_usage(tinf)
+                if not tinf.uses_sd:
+                    node.train_starts_nonsd(seq, rseq, slen, self.nodes, self.nn, tinf)
 
-          # store the training information in a Python object so it can be
-          # shared with reference counting in the later `find_genes` calls
-          self.training_info = TrainingInfo.__new__(TrainingInfo)
-          self.training_info.owned = True
-          self.training_info.raw = tinf
+            # reset internal buffers and free allocated memory
+            PyMem_Free(seq)
+            PyMem_Free(rseq)
+            PyMem_Free(useq)
+            memset(self.nodes, 0, self.nn*sizeof(_node))
+            self.nn = 0
+
+        # store the training information in a Python object so it can be
+        # shared with reference counting in the later `find_genes` calls
+        self.training_info = TrainingInfo.__new__(TrainingInfo)
+        self.training_info.owned = True
+        self.training_info.raw = tinf
+
+        return None
