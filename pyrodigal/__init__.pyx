@@ -35,10 +35,9 @@ cdef size_t MIN_SINGLE_GENOME   = 20000
 cdef size_t IDEAL_SINGLE_GENOME = 100000
 cdef size_t MIN_GENES           = 8
 cdef size_t MIN_NODES           = MIN_GENES * 8
+cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 
 DEF MAX_THREADS = 50
-
-_TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 
 # ----------------------------------------------------------------------------
 
@@ -340,7 +339,7 @@ cdef class TrainingInfo:
 
     @translation_table.setter
     def translation_table(self, int table):
-        if table not in _TRANSLATION_TABLES:
+        if table not in TRANSLATION_TABLES:
             raise ValueError(f"{table} is not a valid translation table index")
         self.raw.trans_table = table
 
@@ -691,8 +690,8 @@ cdef class Gene:
         if translation_table is None:
             tinf = self.training_info.raw
         else:
-            if translation_table not in _TRANSLATION_TABLES:
-              raise ValueError(f"{translation_table} is not a valid translation table index")
+            if translation_table not in TRANSLATION_TABLES:
+                raise ValueError(f"{translation_table} is not a valid translation table index")
             mini_tinf.trans_table = translation_table
             tinf = <_training*> &mini_tinf
             assert tinf.trans_table == translation_table
@@ -1098,7 +1097,7 @@ cdef class Pyrodigal:
         """
         if self.meta:
             raise RuntimeError("cannot use training sequence in metagenomic mode")
-        if translation_table not in _TRANSLATION_TABLES:
+        if translation_table not in TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
 
         # check we have enough nucleotides to train
