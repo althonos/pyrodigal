@@ -844,6 +844,7 @@ cdef class Pyrodigal:
             if not self.genes:
                 raise MemoryError()
             self.max_genes = new_size
+            memset(self.genes, 0, new_size*sizeof(_gene))
 
     cdef void _reallocate_nodes(self, size_t new_nodes) nogil:
         cdef size_t new_size = MIN_NODES if self.nodes == NULL else self.max_nodes
@@ -854,6 +855,7 @@ cdef class Pyrodigal:
             if not self.nodes:
                 raise MemoryError()
             self.max_nodes = new_size
+            memset(self.nodes, 0, new_size*sizeof(_node))
 
     cdef Genes _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
 
@@ -1136,6 +1138,7 @@ cdef class Pyrodigal:
                     self._reallocate_nodes(nodes_count)
 
                 # find all the potential starts and stops and sort them
+                memset(self.nodes, 0, self.nn*sizeof(_node))
                 self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, tinf)
                 qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
 
