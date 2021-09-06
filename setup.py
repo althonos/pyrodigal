@@ -60,10 +60,17 @@ class build_ext(_build_ext):
         else:
             ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
 
+        # add OpenMP flags
+        if self.compiler.compiler_type == "msvc":
+            ext.extra_compile_args.append("/openmp")
+            ext.extra_link_args.append("/openmp")
+        else:
+            ext.extra_compile_args.append("-fopenmp")
+            ext.extra_link_args.append("-fopenmp")
+
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
-            # ext.include_dirs.extend(lib.include_dirs)
             ext.extra_objects.append(self.compiler.library_filename(
                 lib.name, output_dir=self._clib_cmd.build_clib
             ))
@@ -278,8 +285,6 @@ setuptools.setup(
             sources=["pyrodigal/__init__.pyx"],
             include_dirs=["Prodigal"],
             libraries=["prodigal"],
-            extra_compile_args=['-fopenmp'],
-            extra_link_args=['-fopenmp'],
         )
     ],
     cmdclass={
