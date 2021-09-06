@@ -132,7 +132,7 @@ jobs:
       run: python setup.py build_ext --inplace --debug
       env:
         CC: "/usr/local/opt/llvm/bin/clang"
-        CFLAGS: "-L/usr/local/opt/llvm/lib -L/usr/local/lib"
+        LDFLAGS: "-L/usr/local/opt/llvm/lib -L/usr/local/lib"
     - name: Test with coverage
       run: python -m coverage run -m unittest discover -vv
     - uses: codecov/codecov-action@v1
