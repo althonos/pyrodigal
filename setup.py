@@ -278,6 +278,8 @@ setuptools.setup(
             sources=["pyrodigal/__init__.pyx"],
             include_dirs=["Prodigal"],
             libraries=["prodigal"],
+            extra_compile_args=['-fopenmp'],
+            extra_link_args=['-fopenmp'],
         )
     ],
     cmdclass={

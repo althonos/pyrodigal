@@ -7,11 +7,11 @@
 # ----------------------------------------------------------------------------
 
 cimport libc.errno
-from libc.stdio cimport printf
-from libc.stdlib cimport malloc, free, qsort
-from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
+from cython cimport parallel
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.unicode cimport PyUnicode_DecodeASCII
+from libc.stdlib cimport realloc, calloc, malloc, free, qsort
+from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
@@ -855,103 +855,149 @@ cdef class Pyrodigal:
             self.max_nodes = new_size
 
     cdef Genes _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
-        cdef size_t i
-        cdef size_t gene_count
-        cdef size_t nodes_count
 
-        cdef size_t gc_count = 0
-        cdef double gc, low, high
-        cdef double max_score = -100
-        cdef size_t max_phase = 0
+        cdef int     num_threads = 4
+
+        cdef double  gc
+        cdef double  low
+        cdef double  high
+        cdef size_t  gc_count = 0
+        cdef ssize_t i        = 0
+        cdef size_t  j        = 0
+
+        cdef int    best_tid
+        cdef int    best_phase
+        cdef double best_score
+
+        cdef int    tid
+        cdef int    thread_best_phase [NUM_META]
+        cdef double thread_best_score [NUM_META]
+        cdef int    thread_tt         [NUM_META]
+        cdef size_t thread_node_count [NUM_META]
+        cdef size_t thread_gene_count [NUM_META]
+        cdef int    thread_ipath      [NUM_META]
+        cdef _node* thread_nodes      [NUM_META]
+        cdef size_t thread_nn         [NUM_META]
+        cdef size_t thread_maxn       [NUM_META]
+        cdef _gene* thread_genes      [NUM_META]
+        cdef size_t thread_ng         [NUM_META]
+        cdef size_t thread_maxg       [NUM_META]
+
+        # Initialize resources
+        for i in range(num_threads):
+            thread_ipath[i] = thread_nn[i] = thread_ng[i] = 0
+            thread_nodes[i] = thread_genes[i] = NULL
+            thread_best_phase[i] = thread_tt[i] = -1
+            thread_best_score[i] = -100
 
         with nogil:
             # compute the GC% of the sequence
-            for i in range(slen):
-                gc_count += sequence.is_gc(seq, i) * (1 - bitmap.test(useq, i))
+            for j in range(slen):
+                gc_count += sequence.is_gc(seq, j) * (1 - bitmap.test(useq, j))
             gc = (<double> gc_count) / (<double> slen) if slen > 0 else 0.0
 
             # compute the min/max acceptable gc for the sequence to only
             # use appropriate metagenomic bins
             low = 0.88495*gc - 0.0102337
-            high = 0.86596*gc + .1131991
+            high = 0.86596*gc + 0.1131991
             if low > 0.65:
                 low = 0.65
             if high < 0.35:
                 high = 0.35
 
             # check which of the metagenomic bins gets the best results
-            for i in range(NUM_META):
-                # recreate the node list if the translation table changed
-                if i == 0 or META_BINS[i].tinf.trans_table != META_BINS[i-1].tinf.trans_table:
-                    # count the number of nodes to be added, reallocate if needed
-                    nodes_count = count_nodes(seq, rseq, slen, self.closed, NULL, 0, META_BINS[i].tinf)
-                    if nodes_count > self.max_nodes:
-                        self._reallocate_nodes(nodes_count)
-                    # add the dynamic programming nodes
-                    memset(self.nodes, 0, self.nn*sizeof(_node))
-                    self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[i].tinf)
-                    qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
-
+            for i in parallel.prange(NUM_META, schedule="dynamic", num_threads=num_threads):
+                # get the index of the current thread
+                tid = parallel.threadid()
                 # check the GC% is compatible with the current bin
                 if META_BINS[i].tinf.gc < low or META_BINS[i].tinf.gc > high:
                     continue
-
+                # recreate the node list if the translation table changed
+                if META_BINS[i].tinf.trans_table != thread_tt[tid]:
+                    thread_tt[tid] = META_BINS[i].tinf.trans_table
+                    thread_node_count[tid] = count_nodes(seq, rseq, slen, self.closed, NULL, 0, META_BINS[i].tinf)
+                    if thread_node_count[tid] > thread_nn[tid]:
+                        thread_nodes[tid] = <_node*> realloc(thread_nodes[tid], thread_node_count[tid] * sizeof(_node))
+                        thread_nn[tid] = thread_node_count[tid]
+                    memset(thread_nodes[tid], 0, thread_nn[tid]*sizeof(_node))
+                    thread_nn[tid] = node.add_nodes(seq, rseq, slen, thread_nodes[tid], self.closed, NULL, 0, META_BINS[i].tinf)
+                    qsort(thread_nodes[tid], thread_nn[tid], sizeof(_node), node.compare_nodes)
                 # compute the score for the current metagenomic bin
-                node.reset_node_scores(self.nodes, self.nn)
-                node.score_nodes(seq, rseq, slen, self.nodes, self.nn, META_BINS[i].tinf, self.closed, True)
-                node.record_overlapping_starts(self.nodes, self.nn, META_BINS[i].tinf, 1)
-                ipath = dprog.dprog(self.nodes, self.nn, META_BINS[i].tinf, 1)
-
+                node.reset_node_scores(thread_nodes[tid], thread_nn[tid])
+                node.score_nodes(seq, rseq, slen, thread_nodes[tid], thread_nn[tid], META_BINS[i].tinf, self.closed, True)
+                node.record_overlapping_starts(thread_nodes[tid], thread_nn[tid], META_BINS[i].tinf, 1)
+                thread_ipath[tid] = dprog.dprog(thread_nodes[tid], thread_nn[tid], META_BINS[i].tinf, 1)
                 # update if the current bin gave a better score
-                if self.nn > 0 and self.nodes[ipath].score > max_score:
-                    max_phase = i
-                    max_score = self.nodes[ipath].score
-                    dprog.eliminate_bad_genes(self.nodes, ipath, META_BINS[i].tinf)
-                    # reallocate memory for the nodes if this is the largest amount
-                    # of genes found so far
-                    gene_count = count_genes(self.nodes, ipath)
-                    if gene_count > self.max_genes:
-                        self._reallocate_genes(gene_count)
+                if thread_nn[tid] > 0 and thread_nodes[tid][thread_ipath[tid]].score > thread_best_score[tid]:
+                    # record best phase for the current thread
+                    thread_best_phase[tid] = i
+                    thread_best_score[tid] = thread_nodes[tid][thread_ipath[tid]].score
+                    # eliminate the eventual bad genes in the ndoes
+                    dprog.eliminate_bad_genes(thread_nodes[tid], thread_ipath[tid], META_BINS[i].tinf)
+                    # reallocate memory for the genes if needed
+                    thread_gene_count[tid] = count_genes(thread_nodes[tid], thread_ipath[tid])
+                    if thread_gene_count[tid] > thread_ng[tid]:
+                        thread_genes[tid] = <_gene*> realloc(thread_genes[tid], thread_gene_count[tid] * sizeof(_gene))
                     # extract the genes from the dynamic programming array
-                    self.ng = gene.add_genes(self.genes, self.nodes, ipath)
-                    gene.tweak_final_starts(self.genes, self.ng, self.nodes, self.nn, META_BINS[i].tinf)
-                    gene.record_gene_data(self.genes, self.ng, self.nodes, META_BINS[i].tinf, self._num_seq)
+                    thread_ng[tid] = gene.add_genes(thread_genes[tid], thread_nodes[tid], thread_ipath[tid])
+                    gene.tweak_final_starts(thread_genes[tid], thread_ng[tid], thread_nodes[tid], thread_nn[tid], META_BINS[i].tinf)
+                    gene.record_gene_data(thread_genes[tid], thread_ng[tid], thread_nodes[tid], META_BINS[i].tinf, self._num_seq)
+
+            # find the best run across all threads, or use 0 in case none
+            # of them produced any good results
+            best_tid = 0
+            for i in range(1, num_threads):
+                if thread_best_score[i] > thread_best_score[best_tid]:
+                    best_tid = i
+            best_phase = thread_best_phase[best_tid]
+            if best_phase < 0:
+                best_phase = 0
 
             # recover the nodes corresponding to the best run
-            memset(self.nodes, 0, self.nn*sizeof(_node))
-            self.nn = node.add_nodes(seq, rseq, slen, self.nodes, self.closed, NULL, 0, META_BINS[max_phase].tinf)
-            qsort(self.nodes, self.nn, sizeof(_node), node.compare_nodes)
-            node.score_nodes(seq, rseq, slen, self.nodes, self.nn, META_BINS[max_phase].tinf, self.closed, True)
+            memset(thread_nodes[best_tid], 0, thread_nn[best_tid]*sizeof(_node))
+            thread_nn[best_tid] = node.add_nodes(seq, rseq, slen, thread_nodes[best_tid], self.closed, NULL, 0, META_BINS[best_phase].tinf)
+            qsort(thread_nodes[best_tid], thread_nn[best_tid], sizeof(_node), node.compare_nodes)
+            node.score_nodes(seq, rseq, slen, thread_nodes[best_tid], thread_nn[best_tid], META_BINS[best_phase].tinf, self.closed, True)
+
+        # NB(@althonos): We cannot just take ownership of the buffers here
+        #                because they have been allocated with malloc inside
+        #                the prange (where we don't hold the GIL) while we
+        #                use PyMem_Malloc everywhere else, so we'd have to
+        #                make the distinction between the two otherwise.
+        #                (that's maybe something that could be done though)
 
         # make a `Genes` instance to store the results
-        cdef Genes genes = Genes.__new__(Genes)
-        genes._translation_table = META_BINS[max_phase].tinf.trans_table
+        cdef Genes new_genes = Genes.__new__(Genes)
+        new_genes._translation_table = META_BINS[best_phase].tinf.trans_table
         # expose the metagenomic training info
-        genes.training_info = TrainingInfo.__new__(TrainingInfo)
-        genes.training_info.owned = False
-        genes.training_info.raw = META_BINS[max_phase].tinf
-        # copy nodes
-        genes.nn = self.nn
-        genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
-        if not genes.nodes: raise MemoryError()
-        memcpy(genes.nodes, self.nodes, self.nn*sizeof(_node))
-        # copy genes
-        genes.ng = self.ng
-        genes.genes = <_gene*> PyMem_Malloc(self.ng*sizeof(_gene))
-        if not genes.genes: raise MemoryError()
-        memcpy(genes.genes, self.genes, self.ng*sizeof(_gene))
+        new_genes.training_info = TrainingInfo.__new__(TrainingInfo)
+        new_genes.training_info.owned = False
+        new_genes.training_info.raw = META_BINS[best_phase].tinf
         # take ownership of bitmaps
-        genes.slen = slen
-        genes.seq = seq
-        genes.rseq = rseq
-        genes.useq = useq
-        # free resources
-        memset(self.nodes, 0, self.nn*sizeof(_node))
-        memset(self.genes, 0, self.ng*sizeof(_gene))
-        self.ng = self.nn = 0
+        new_genes.slen = slen
+        new_genes.seq = seq
+        new_genes.rseq = rseq
+        new_genes.useq = useq
+        # copy the best nodes
+        new_genes.nn = thread_nn[best_tid]
+        new_genes.nodes = <_node*> PyMem_Malloc(thread_nn[best_tid] * sizeof(_node))
+        if new_genes.nodes == NULL:
+            raise MemoryError()
+        memcpy(new_genes.nodes, thread_nodes[best_tid], thread_nn[best_tid] * sizeof(_node))
+        # copy the best genes
+        new_genes.ng = thread_ng[best_tid]
+        new_genes.genes = <_gene*> PyMem_Malloc(thread_ng[best_tid] * sizeof(_gene))
+        if new_genes.genes == NULL:
+            raise MemoryError()
+        memcpy(new_genes.genes, thread_genes[best_tid], thread_ng[best_tid] * sizeof(_gene))
+        # free remaining buffer threads
+        for i in range(num_threads):
+            free(thread_nodes[i])
+            free(thread_genes[i])
+        # increase the processed sequence index
         self._num_seq += 1
         # return the `Genes` instance
-        return genes
+        return new_genes
 
     cdef Genes _find_genes_single(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
 
@@ -1000,12 +1046,14 @@ cdef class Pyrodigal:
         # copy nodes
         genes.nn = self.nn
         genes.nodes = <_node*> PyMem_Malloc(self.nn*sizeof(_node))
-        if not genes.nodes: raise MemoryError()
+        if not genes.nodes:
+            raise MemoryError()
         memcpy(genes.nodes, self.nodes, self.nn*sizeof(_node))
         # copy genes
         genes.ng = self.ng
         genes.genes = <_gene*> PyMem_Malloc(self.ng*sizeof(_gene))
-        if not genes.genes: raise MemoryError()
+        if not genes.genes:
+            raise MemoryError()
         memcpy(genes.genes, self.genes, self.ng*sizeof(_gene))
         # take ownership of bitmaps
         genes.slen = slen
