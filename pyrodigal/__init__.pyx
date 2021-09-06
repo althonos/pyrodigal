@@ -31,10 +31,12 @@ import threading
 
 # ----------------------------------------------------------------------------
 
-cdef size_t MIN_SINGLE_GENOME = 20000
+cdef size_t MIN_SINGLE_GENOME   = 20000
 cdef size_t IDEAL_SINGLE_GENOME = 100000
-cdef size_t MIN_GENES = 8
-cdef size_t MIN_NODES = MIN_GENES * 8
+cdef size_t MIN_GENES           = 8
+cdef size_t MIN_NODES           = MIN_GENES * 8
+
+DEF MAX_THREADS = 50
 
 _TRANSLATION_TABLES = set((*range(1, 7), *range(9, 17), *range(21, 26)))
 
@@ -152,7 +154,7 @@ cdef int fill_bitmap_from_buffer(
 
 # ----------------------------------------------------------------------------
 
-cdef size_t count_genes(_node* nodes, int path) nogil:
+cdef int count_genes(_node* nodes, int path) nogil except -1:
     """Count the number of genes found in the node list.
 
     Adapted from the `add_genes` function in ``genes.c``.
@@ -165,7 +167,7 @@ cdef size_t count_genes(_node* nodes, int path) nogil:
         size_t: The number of genes that can be extracted from the nodes list.
 
     """
-    cdef size_t ctr = 0
+    cdef int ctr = 0
 
     if path == -1:
         return 0
@@ -184,15 +186,15 @@ cdef size_t count_genes(_node* nodes, int path) nogil:
     return ctr
 
 
-cdef size_t count_nodes(
+cdef int count_nodes(
     bitmap_t seq,
     bitmap_t rseq,
-    size_t slen,
+    int slen,
     bint closed,
     _mask* mlist,
     int nm,
     _training* tinf
-) nogil:
+) nogil except -1:
     """Count the number of nodes to be added for the given sequence.
 
     Adapted from the `add_nodes` function in ``nodes.c``.
@@ -211,13 +213,13 @@ cdef size_t count_nodes(
         size_t: The number of nodes that can be created from the sequence.
 
     """
-    cdef size_t  i     = 0
-    cdef size_t  nn    = 0
-    cdef size_t  slmod = slen%3
+    cdef int i     = 0
+    cdef int nn    = 0
+    cdef int slmod = slen%3
 
-    cdef bint[3]   saw_start
-    cdef size_t[3] last
-    cdef size_t[3] min_dist
+    cdef bint[3] saw_start
+    cdef int[3]  last
+    cdef int[3]  min_dist
 
     # If sequence is smaller than a codon, there is no nodes so
     # we can early return here
@@ -309,7 +311,7 @@ cdef size_t count_nodes(
 #   2. we don't have to worry about their lifetime within the results
 
 cdef _metagenomic_bin META_BINS[NUM_META]
-cdef size_t _i
+cdef ssize_t _i
 for _i in range(NUM_META):
     memset(&META_BINS[_i], 0, sizeof(_metagenomic_bin))
     META_BINS[_i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
@@ -856,32 +858,33 @@ cdef class Pyrodigal:
 
     cdef Genes _find_genes_meta(self, size_t slen, bitmap_t seq, bitmap_t useq, bitmap_t rseq):
 
-        cdef int     num_threads = 4
+        cdef int num_threads = 4
+        cdef int i           = 0
 
-        cdef double  gc
-        cdef double  low
-        cdef double  high
-        cdef size_t  gc_count = 0
-        cdef ssize_t i        = 0
-        cdef size_t  j        = 0
+        cdef double gc
+        cdef double low
+        cdef double high
+        cdef long   gc_count = 0
+        cdef size_t j        = 0
 
         cdef int    best_tid
         cdef int    best_phase
         cdef double best_score
 
         cdef int    tid
-        cdef int    thread_best_phase [NUM_META]
-        cdef double thread_best_score [NUM_META]
-        cdef int    thread_tt         [NUM_META]
-        cdef size_t thread_node_count [NUM_META]
-        cdef size_t thread_gene_count [NUM_META]
-        cdef int    thread_ipath      [NUM_META]
-        cdef _node* thread_nodes      [NUM_META]
-        cdef size_t thread_nn         [NUM_META]
-        cdef size_t thread_maxn       [NUM_META]
-        cdef _gene* thread_genes      [NUM_META]
-        cdef size_t thread_ng         [NUM_META]
-        cdef size_t thread_maxg       [NUM_META]
+        cdef int    thread_best_phase [MAX_THREADS]
+        cdef double thread_best_score [MAX_THREADS]
+        cdef int    thread_tt         [MAX_THREADS]
+        cdef int    thread_node_count [MAX_THREADS]
+        cdef int    thread_gene_count [MAX_THREADS]
+        cdef int    thread_ipath      [MAX_THREADS]
+        cdef _node* thread_nodes      [MAX_THREADS]
+        cdef int    thread_nn         [MAX_THREADS]
+        cdef _gene* thread_genes      [MAX_THREADS]
+        cdef int    thread_ng         [MAX_THREADS]
+
+        if num_threads > MAX_THREADS:
+            num_threads = MAX_THREADS
 
         # Initialize resources
         for i in range(num_threads):
