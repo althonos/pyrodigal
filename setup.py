@@ -285,6 +285,12 @@ setuptools.setup(
             sources=["pyrodigal/__init__.pyx"],
             include_dirs=["Prodigal"],
             libraries=["prodigal"],
+        ),
+        Extension(
+            "pyrodigal._api",
+            sources=["pyrodigal/_api.pyx"],
+            include_dirs=["Prodigal"],
+            libraries=["prodigal"],
         )
     ],
     cmdclass={
