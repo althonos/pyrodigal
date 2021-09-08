@@ -1,6 +1,7 @@
 # coding: utf-8
 # cython: language_level=3, linetrace=True
 
+from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from libc.stdlib cimport realloc, calloc, malloc, free, qsort
 from libc.string cimport memchr, memcmp, memcpy, memset, strcpy, strstr
@@ -26,11 +27,6 @@ cdef set   TRANSLATION_TABLES = set(range(1, 7)) | set(range(9, 17)) | set(range
 cdef class Sequence:
     """A compressed input sequence.
     """
-    cdef int      slen
-    cdef bitmap_t seq
-    cdef bitmap_t rseq
-    cdef bitmap_t useq
-    cdef double   gc
 
     def __cinit__(self):
         self.slen = 0
@@ -148,13 +144,13 @@ cdef class Motif:
     pass
 
 cdef class Node:
-    cdef Nodes  owner
-    cdef _node* node
+
+    @property
+    def score(self):
+        assert self.node != NULL
+        return self.node.score
 
 cdef class Nodes:
-    cdef _node* nodes
-    cdef size_t capacity
-    cdef size_t length
 
     def __cinit__(self):
         self.nodes = NULL
@@ -162,7 +158,7 @@ cdef class Nodes:
         self.length = 0
 
     def __init__(self):
-        self.clear()
+        self._clear()
 
     def __dealloc__(self):
         PyMem_Free(self.nodes)
@@ -181,7 +177,7 @@ cdef class Nodes:
         node.node = &self.nodes[index]
         return node
 
-    cdef _node* _add_node(
+    cdef inline _node* _add_node(
         self,
         const int  ndx,
         const int  type,
@@ -212,32 +208,43 @@ cdef class Nodes:
         node.edge = edge
         return node
 
-    cpdef void clear(self):
+    cdef int _clear(self) nogil except 1:
         """Remove all nodes from the vector.
         """
         cdef size_t old_length
         old_length, self.length = self.length, 0
-        with nogil:
-            memset(self.nodes, 0, old_length * sizeof(_node))
+        memset(self.nodes, 0, old_length * sizeof(_node))
 
-    cpdef void sort(self):
+    cdef int _sort(self) nogil except 1:
         """Sort all nodes in the vector by their index and strand.
         """
-        assert self.nodes != NULL
-        with nogil:
-            qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
+        qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
 
 # ---
 
 cdef class Gene:
-    cdef Genes  owner
-    cdef _gene* gene
 
+    @property
+    def begin(self):
+        """`int`: The coordinate at which the gene begins.
+        """
+        return self.gene.begin
+
+    @property
+    def end(self):
+        """`int`: The coordinate at which the gene ends.
+        """
+        return self.gene.end
+
+    @property
+    def start_ndx(self):
+        return self.gene.start_ndx
+
+    @property
+    def stop_ndx(self):
+        return self.gene.stop_ndx
 
 cdef class Genes:
-    cdef _gene* genes
-    cdef size_t capacity
-    cdef size_t length
 
     def __cinit__(self):
         self.genes = NULL
@@ -245,7 +252,7 @@ cdef class Genes:
         self.length = 0
 
     def __init__(self):
-        self.clear()
+        self._clear()
 
     def __dealloc__(self):
         PyMem_Free(self.genes)
@@ -264,7 +271,7 @@ cdef class Genes:
         gene.gene = &self.genes[index]
         return gene
 
-    cdef _gene* _add_gene(
+    cdef inline _gene* _add_gene(
         self,
         const int begin,
         const int end,
@@ -293,27 +300,32 @@ cdef class Genes:
         gene.stop_ndx = stop_ndx
         return gene
 
-    cpdef void clear(self):
+    cdef int _clear(self) nogil except 1:
         """Remove all genes from the vector.
         """
         cdef size_t old_length
         old_length, self.length = self.length, 0
-        with nogil:
-            memset(self.genes, 0, old_length * sizeof(_gene))
+        memset(self.genes, 0, old_length * sizeof(_gene))
 
 # ---
 
 cdef class TrainingInfo:
-    cdef bint       owned
-    cdef _training* tinf
 
     def __dealloc__(self):
         if self.owned:
             PyMem_Free(self.tinf)
 
+    @property
+    def gc(self):
+        assert self.tinf != NULL
+        return self.tinf.gc
+
+    @property
+    def translation_table(self):
+        assert self.tinf != NULL
+        return self.tinf.trans_table
+
 cdef class MetagenomicBin:
-    cdef          _metagenomic_bin* bin
-    cdef readonly TrainingInfo      training_info
 
     @property
     def index(self):
@@ -330,11 +342,157 @@ cdef class MetagenomicBin:
 cdef class Prediction:
     """A single predicted gene found by Prodigal.
     """
-    cdef readonly Predictions owner
-    cdef readonly Gene        gene
-    # cdef readonly Nodes       nodes
-    # cdef readonly Sequence     sequence
-    # cdef readonly TrainingInfo training_info
+
+    @property
+    def _gene_data(self):
+        return self.gene.gene.gene_data.decode('ascii')
+
+    @property
+    def _score_data(self):
+        return self.gene.gene.score_data.decode('ascii')
+
+    @property
+    def begin(self):
+        """`int`: The coordinate at which the gene begins.
+        """
+        return self.gene.begin
+
+    @property
+    def end(self):
+        """`int`: The coordinate at which the gene ends.
+        """
+        return self.gene.end
+
+    @property
+    def strand(self):
+        """`int`: *-1* if the gene is on the reverse strand, *+1* otherwise.
+        """
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].strand
+
+    @property
+    def partial_begin(self):
+        """`bool`: whether the gene overlaps with the start of the sequence.
+        """
+        if self.strand == 1:
+            return self.owner.nodes.nodes[self.gene.gene.start_ndx].edge == 1
+        else:
+            return self.owner.nodes.nodes[self.gene.gene.stop_ndx].edge == 1
+
+    @property
+    def partial_end(self):
+        """`bool`: whether the gene overlaps with the end of the sequence.
+        """
+        if self.strand == 1:
+            return self.owner.nodes.nodes[self.gene.gene.stop_ndx].edge == 1
+        else:
+            return self.owner.nodes.nodes[self.gene.gene.start_ndx].edge == 1
+
+    @property
+    def start_type(self):
+        """`str`: The start codon of this gene.
+
+        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if `Pyrodigal`
+        has been initialized in open ends mode and the gene starts right at the
+        beginning of the input sequence.
+        """
+        node = self.owner.nodes.nodes[self.gene.gene.start_ndx]
+        start_type = 3 if node.edge else node.type
+        return ["ATG", "GTG", "TTG" , "Edge"][start_type]
+
+    @property
+    def rbs_motif(self):
+        """``str``, optional: The motif of the Ribosome Binding Site.
+
+        Possible non-`None` values are ``GGA/GAG/AGG``, ``3Base/5BMM``,
+        ``4Base/6BMM``, ``AGxAG``, ``GGxGG``, ``AGGAG(G)/GGAGG``, ``AGGA``,
+        ``AGGA/GGAG/GAGG``, ``GGAG/GAGG``, ``AGGAG/GGAGG``, ``AGGAG``
+        ``GGAGG`` or ``AGGAGG``.
+
+        """
+        cdef char* data = self.gene.gene.gene_data
+        cdef char* i = strstr(data, "rbs_motif")
+        cdef char* j = <char*> memchr(i, b';', 30)
+        cdef size_t length = j - i
+        if i[10:length] == b"None":
+            return None
+        return i[10:length].decode("ascii")
+
+    @property
+    def rbs_spacer(self):
+        """`str`, optional: The number of base pair between the RBS and the CDS.
+
+        Possible non-`None` values are ``3-4bp``, ``5-10bp``, ``11-12bp`` or
+        ``13-15bp``.
+
+        """
+        cdef char* data = self.gene.gene.gene_data
+        cdef char* i = strstr(data, "rbs_spacer")
+        cdef char* j = <char*> memchr(i, b';', 30)
+        cdef size_t length = j - i
+        if i[11:length] == b"None":
+            return None
+        return i[11:length].decode("ascii")
+
+    @property
+    def gc_cont(self):
+        """`float`: The GC content of the gene (between *0* and *1*).
+        """
+        cdef char* data = self.gene.gene.gene_data
+        cdef char* i = strstr(data, "gc_cont")
+        cdef char* j = <char*> memchr(i, b'\0', 30)
+        cdef size_t length = j - i
+        return float(i[8:length])
+
+    @property
+    def translation_table(self):
+        """`int`: The translation table used to find the gene.
+        """
+        return self.owner.training_info.translation_table
+
+    @property
+    def cscore(self):
+        """`float`: The coding score for the start node, based on 6-mer usage.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].cscore
+
+    @property
+    def rscore(self):
+        """`float`: The score for the RBS motif.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].rscore
+
+    @property
+    def sscore(self):
+        """`float`: The score for the strength of the start codon.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].sscore
+
+    @property
+    def tscore(self):
+        """`float`: The score for the codon kind (ATG/GTG/TTG).
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].tscore
+
+    @property
+    def uscore(self):
+        """`float`: The score for the upstream regions.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].uscore
 
     cpdef unicode translate(
         self,
@@ -420,7 +578,7 @@ cdef class Prediction:
         with nogil:
             for i, j in enumerate(range(begin, end, 3)):
                 if bitmap.test(useq, unk-1) or bitmap.test(useq, unk) or bitmap.test(useq, unk+1):
-                    aa = "X"
+                    aa = unknown_residue
                 else:
                     aa = sequence.amino(seq, j-1, tinf, i==0 and edge==0)
                 PyUnicode_WRITE(kind, data, i, aa)
@@ -429,15 +587,9 @@ cdef class Prediction:
         # return the string containing the protein sequence
         return protein
 
-
-
 cdef class Predictions:
     """A sequence of predictions found by Prodigal in a single sequence.
     """
-    cdef readonly Genes        genes
-    cdef readonly Nodes        nodes
-    cdef readonly Sequence     sequence
-    cdef readonly TrainingInfo training_info
 
     def __init__(self, Genes genes, Nodes nodes, Sequence sequence, TrainingInfo training_info):
         self.genes = genes
@@ -463,26 +615,25 @@ cdef class Predictions:
         return pred
 
 
-cdef _metagenomic_bin _META_BINS[NUM_META]
+cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 cdef ssize_t _i
 for _i in range(NUM_META):
-    memset(&_META_BINS[_i], 0, sizeof(_metagenomic_bin))
-    _META_BINS[_i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
-    if not _META_BINS[_i].tinf:
+    memset(&_METAGENOMIC_BINS[_i], 0, sizeof(_metagenomic_bin))
+    _METAGENOMIC_BINS[_i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
+    if not _METAGENOMIC_BINS[_i].tinf:
         raise MemoryError()
-    memset(_META_BINS[_i].tinf, 0, sizeof(_training))
-initialize_metagenomic_bins(_META_BINS)
+    memset(_METAGENOMIC_BINS[_i].tinf, 0, sizeof(_training))
+initialize_metagenomic_bins(_METAGENOMIC_BINS)
 
-cdef MetagenomicBin bin
+cdef MetagenomicBin _bin
 METAGENOMIC_BINS = []
 for _i in range(NUM_META):
-    bin = MetagenomicBin.__new__(MetagenomicBin, )
-    bin.bin = &_META_BINS[_i]
-    bin.training_info = TrainingInfo.__new__(TrainingInfo)
-    bin.training_info.owned = False
-    bin.training_info.tinf = bin.bin.tinf
-    METAGENOMIC_BINS.append(bin)
-METAGENOMIC_BINS = tuple(METAGENOMIC_BINS)
+    _bin = MetagenomicBin.__new__(MetagenomicBin, )
+    _bin.bin = &_METAGENOMIC_BINS[_i]
+    _bin.training_info = TrainingInfo.__new__(TrainingInfo)
+    _bin.training_info.owned = False
+    _bin.training_info.tinf = _bin.bin.tinf
+    METAGENOMIC_BINS.append(_bin)
 
 # ---
 
@@ -507,161 +658,160 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
     if seq.slen < 3:
         return nn
 
-    with nogil:
-        # Forward strand nodes
-        for i in range(3):
-            last[(i+slmod)%3] = seq.slen + i
+    # Forward strand nodes
+    for i in range(3):
+        last[(i+slmod)%3] = seq.slen + i
+        saw_start[i%3] = False
+        min_dist[i%3] = MIN_EDGE_GENE
+        if not closed:
+            while last[(i+slmod)%3] + 3 > seq.slen:
+                last[(i+slmod)%3] -= 3
+    for i in range(seq.slen-3, -1, -1):
+        if sequence.is_stop(seq.seq, i, tinf.tinf):
+            if saw_start[i%3]:
+                nodes._add_node(
+                    ndx = last[i%3],
+                    type = node_type.STOP,
+                    strand = 1,
+                    stop_val = i,
+                    edge = not sequence.is_stop(seq.seq, last[i%3], tinf.tinf),
+                )
+                nn += 1
+            min_dist[i%3] = MIN_GENE
+            last[i%3] = i
             saw_start[i%3] = False
-            min_dist[i%3] = MIN_EDGE_GENE
-            if not closed:
-                while last[(i+slmod)%3] + 3 > seq.slen:
-                    last[(i+slmod)%3] -= 3
-        for i in range(seq.slen-3, -1, -1):
-            if sequence.is_stop(seq.seq, i, tinf.tinf):
-                if saw_start[i%3]:
-                    nodes._add_node(
-                        ndx = last[i%3],
-                        type = node_type.STOP,
-                        strand = 1,
-                        stop_val = i,
-                        edge = not sequence.is_stop(seq.seq, last[i%3], tinf.tinf),
-                    )
-                    nn += 1
-                min_dist[i%3] = MIN_GENE
-                last[i%3] = i
-                saw_start[i%3] = False
-                continue
-            if last[i%3] >= seq.slen:
-                continue
-            if not cross_mask(i, last[i%3], mlist, nm):
-                if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.seq, i, tinf.tinf):
-                    if sequence.is_atg(seq.seq, i):
-                        saw_start[i%3] = True
-                        nodes._add_node(
-                            ndx = i,
-                            type = node_type.ATG,
-                            stop_val = last[i%3],
-                            strand = 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif sequence.is_ttg(seq.seq, i):
-                        saw_start[i%3] = True
-                        nodes._add_node(
-                            ndx = i,
-                            type = node_type.TTG,
-                            stop_val = last[i%3],
-                            strand = 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif sequence.is_gtg(seq.seq, i):
-                        saw_start[i%3] = True
-                        nodes._add_node(
-                            ndx = i,
-                            type = node_type.GTG,
-                            stop_val = last[i%3],
-                            strand = 1,
-                            edge = False
-                        )
-                        nn += 1
-                if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
+            continue
+        if last[i%3] >= seq.slen:
+            continue
+        if not cross_mask(i, last[i%3], mlist, nm):
+            if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.seq, i, tinf.tinf):
+                if sequence.is_atg(seq.seq, i):
                     saw_start[i%3] = True
                     nodes._add_node(
                         ndx = i,
                         type = node_type.ATG,
                         stop_val = last[i%3],
                         strand = 1,
-                        edge = True,
+                        edge = False
                     )
                     nn += 1
-        for i in range(3):
-            if saw_start[i%3]:
-                nodes._add_node(
-                    ndx = last[i%3],
-                    type = node_type.STOP,
-                    strand = 1,
-                    stop_val = i - 6,
-                    edge = not sequence.is_stop(seq.seq, last[i%3], tinf.tinf)
-                )
-                nn += 1
-        # Reverse strand nodes
-        for i in range(3):
-            last[(i + slmod) % 3] = seq.slen + i
-            saw_start[i%3] = False
-            min_dist[i%3] = MIN_EDGE_GENE
-            if not closed:
-                while last[(i+slmod) % 3] + 3 > seq.slen:
-                    last[(i+slmod)%3] -= 3
-        for i in range(seq.slen-3, -1, -1):
-            if sequence.is_stop(seq.rseq, i, tinf.tinf):
-                if saw_start[i%3]:
+                elif sequence.is_ttg(seq.seq, i):
+                    saw_start[i%3] = True
                     nodes._add_node(
-                        ndx = seq.slen - last[i%3] - 1,
-                        type = node_type.STOP,
-                        strand = -1,
-                        stop_val = seq.slen - i - 1,
-                        edge = not sequence.is_stop(seq.rseq, last[i%3], tinf.tinf)
+                        ndx = i,
+                        type = node_type.TTG,
+                        stop_val = last[i%3],
+                        strand = 1,
+                        edge = False
                     )
                     nn += 1
-                min_dist[i%3] = MIN_GENE
-                last[i%3] = i
-                saw_start[i%3] = False
-                continue
-            if last[i%3] >= seq.slen:
-                continue
-            if not cross_mask(i, last[i%3], mlist, nm):
-                if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.rseq, i, tinf.tinf):
-                    if sequence.is_atg(seq.rseq, i):
-                        saw_start[i%3] = True
-                        nodes._add_node(
-                            ndx = seq.slen - i - 1,
-                            type = node_type.ATG,
-                            strand = -1,
-                            stop_val = seq.slen - last[i%3] - 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif sequence.is_gtg(seq.rseq, i):
-                        saw_start[i%3] = True
-                        nodes._add_node(
-                            ndx = seq.slen - i - 1,
-                            type = node_type.GTG,
-                            strand = -1,
-                            stop_val = seq.slen - last[i%3] - 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif sequence.is_ttg(seq.rseq, i):
-                        saw_start[i%3] = 1
-                        nodes._add_node(
-                            ndx = seq.slen - i - 1,
-                            type = node_type.TTG,
-                            strand = -1,
-                            stop_val = seq.slen - last[i%3] - 1,
-                            edge = False,
-                        )
-                        nn += 1
+                elif sequence.is_gtg(seq.seq, i):
+                    saw_start[i%3] = True
+                    nodes._add_node(
+                        ndx = i,
+                        type = node_type.GTG,
+                        stop_val = last[i%3],
+                        strand = 1,
+                        edge = False
+                    )
+                    nn += 1
             if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
-                saw_start[i%3] = 1
-                node = nodes._add_node(
-                    ndx = seq.slen - i - 1,
+                saw_start[i%3] = True
+                nodes._add_node(
+                    ndx = i,
                     type = node_type.ATG,
-                    strand = -1,
-                    stop_val = seq.slen - last[i%3] - 1,
+                    stop_val = last[i%3],
+                    strand = 1,
                     edge = True,
                 )
                 nn += 1
-        for i in range(3):
+    for i in range(3):
+        if saw_start[i%3]:
+            nodes._add_node(
+                ndx = last[i%3],
+                type = node_type.STOP,
+                strand = 1,
+                stop_val = i - 6,
+                edge = not sequence.is_stop(seq.seq, last[i%3], tinf.tinf)
+            )
+            nn += 1
+    # Reverse strand nodes
+    for i in range(3):
+        last[(i + slmod) % 3] = seq.slen + i
+        saw_start[i%3] = False
+        min_dist[i%3] = MIN_EDGE_GENE
+        if not closed:
+            while last[(i+slmod) % 3] + 3 > seq.slen:
+                last[(i+slmod)%3] -= 3
+    for i in range(seq.slen-3, -1, -1):
+        if sequence.is_stop(seq.rseq, i, tinf.tinf):
             if saw_start[i%3]:
-                node = nodes._add_node(
+                nodes._add_node(
                     ndx = seq.slen - last[i%3] - 1,
                     type = node_type.STOP,
                     strand = -1,
-                    stop_val = seq.slen - i + 5,
-                    edge = not sequence.is_stop(seq.rseq, last[i%3], tinf.tinf),
+                    stop_val = seq.slen - i - 1,
+                    edge = not sequence.is_stop(seq.rseq, last[i%3], tinf.tinf)
                 )
                 nn += 1
+            min_dist[i%3] = MIN_GENE
+            last[i%3] = i
+            saw_start[i%3] = False
+            continue
+        if last[i%3] >= seq.slen:
+            continue
+        if not cross_mask(i, last[i%3], mlist, nm):
+            if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.rseq, i, tinf.tinf):
+                if sequence.is_atg(seq.rseq, i):
+                    saw_start[i%3] = True
+                    nodes._add_node(
+                        ndx = seq.slen - i - 1,
+                        type = node_type.ATG,
+                        strand = -1,
+                        stop_val = seq.slen - last[i%3] - 1,
+                        edge = False
+                    )
+                    nn += 1
+                elif sequence.is_gtg(seq.rseq, i):
+                    saw_start[i%3] = True
+                    nodes._add_node(
+                        ndx = seq.slen - i - 1,
+                        type = node_type.GTG,
+                        strand = -1,
+                        stop_val = seq.slen - last[i%3] - 1,
+                        edge = False
+                    )
+                    nn += 1
+                elif sequence.is_ttg(seq.rseq, i):
+                    saw_start[i%3] = 1
+                    nodes._add_node(
+                        ndx = seq.slen - i - 1,
+                        type = node_type.TTG,
+                        strand = -1,
+                        stop_val = seq.slen - last[i%3] - 1,
+                        edge = False,
+                    )
+                    nn += 1
+        if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
+            saw_start[i%3] = 1
+            node = nodes._add_node(
+                ndx = seq.slen - i - 1,
+                type = node_type.ATG,
+                strand = -1,
+                stop_val = seq.slen - last[i%3] - 1,
+                edge = True,
+            )
+            nn += 1
+    for i in range(3):
+        if saw_start[i%3]:
+            node = nodes._add_node(
+                ndx = seq.slen - last[i%3] - 1,
+                type = node_type.STOP,
+                strand = -1,
+                stop_val = seq.slen - i + 5,
+                edge = not sequence.is_stop(seq.rseq, last[i%3], tinf.tinf),
+            )
+            nn += 1
 
     return nn
 
@@ -675,132 +825,128 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
     cdef int  start_ndx = 0
     cdef int  stop_ndx  = 0
 
-    with nogil:
-        if path == -1:
-            return 0
-        while nodes.nodes[path].traceb != -1:
-            path = nodes.nodes[path].traceb
-        while path != -1:
-            if nodes.nodes[path].elim == 1:
-                pass
-            elif nodes.nodes[path].strand == 1:
-                if nodes.nodes[path].type != node_type.STOP:
-                    begin = nodes.nodes[path].ndx + 1
-                    start_ndx = path
-                else:
-                    end = nodes.nodes[path].ndx + 3
-                    stop_ndx = path
-                    genes._add_gene(begin, end, start_ndx, stop_ndx)
-                    ng += 1
+    if path == -1:
+        return 0
+    while nodes.nodes[path].traceb != -1:
+        path = nodes.nodes[path].traceb
+    while path != -1:
+        if nodes.nodes[path].elim == 1:
+            pass
+        elif nodes.nodes[path].strand == 1:
+            if nodes.nodes[path].type != node_type.STOP:
+                begin = nodes.nodes[path].ndx + 1
+                start_ndx = path
             else:
-                if nodes.nodes[path].type != node_type.STOP:
-                    end = nodes.nodes[path].ndx + 1
-                    start_ndx = path
-                    genes._add_gene(begin, end, start_ndx, stop_ndx)
-                    ng += 1
-                else:
-                    begin = nodes.nodes[path].ndx - 1
-                    stop_ndx = path
-            path = nodes.nodes[path].tracef
+                end = nodes.nodes[path].ndx + 3
+                stop_ndx = path
+                genes._add_gene(begin, end, start_ndx, stop_ndx)
+                ng += 1
+        else:
+            if nodes.nodes[path].type != node_type.STOP:
+                end = nodes.nodes[path].ndx + 1
+                start_ndx = path
+                genes._add_gene(begin, end, start_ndx, stop_ndx)
+                ng += 1
+            else:
+                begin = nodes.nodes[path].ndx - 1
+                stop_ndx = path
+        path = nodes.nodes[path].tracef
 
     return ng
 
 cpdef void reset_node_scores(Nodes nodes) nogil:
-    with nogil:
-        node.reset_node_scores(nodes.nodes, nodes.length)
+    node.reset_node_scores(nodes.nodes, nodes.length)
 
 cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
-    with nogil:
-        node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
+    node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
 
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
-    with nogil:
-        node.score_nodes(
-            seq.seq,
-            seq.rseq,
-            seq.slen,
-            nodes.nodes,
-            nodes.length,
-            tinf.tinf,
-            closed,
-            is_meta
-        )
+    node.score_nodes(
+        seq.seq,
+        seq.rseq,
+        seq.slen,
+        nodes.nodes,
+        nodes.length,
+        tinf.tinf,
+        closed,
+        is_meta
+    )
 
 cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
-    with nogil:
-        return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, is_meta)
+    return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, is_meta)
 
 cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil:
-    with nogil:
-        dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
+    dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
 
 cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil:
-    with nogil:
-        gene.tweak_final_starts(genes.genes, genes.length, nodes.nodes, nodes.length, tinf.tinf)
+    gene.tweak_final_starts(genes.genes, genes.length, nodes.nodes, nodes.length, tinf.tinf)
 
 cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil:
+    gene.record_gene_data(genes.genes, genes.length, nodes.nodes, tinf.tinf, sequence_index)
+
+cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int sequence_index = 1):
+
+    cdef int          i
+    cdef double       low
+    cdef double       high
+    cdef int          tt        = -1
+    cdef Genes        genes     = Genes()
+    cdef Nodes        nodes     = Nodes()
+    cdef TrainingInfo tinf      = TrainingInfo.__new__(TrainingInfo)
+    cdef int          max_phase = 0
+    cdef double       max_score = -100.0
+
     with nogil:
-        gene.record_gene_data(genes.genes, genes.length, nodes.nodes, tinf.tinf, sequence_index)
+        # make sure tinf does not deallocate by mistake
+        tinf.owned = False
 
-cpdef Predictions find_genes_meta(object sequence, bint closed = False):
+        # compute the min/max acceptable gc for the sequence to only
+        # use appropriate metagenomic bins
+        low = 0.88495*sequence.gc - 0.0102337
+        high = 0.86596*sequence.gc + 0.1131991
+        if low > 0.65:
+            low = 0.65
+        if high < 0.35:
+            high = 0.35
 
-    cdef Sequence seq
-    cdef double   low
-    cdef double   high
-    cdef int      i
-    cdef Genes    genes     = Genes()
-    cdef Nodes    nodes     = Nodes()
-    cdef int      max_phase = 0
-    cdef double   max_score = -100.0
+        # check which of the metagenomeic bins gets the best results
+        for i in range(NUM_META):
+            # check which of the metagenomic bins gets the best results
+            if _METAGENOMIC_BINS[i].tinf.gc < low or _METAGENOMIC_BINS[i].tinf.gc > high:
+                continue
+            # record the training information for the current bin
+            tinf.tinf = _METAGENOMIC_BINS[i].tinf
+            # recreate the node list if the translation table changed
+            if tinf.tinf.trans_table != tt:
+                tt = tinf.tinf.trans_table
+                nodes._clear()
+                n = add_nodes(nodes, sequence, tinf, closed=closed)
+                nodes._sort()
+            # compute the score for the current bin
+            reset_node_scores(nodes)
+            score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
+            record_overlapping_starts(nodes, tinf, is_meta=True)
+            ipath = dynamic_programming(nodes, tinf, is_meta=True)
+            # update genes if the current bin had a better score
+            if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
+                # record best phase and score
+                max_phase = i
+                max_score = nodes.nodes[ipath].score
+                # eliminate eventual bad genes in the nodes
+                eliminate_bad_genes(nodes, ipath, tinf)
+                # clear the gene array
+                genes._clear()
+                # extract the genes from the dynamic programming array
+                add_genes(genes, nodes, ipath)
+                tweak_final_starts(genes, nodes, tinf)
+                record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
 
-    if isinstance(sequence, str):
-        seq = Sequence.from_string(sequence)
-    else:
-        seq = Sequence.from_bytes(sequence)
-
-    # compute the min/max acceptable gc for the sequence to only
-    # use appropriate metagenomic bins
-    low = 0.88495*seq.gc - 0.0102337
-    high = 0.86596*seq.gc + 0.1131991
-    if low > 0.65:
-        low = 0.65
-    if high < 0.35:
-        high = 0.35
-
-    # check which of the metagenomeic bins gets the best results
-    for i in range(NUM_META):
-        # check which of the metagenomic bins gets the best results
-        if _META_BINS[i].tinf.gc < low or _META_BINS[i].tinf.gc > high:
-            continue
-        # recreate the node list if the translation table changed
-        if i == 0 or _META_BINS[i].tinf.trans_table != _META_BINS[i-1].tinf.trans_table:
-            nodes.clear()
-            add_nodes(nodes, seq, METAGENOMIC_BINS[i].training_info, closed)
-            nodes.sort()
-        # compute the score for the current bin
-        reset_node_scores(nodes)
-        score_nodes(nodes, seq, METAGENOMIC_BINS[i].training_info, closed, is_meta=True)
-        record_overlapping_starts(nodes, METAGENOMIC_BINS[i].training_info, is_meta=True)
-        ipath = dynamic_programming(nodes, METAGENOMIC_BINS[i].training_info, is_meta=True)
-        # update genes if the current bin had a better score
-        if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
-            # record best phase and score
-            max_phase = i
-            max_score = nodes.nodes[ipath].score
-            # eliminate eventual bad genes in the nodes
-            eliminate_bad_genes(nodes, ipath, METAGENOMIC_BINS[i].training_info)
-            # clear the gene array
-            genes.clear()
-            # extract the genes from the dynamic programming array
-            add_genes(genes, nodes, ipath)
-            tweak_final_starts(genes, nodes, METAGENOMIC_BINS[i].training_info)
-            record_gene_data(genes, nodes, METAGENOMIC_BINS[i].training_info, sequence_index=0)
-
-    # recover the nodes corresponding to the best run
-    nodes.clear()
-    add_nodes(nodes, seq, METAGENOMIC_BINS[max_phase].training_info, closed=closed)
-    nodes.sort()
-    score_nodes(nodes, seq, METAGENOMIC_BINS[max_phase].training_info, closed=closed, is_meta=True)
+        # recover the nodes corresponding to the best run
+        tinf.tinf = _METAGENOMIC_BINS[max_phase].tinf
+        nodes._clear()
+        add_nodes(nodes, sequence, tinf, closed=closed)
+        nodes._sort()
+        score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
 
     #
-    return Predictions(genes, nodes, seq, METAGENOMIC_BINS[max_phase].training_info)
+    return Predictions(genes, nodes, sequence, tinf)
