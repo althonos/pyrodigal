@@ -215,10 +215,18 @@ cdef class Nodes:
         old_length, self.length = self.length, 0
         memset(self.nodes, 0, old_length * sizeof(_node))
 
+    def clear(self):
+        with nogil:
+            self._clear()
+
     cdef int _sort(self) nogil except 1:
         """Sort all nodes in the vector by their index and strand.
         """
         qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
+
+    def sort(self):
+        with nogil:
+            self._sort()
 
 # ---
 
@@ -306,6 +314,10 @@ cdef class Genes:
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.genes, 0, old_length * sizeof(_gene))
+
+    def clear(self):
+        with nogil:
+            self._clear()
 
 # ---
 

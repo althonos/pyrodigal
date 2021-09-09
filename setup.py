@@ -280,18 +280,18 @@ setuptools.setup(
         )
     ],
     ext_modules=[
-        # Extension(
-        #     "pyrodigal._pyrodigal",
-        #     sources=["pyrodigal/__init__.pyx"],
-        #     include_dirs=["Prodigal"],
-        #     libraries=["prodigal"],
-        # ),
         Extension(
             "pyrodigal._api",
             sources=["pyrodigal/_api.pyx"],
             include_dirs=["Prodigal"],
             libraries=["prodigal"],
-        )
+        ),
+        Extension(
+            "pyrodigal._pyrodigal",
+            sources=["pyrodigal/_pyrodigal.pyx"],
+            include_dirs=["Prodigal"],
+            libraries=["prodigal"],
+        ),
     ],
     cmdclass={
         "sdist": sdist,
