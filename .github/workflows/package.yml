@@ -2,10 +2,8 @@ name: Package
 
 on:
   push:
-    branch:
-      - parallel
-    # tags:
-    #   - v*.*.*
+    tags:
+       - v*.*.*
 
 jobs:
 
@@ -105,8 +103,6 @@ jobs:
       uses: actions/checkout@v2
       with:
         submodules: true
-    - name: Install OpenMP library
-      run: brew install libomp llvm
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -115,9 +111,6 @@ jobs:
       run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build wheel distribution
       run: python setup.py bdist_wheel
-      env:
-        CC: "/usr/local/opt/llvm/bin/clang"
-        LDFLAGS: "-L/usr/local/opt/llvm/lib -L/usr/local/lib"
     - name: Store built wheels
       uses: actions/upload-artifact@v2
       with:

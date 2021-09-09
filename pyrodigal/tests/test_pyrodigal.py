@@ -4,7 +4,6 @@ import os
 import textwrap
 import unittest
 import warnings
-from importlib.resources import open_binary
 
 from .. import Pyrodigal
 from .fasta import parse

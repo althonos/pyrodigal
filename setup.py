@@ -60,14 +60,6 @@ class build_ext(_build_ext):
         else:
             ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
 
-        # add OpenMP flags
-        if self.compiler.compiler_type == "msvc":
-            ext.extra_compile_args.append("/openmp")
-            ext.extra_link_args.append("/openmp")
-        else:
-            ext.extra_compile_args.append("-fopenmp")
-            ext.extra_link_args.append("-fopenmp")
-
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
