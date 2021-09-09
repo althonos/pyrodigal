@@ -1,10 +1,32 @@
 from collections.abc import Sequence as _Sequence
 
 from . import _pyrodigal
-from ._pyrodigal import Gene, Genes, Node, Nodes, Prediction, Predictions, Pyrodigal, TrainingInfo
+from ._pyrodigal import (
+    Gene,
+    Genes,
+    Node,
+    Nodes,
+    Prediction,
+    Predictions,
+    Pyrodigal,
+    Sequence,
+    TrainingInfo,
+    MetagenomicBin,
+)
 
-__all__ = ["Gene", "Genes", "Pyrodigal", "TrainingInfo"]
 __doc__ = _pyrodigal.__doc__
+__all__ = [
+    "Gene",
+    "Genes",
+    "Node",
+    "Nodes",
+    "Prediction",
+    "Predictions",
+    "Pyrodigal",
+    "Sequence",
+    "TrainingInfo",
+    "MetagenomicBin"
+]
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
 __license__ = "GPLv3"

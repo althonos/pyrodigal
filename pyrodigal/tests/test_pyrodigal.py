@@ -6,8 +6,7 @@ import unittest
 import warnings
 from importlib.resources import open_binary
 
-from pyrodigal import Pyrodigal, _api
-
+from .. import Pyrodigal
 from .fasta import parse
 
 

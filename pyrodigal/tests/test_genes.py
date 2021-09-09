@@ -4,8 +4,7 @@ import os
 import sys
 import unittest
 
-from pyrodigal import Pyrodigal
-
+from .. import Pyrodigal
 from .fasta import parse
 
 
