@@ -281,12 +281,6 @@ setuptools.setup(
     ],
     ext_modules=[
         Extension(
-            "pyrodigal._api",
-            sources=["pyrodigal/_api.pyx"],
-            include_dirs=["Prodigal"],
-            libraries=["prodigal"],
-        ),
-        Extension(
             "pyrodigal._pyrodigal",
             sources=["pyrodigal/_pyrodigal.pyx"],
             include_dirs=["Prodigal"],
