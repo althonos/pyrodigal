@@ -28,8 +28,8 @@ import threading
 
 # --- Module-level constants -------------------------------------------------
 
-cdef size_t IDEAL_SINGLE_GENOME = 100000
-cdef size_t MIN_SINGLE_GENOME   = 20000
+cdef int    IDEAL_SINGLE_GENOME = 100000
+cdef int    MIN_SINGLE_GENOME   = 20000
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
 cdef set   TRANSLATION_TABLES   = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
@@ -673,7 +673,7 @@ cdef class Prediction:
         cdef void*          data
         cdef Py_UCS4        aa
         cdef _gene*         gene        = self.gene.gene
-        cdef size_t         slen        = self.owner.sequence.slen
+        cdef int            slen        = self.owner.sequence.slen
         cdef bitmap_t       useq        = self.owner.sequence.useq
         cdef int            edge        = self.owner.nodes.nodes[gene.start_ndx].edge
         cdef int            strand      = self.owner.nodes.nodes[gene.start_ndx].strand

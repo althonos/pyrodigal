@@ -12,11 +12,11 @@ from pyrodigal.prodigal.training cimport _training
 
 # --- Module-level constants -------------------------------------------------
 
-cdef size_t MIN_SINGLE_GENOME
-cdef size_t IDEAL_SINGLE_GENOME
-cdef size_t MIN_GENES_ALLOC
-cdef size_t MIN_NODES_ALLOC
-cdef set    TRANSLATION_TABLES
+cdef        int    MIN_SINGLE_GENOME
+cdef        int    IDEAL_SINGLE_GENOME
+cdef        size_t MIN_GENES_ALLOC
+cdef        size_t MIN_NODES_ALLOC
+cdef public set    TRANSLATION_TABLES
 
 # --- Input sequence ---------------------------------------------------------
 
