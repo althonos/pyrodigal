@@ -40,7 +40,9 @@ class _TestPyrodigalMode(object):
     def assertTranslationsEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
         for pred, protein in zip(predictions, proteins):
-            self.assertEqual(pred.translate(), str(protein.seq))
+            t = pred.translate()
+            self.assertEqual(len(t), len(protein.seq))
+            self.assertSequenceEqual(t, str(protein.seq))
 
     def assertCoordinatesEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
@@ -100,8 +102,8 @@ class _TestPyrodigalMode(object):
         proteins = _load_proteins("SRR492066", self.mode)
 
         preds = self.find_genes(record.seq)
-        self.assertTranslationsEqual(preds, proteins)
         self.assertCoordinatesEqual(preds, proteins)
+        self.assertTranslationsEqual(preds, proteins)
         self.assertRbsMotifsEqual(preds, proteins)
         self.assertStartTypesEqual(preds, proteins)
         self.assertRbsSpacersEqual(preds, proteins)
@@ -112,6 +114,24 @@ class _TestPyrodigalMode(object):
         self.assertRbsMotifsEqual(preds_bin, proteins)
         self.assertStartTypesEqual(preds_bin, proteins)
         self.assertRbsSpacersEqual(preds_bin, proteins)
+
+    def test_find_genes_MIIJ01000039(self):
+        record = _load_record("MIIJ01000039")
+        proteins = _load_proteins("MIIJ01000039", self.mode)
+
+        preds = self.find_genes(record.seq)
+        self.assertCoordinatesEqual(preds, proteins)
+        self.assertRbsMotifsEqual(preds, proteins)
+        self.assertStartTypesEqual(preds, proteins)
+        self.assertRbsSpacersEqual(preds, proteins)
+        self.assertTranslationsEqual(preds, proteins)
+
+        preds_bin = self.find_genes(record.seq.encode("ascii"))
+        self.assertCoordinatesEqual(preds_bin, proteins)
+        self.assertRbsMotifsEqual(preds_bin, proteins)
+        self.assertStartTypesEqual(preds_bin, proteins)
+        self.assertRbsSpacersEqual(preds_bin, proteins)
+        self.assertTranslationsEqual(preds_bin, proteins)
 
 
 class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
