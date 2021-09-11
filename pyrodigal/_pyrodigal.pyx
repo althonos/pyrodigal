@@ -708,24 +708,22 @@ cdef class Prediction:
         # - begin is the coordinates of the first nucleotide in the gene
         # - unk is the coordinate of the first nucleotide in the useq bitmap
         if strand == 1:
-            begin = gene.begin
-            end = gene.end
+            begin = gene.begin - 1
+            end = gene.end - 1
             seq = self.owner.sequence.seq
-            unk = begin
+            unk = gene.begin - 1
         else:
-            begin = slen + 1 - gene.end
-            end = slen + 1 - gene.begin
+            begin = slen - gene.end
+            end = slen - gene.begin
             seq = self.owner.sequence.rseq
-            unk = slen + 1 - begin
+            unk = gene.end - 3
 
-        # fill the sequence string, replacing residues with any unknown
-        # nucleotide in the codon with an "X".
         with nogil:
             for i, j in enumerate(range(begin, end, 3)):
-                if bitmap.test(useq, unk-1) or bitmap.test(useq, unk) or bitmap.test(useq, unk+1):
+                if bitmap.test(useq, unk) or bitmap.test(useq, unk+1) or bitmap.test(useq, unk+2):
                     aa = unknown_residue
                 else:
-                    aa = sequence.amino(seq, j-1, tinf, i==0 and edge==0)
+                    aa = sequence.amino(seq, j, tinf, i==0 and edge==0)
                 PyUnicode_WRITE(kind, data, i, aa)
                 unk += 3 * strand
 
