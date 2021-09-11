@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.2...HEAD
+
+
+## [v0.5.2] - 2021-09-11
+[v0.5.2]: https://github.com/althonos/pyrodigal/compare/v0.5.1...v0.5.2
+
+### Changed
+- Make `Pyrodigal.train` return a reference to the newly created `TrainingInfo` for inspection if needed.
+- Reimplement `add_nodes` and `add_genes` to use a growable array instead of counting and pre-allocating the C arrays.
+
+### Fixed
+- Inconsistent handling of unknown nucleotides in input sequences and gene translations.
 
 
 ## [v0.5.1] - 2021-09-04

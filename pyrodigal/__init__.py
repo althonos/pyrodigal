@@ -30,7 +30,7 @@ __all__ = [
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
 __license__ = "GPLv3"
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 _Sequence.register(Genes)
 _Sequence.register(Nodes)
