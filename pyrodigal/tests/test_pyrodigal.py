@@ -89,11 +89,11 @@ class _TestPyrodigalMode(object):
         self.assertRbsSpacersEqual(preds, proteins)
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
-        self.assertTranslationsEqual(preds, proteins)
-        self.assertCoordinatesEqual(preds, proteins)
-        self.assertRbsMotifsEqual(preds, proteins)
-        self.assertStartTypesEqual(preds, proteins)
-        self.assertRbsSpacersEqual(preds, proteins)
+        self.assertTranslationsEqual(preds_bin, proteins)
+        self.assertCoordinatesEqual(preds_bin, proteins)
+        self.assertRbsMotifsEqual(preds_bin, proteins)
+        self.assertStartTypesEqual(preds_bin, proteins)
+        self.assertRbsSpacersEqual(preds_bin, proteins)
 
     def test_find_genes_SRR492066(self):
         record = _load_record("SRR492066")
@@ -107,11 +107,11 @@ class _TestPyrodigalMode(object):
         self.assertRbsSpacersEqual(preds, proteins)
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
-        self.assertTranslationsEqual(preds, proteins)
-        self.assertCoordinatesEqual(preds, proteins)
-        self.assertRbsMotifsEqual(preds, proteins)
-        self.assertStartTypesEqual(preds, proteins)
-        self.assertRbsSpacersEqual(preds, proteins)
+        self.assertTranslationsEqual(preds_bin, proteins)
+        self.assertCoordinatesEqual(preds_bin, proteins)
+        self.assertRbsMotifsEqual(preds_bin, proteins)
+        self.assertStartTypesEqual(preds_bin, proteins)
+        self.assertRbsSpacersEqual(preds_bin, proteins)
 
 
 class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
