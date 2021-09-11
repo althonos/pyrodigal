@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.3...HEAD
+
+
+## [v0.5.3] - 2021-09-12
+[v0.5.3]: https://github.com/althonos/pyrodigal/compare/v0.5.2...v0.5.3
+
+### Fixed
+- `Prediction.translate` not translating the last unknown codon properly for genes on the direct strand.
 
 
 ## [v0.5.2] - 2021-09-11
