@@ -5,8 +5,7 @@ import textwrap
 import unittest
 import warnings
 
-from pyrodigal import Pyrodigal
-
+from .. import Pyrodigal
 from .fasta import parse
 
 

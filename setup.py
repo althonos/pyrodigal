@@ -63,7 +63,6 @@ class build_ext(_build_ext):
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
-            # ext.include_dirs.extend(lib.include_dirs)
             ext.extra_objects.append(self.compiler.library_filename(
                 lib.name, output_dir=self._clib_cmd.build_clib
             ))
@@ -275,10 +274,10 @@ setuptools.setup(
     ext_modules=[
         Extension(
             "pyrodigal._pyrodigal",
-            sources=["pyrodigal/__init__.pyx"],
+            sources=["pyrodigal/_pyrodigal.pyx"],
             include_dirs=["Prodigal"],
             libraries=["prodigal"],
-        )
+        ),
     ],
     cmdclass={
         "sdist": sdist,

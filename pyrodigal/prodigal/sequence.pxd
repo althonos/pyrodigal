@@ -11,7 +11,7 @@ cdef extern from "sequence.h" nogil:
         int begin
         int end
 
-    enum:
+    enum node_type:
         ATG = 0
         GTG = 1
         TTG = 2
