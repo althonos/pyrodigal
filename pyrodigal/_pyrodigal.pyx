@@ -8,6 +8,8 @@
 
 from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+from cpython.ref cimport Py_INCREF
+from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
 from libc.stdlib cimport free, qsort
 from libc.string cimport memchr, memset, strstr
 
@@ -472,15 +474,17 @@ initialize_metagenomic_bins(_METAGENOMIC_BINS)
 
 # Create a tuple of objects exposing the C metagenomic bins
 cdef MetagenomicBin _bin
-METAGENOMIC_BINS = []
+cdef tuple _m = PyTuple_New(NUM_META)
 for _i in range(NUM_META):
     _bin = MetagenomicBin.__new__(MetagenomicBin, )
     _bin.bin = &_METAGENOMIC_BINS[_i]
     _bin.training_info = TrainingInfo.__new__(TrainingInfo)
     _bin.training_info.owned = False
     _bin.training_info.tinf = _bin.bin.tinf
-    METAGENOMIC_BINS.append(_bin)
-METAGENOMIC_BINS = tuple(METAGENOMIC_BINS)
+    PyTuple_SET_ITEM(_m, _i, _bin)
+    Py_INCREF(_bin)
+
+METAGENOMIC_BINS = _m
 
 # --- Predictions ------------------------------------------------------------
 
