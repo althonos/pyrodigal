@@ -32,6 +32,7 @@ cdef class Sequence:
 
     cdef int _allocate(self, int slen) except 1
 
+    cdef bint _is_gc(self, int i, int strand=*) nogil
     cdef bint _is_stop(self, int i, int tt, int strand=*) nogil
     cdef bint _is_start(self, int i, int tt, int strand=*) nogil
     cdef bint _is_atg(self, int i, int strand=*) nogil
@@ -133,14 +134,17 @@ cdef class Pyrodigal:
     cpdef Predictions  find_genes(self, object sequence)
     cpdef TrainingInfo train(self, object sequence, bint force_nonsd=*, double st_wt=*, int translation_table=*)
 
-# --- C-level API ------------------------------------------------------------
+# --- C-level API reimplementation -------------------------------------------
 
 cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*) nogil except -1
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
+cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1
+cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*, bint is_meta=*) nogil
+
+# --- Wrappers ---------------------------------------------------------------
 
 cpdef void reset_node_scores(Nodes nodes) nogil
 cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
-cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*, bint is_meta=*) nogil
 cpdef int  dynamic_programming(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
 cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
 cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil

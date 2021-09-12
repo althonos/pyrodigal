@@ -189,6 +189,16 @@ cdef class Sequence:
 
         return seq
 
+    cdef inline bint _is_gc(self, int i, int strand = 1) nogil:
+        cdef uint8_t x
+
+        if strand == 1:
+            x = self.digits[i]
+        else:
+            x = self.digits[self.slen - 1 - i]
+
+        return x == C or x == G
+
     cdef inline bint _is_start(self, int i, int tt, int strand = 1) nogil:
         cdef uint8_t x0
         cdef uint8_t x1
@@ -1346,6 +1356,48 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
 
     return ng
 
+cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1:
+    cdef int i
+    cdef int j
+    cdef int last[3]
+    cdef int phase
+    cdef double gc[3]
+    cdef double gsize = 0.0
+
+    # direct strand
+    gc[0] = gc[1] = gc[2] = 0.0
+    for i in range(nodes.length - 1, -1, -1):
+        phase = nodes.nodes[i].ndx %3
+        if nodes.nodes[i].strand == 1:
+            with gil:
+                assert nodes.nodes[i].ndx <= nodes.nodes[i].stop_val
+            if nodes.nodes[i].type == node_type.STOP:
+                last[phase] = nodes.nodes[i].ndx
+                gc[phase] = seq._is_gc(nodes.nodes[i].ndx) + seq._is_gc(nodes.nodes[i].ndx+1) + seq._is_gc(nodes.nodes[i].ndx+2)
+            else:
+                for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
+                    gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                gsize = <float> nodes.nodes[i].stop_val - nodes.nodes[i].ndx + 3.0
+                nodes.nodes[i].gc_cont = gc[phase] / gsize
+                last[phase] = nodes.nodes[i].ndx
+
+    # reverse strand
+    gc[0] = gc[1] = gc[2] = 0.0
+    for i in range(nodes.length):
+        phase = nodes.nodes[i].ndx % 3
+        if nodes.nodes[i].strand == -1:
+            with gil:
+                assert nodes.nodes[i].ndx >= nodes.nodes[i].stop_val
+            if nodes.nodes[i].type == node_type.STOP:
+                last[phase] = nodes.nodes[i].ndx
+                gc[phase] = seq._is_gc(nodes.nodes[i].ndx) + seq._is_gc(nodes.nodes[i].ndx-1) + seq._is_gc(nodes.nodes[i].ndx-2)
+            else:
+                for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
+                    gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                gsize = <float> nodes.nodes[i].ndx - nodes.nodes[i].stop_val + 3.0
+                nodes.nodes[i].gc_cont = gc[phase] / gsize
+                last[phase] = nodes.nodes[i].ndx
+
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
     """score_nodes(nodes, seq, tinf, closed=False, is_meta=False)\n--
 
@@ -1369,7 +1421,8 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
     cdef double min_meta_len
 
     # Calculate raw coding potential for every start-stop pair
-    node.calc_orf_gc(seq.seq, seq.rseq, seq.slen, nodes.nodes, nodes.length, tinf.tinf)
+    #node.calc_orf_gc(seq.seq, seq.rseq, seq.slen, nodes.nodes, nodes.length, tinf.tinf)
+    calc_orf_gc(nodes, seq, tinf)
     raw_coding_score(seq, nodes, tinf)
 
     # Calculate raw RBS Scores for every start node.
