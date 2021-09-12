@@ -45,3 +45,6 @@ cdef extern from "sequence.h" nogil:
     int mer_ndx(int, unsigned char*, int)
     void mer_text(char*, int, int)
     void calc_mer_bg(int, unsigned char*, unsigned char*, int, double*)
+
+    int shine_dalgarno_exact(unsigned char*, int, int, double*);
+    int shine_dalgarno_mm(unsigned char*, int, int, double*);

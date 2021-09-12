@@ -142,6 +142,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*)
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1
 cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1
+cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*, bint is_meta=*) nogil
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil
 
@@ -155,7 +156,6 @@ cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil
 cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
 cpdef void raw_coding_score(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil
-cpdef void rbs_score(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void train_starts_sd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void determine_sd_usage(TrainingInfo tinf) nogil
 cpdef void train_starts_nonsd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil

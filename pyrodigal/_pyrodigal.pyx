@@ -1554,6 +1554,38 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
         nodes.nodes[ni].mot.spacer = max_spacer
         nodes.nodes[ni].mot.score = max_sc
 
+cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
+
+    cdef int i
+    cdef int j
+    cdef int cur_sc[2]
+
+    for i in range(nodes.length):
+        if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
+            continue
+        nodes.nodes[i].rbs[0] = nodes.nodes[i].rbs[1] = 0
+
+        if nodes.nodes[i].strand == 1:
+            for j in range(nodes.nodes[i].ndx - 20, nodes.nodes[i].ndx - 5):
+                if j < 0:
+                    continue
+                cur_sc[0] = sequence.shine_dalgarno_exact(seq.seq, j, nodes.nodes[i].ndx, tinf.tinf.rbs_wt);
+                cur_sc[1] = sequence.shine_dalgarno_mm(seq.seq, j, nodes.nodes[i].ndx, tinf.tinf.rbs_wt);
+                if cur_sc[0] > nodes.nodes[i].rbs[0]:
+                    nodes.nodes[i].rbs[0] = cur_sc[0]
+                if cur_sc[1] > nodes.nodes[i].rbs[1]:
+                    nodes.nodes[i].rbs[1] = cur_sc[1]
+        else:
+            for j in range(seq.slen - nodes.nodes[i].ndx - 21, seq.slen - nodes.nodes[i].ndx - 6):
+                if j > seq.slen-1:
+                    continue
+                cur_sc[0] = sequence.shine_dalgarno_exact(seq.rseq, j, seq.slen-1-nodes.nodes[i].ndx, tinf.tinf.rbs_wt);
+                cur_sc[1] = sequence.shine_dalgarno_mm(seq.rseq, j, seq.slen-1-nodes.nodes[i].ndx, tinf.tinf.rbs_wt);
+                if cur_sc[0] > nodes.nodes[i].rbs[0]:
+                    nodes.nodes[i].rbs[0] = cur_sc[0]
+                if cur_sc[1] > nodes.nodes[i].rbs[1]:
+                    nodes.nodes[i].rbs[1] = cur_sc[1]
+
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
     """score_nodes(nodes, seq, tinf, closed=False, is_meta=False)\n--
 
@@ -1582,7 +1614,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
 
     # Calculate raw RBS Scores for every start node.
     if tinf.tinf.uses_sd:
-        rbs_score(seq, nodes, tinf)
+        rbs_score(nodes, seq, tinf)
     else:
         for i in range(nodes.length):
             if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
@@ -1767,9 +1799,6 @@ cpdef inline void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes 
 cpdef inline void raw_coding_score(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
     node.raw_coding_score(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
 
-cpdef inline void rbs_score(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
-    node.rbs_score(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
-
 cpdef inline void train_starts_sd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
     node.train_starts_sd(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
 
@@ -1806,7 +1835,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
         raw_coding_score(sequence, nodes, tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
-        rbs_score(sequence, nodes, tinf)
+        rbs_score(nodes, sequence, tinf)
         train_starts_sd(sequence, nodes, tinf)
         if force_nonsd:
             tinf.tinf.uses_sd = False
