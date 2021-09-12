@@ -1563,10 +1563,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
                     nodes.nodes[i].rscore = sd_score
 
             # Upstream Score
-            if nodes.nodes[i].strand == 1:
-                node.score_upstream_composition(seq.seq, seq.slen, &nodes.nodes[i], tinf.tinf)
-            else:
-                node.score_upstream_composition(seq.rseq, seq.slen, &nodes.nodes[i], tinf.tinf)
+            score_upstream_composition(nodes, i, seq, tinf)
 
             # Penalize upstream score if choosing this start would stop the gene
             # from running off the edge
@@ -1646,6 +1643,35 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
             and nodes.nodes[i].sscore < 0.0
         ):
             nodes.nodes[i].sscore -= tinf.tinf.st_wt
+
+cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil:
+    cdef int i
+    cdef int start
+    cdef int count = 0
+    cdef int mer
+    cdef int strand
+
+    if nodes.nodes[ni].strand == 1:
+        start = nodes.nodes[ni].ndx
+        strand = 1
+    else:
+        start = seq.slen - 1 - nodes.nodes[ni].ndx
+        strand = -1
+
+    nodes.nodes[ni].uscore = 0.0;
+    for i in range(1, 45):
+        if i > 2 and i < 15:
+            continue
+        if start - i < 0:
+            continue
+
+        if strand == 1:
+            mer = _bitcode[seq.digits[start - i]]
+        else:
+            mer = _bitcode_translation[seq.digits[seq.slen - 1 - start + i]]
+
+        nodes.nodes[ni].uscore += 0.4 * tinf.tinf.st_wt * tinf.tinf.ups_comp[count][mer]
+        count += 1
 
 # --- Wrappers ---------------------------------------------------------------
 
