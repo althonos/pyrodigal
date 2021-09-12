@@ -41,3 +41,7 @@ cdef extern from "sequence.h" nogil:
     char amino_letter(int)
 
     int* calc_most_gc_frame(bitmap_t seq, int slen)
+
+    int mer_ndx(int, unsigned char*, int)
+    void mer_text(char*, int, int)
+    void calc_mer_bg(int, unsigned char*, unsigned char*, int, double*)

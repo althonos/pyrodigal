@@ -48,13 +48,25 @@ cdef enum:
     T = 3
     N = 15
 
-cdef uint8_t _translation[127]
-for i in range(127):
+cdef uint8_t _translation[16]
+for i in range(16):
     _translation[i] = N
 _translation[A] = T
 _translation[T] = A
 _translation[C] = G
 _translation[G] = C
+
+cdef uint8_t _bitcode[16]
+for i in range(16):
+    _bitcode[i] = 0b10
+_bitcode[A] = 0b00
+_bitcode[T] = 0b11
+_bitcode[C] = 0b10
+_bitcode[G] = 0b01
+
+cdef uint8_t _bitcode_translation[16]
+for i in range(16):
+    _bitcode_translation[i] = _bitcode[_translation[i]]
 
 
 cdef class Sequence:
@@ -309,6 +321,23 @@ cdef class Sequence:
             x2 = _translation[self.digits[self.slen - 3 - i]]
         return x0 == T and x1 == T and x2 == G
 
+    cdef inline int _mer_ndx(self, int i, int length, int strand = 1) nogil:
+
+        cdef int     j
+        cdef int     k
+        cdef uint8_t x
+        cdef int     ndx = 0
+
+        if strand == 1:
+            for j, k in enumerate(range(i, i+length)):
+                x = self.digits[k]
+                ndx |= _bitcode[x] << 2*j
+        else:
+            for j, k in enumerate(range(self.slen - 1 - i, self.slen - 1 - i - length, -1)):
+                x = self.digits[k]
+                ndx |= _bitcode_translation[x] << 2*j
+
+        return ndx
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -1263,7 +1292,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
         if last[i%3] >= seq.slen:
             continue
         if not cross_mask(i, last[i%3], mlist, nm):
-            if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.rseq, i, tinf.tinf):
+            if last[i%3] - i + 3 >= min_dist[i%3] and seq._is_start(i, tt, strand=-1):
                 if seq._is_atg(i, strand=-1):
                     saw_start[i%3] = True
                     nodes._add_node(
@@ -1398,6 +1427,65 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
                 nodes.nodes[i].gc_cont = gc[phase] / gsize
                 last[phase] = nodes.nodes[i].ndx
 
+cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1:
+    cdef int i
+    cdef int j
+    cdef int start
+    cdef int spacer
+    cdef int spacendx
+    cdef int index
+    cdef int max_spacer   = 0
+    cdef int max_spacendx = 0
+    cdef int max_len      = 0
+    cdef int max_ndx      = 0
+    cdef double max_sc    = -100.0
+    cdef double score     = 0.0
+
+    if nodes.nodes[ni].type == node_type.STOP or nodes.nodes[ni].edge:
+        return 0
+
+    if nodes.nodes[ni].strand == 1:
+        start = nodes.nodes[ni].ndx
+    else:
+        start = seq.slen - 1 - nodes.nodes[ni].ndx
+
+    for i in range(3, -1, -1):
+        for j in range(start-18-i, start-5-i):
+            if j < 0:
+                continue
+            spacer = start - j - i - 3
+
+            if j <= start - 16 - i:
+                spacendx = 3
+            elif j <= start - 14 - i:
+                spacendx = 2
+            elif j >= start - 7 - i:
+                spacendx = 1
+            else:
+                spacendx = 0
+
+            index = seq._mer_ndx(j, length=i+3, strand=nodes.nodes[ni].strand)
+            score = tinf.tinf.mot_wt[i][spacendx][index]
+            if score > max_sc:
+                max_sc = score
+                max_spacendx = spacendx
+                max_spacer = spacer
+                max_ndx = index
+                max_len = i+3
+
+    if stage == 2 and (max_sc == -4.0 or max_sc < tinf.tinf.no_mot + 0.69):
+        nodes.nodes[ni].mot.ndx = 0
+        nodes.nodes[ni].mot.len = 0
+        nodes.nodes[ni].mot.spacendx = 0
+        nodes.nodes[ni].mot.spacer = 0
+        nodes.nodes[ni].mot.score = tinf.tinf.no_mot
+    else:
+        nodes.nodes[ni].mot.ndx = max_ndx
+        nodes.nodes[ni].mot.len = max_len
+        nodes.nodes[ni].mot.spacendx = max_spacendx
+        nodes.nodes[ni].mot.spacer = max_spacer
+        nodes.nodes[ni].mot.score = max_sc
+
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
     """score_nodes(nodes, seq, tinf, closed=False, is_meta=False)\n--
 
@@ -1421,7 +1509,6 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
     cdef double min_meta_len
 
     # Calculate raw coding potential for every start-stop pair
-    #node.calc_orf_gc(seq.seq, seq.rseq, seq.slen, nodes.nodes, nodes.length, tinf.tinf)
     calc_orf_gc(nodes, seq, tinf)
     raw_coding_score(seq, nodes, tinf)
 
@@ -1432,7 +1519,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
         for i in range(nodes.length):
             if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
                 continue
-            node.find_best_upstream_motif(tinf.tinf, seq.seq, seq.rseq, seq.slen, &nodes.nodes[i], 2)
+            find_best_upstream_motif(nodes, i, seq, tinf, stage=2)
 
     # Score the start nodes
     for i in range(nodes.length):
