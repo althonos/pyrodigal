@@ -3,6 +3,8 @@
 
 # ----------------------------------------------------------------------------
 
+from libc.stdint cimport uint8_t
+
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin
@@ -22,12 +24,21 @@ cdef public set    TRANSLATION_TABLES
 
 cdef class Sequence:
     cdef          int      slen
+    cdef          uint8_t* digits
     cdef          bitmap_t seq
     cdef          bitmap_t rseq
     cdef          bitmap_t useq
     cdef readonly double   gc
 
     cdef int _allocate(self, int slen) except 1
+
+    cdef bint _is_stop(self, int i, int tt, int strand=*) nogil
+    cdef bint _is_start(self, int i, int tt, int strand=*) nogil
+    cdef bint _is_atg(self, int i, int strand=*) nogil
+    cdef bint _is_gtg(self, int i, int strand=*) nogil
+    cdef bint _is_ttg(self, int i, int strand=*) nogil
+
+
 
 # --- Nodes ------------------------------------------------------------------
 

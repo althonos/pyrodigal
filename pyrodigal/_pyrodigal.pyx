@@ -12,6 +12,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
 from libc.math cimport sqrt
+from libc.stdint cimport uint8_t
 from libc.stdlib cimport free, qsort
 from libc.string cimport memchr, memset, strstr
 
@@ -40,6 +41,22 @@ cdef set   TRANSLATION_TABLES   = set(range(1, 7)) | set(range(9, 17)) | set(ran
 
 # --- Input sequence ---------------------------------------------------------
 
+cdef enum:
+    A = 0
+    C = 1
+    G = 2
+    T = 3
+    N = 15
+
+cdef uint8_t _translation[127]
+for i in range(127):
+    _translation[i] = N
+_translation[A] = T
+_translation[T] = A
+_translation[C] = G
+_translation[G] = C
+
+
 cdef class Sequence:
     """A compressed input sequence.
     """
@@ -47,12 +64,13 @@ cdef class Sequence:
     def __cinit__(self):
         self.slen = 0
         self.gc = 0.0
-        self.seq = self.rseq = self.useq = NULL
+        self.seq = self.rseq = self.useq = self.digits = NULL
 
     def __dealloc__(self):
         PyMem_Free(self.seq)
         PyMem_Free(self.rseq)
         PyMem_Free(self.useq)
+        PyMem_Free(self.digits)
 
     def __len__(self):
         return self.slen
@@ -60,7 +78,7 @@ cdef class Sequence:
     def __sizeof__(self):
         cdef size_t blen = self.slen//4 + (self.slen%4 != 0)
         cdef size_t ulen = self.slen//8 + (self.slen%8 != 0)
-        return (ulen + 2 * blen) * sizeof(unsigned char) + sizeof(self)
+        return (ulen + 2 * blen) * sizeof(unsigned char) + self.slen * sizeof(uint8_t) + sizeof(self)
 
     cdef int _allocate(self, int slen) except 1:
         cdef size_t blen = slen//4 + (slen%4 != 0)
@@ -70,14 +88,16 @@ cdef class Sequence:
         self.seq  = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
         self.rseq = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
         self.useq = <bitmap_t> PyMem_Malloc(ulen * sizeof(unsigned char))
+        self.digits = <uint8_t*> PyMem_Malloc(slen * sizeof(uint8_t))
 
-        if self.seq == NULL or self.rseq == NULL or self.useq == NULL:
+        if self.seq == NULL or self.rseq == NULL or self.useq == NULL or self.digits == NULL:
             raise MemoryError()
 
         with nogil:
             memset(self.seq, 0,  blen * sizeof(unsigned char))
             memset(self.rseq, 0, blen * sizeof(unsigned char))
             memset(self.useq, 0, ulen * sizeof(unsigned char))
+            memset(self.digits, 0, slen * sizeof(uint8_t))
 
         return 0
 
@@ -96,17 +116,22 @@ cdef class Sequence:
             for i, j in enumerate(range(0, seq.slen * 2, 2)):
                 letter = sequence[i]
                 if letter == b'A' or letter == b'a':
+                    seq.digits[i] = A
                     pass
                 elif letter == b'T' or letter == b't':
+                    seq.digits[i] = T
                     bitmap.set(seq.seq, j)
                     bitmap.set(seq.seq, j+1)
                 elif letter == b'G' or letter == b'g':
+                    seq.digits[i] = G
                     bitmap.set(seq.seq, j)
                     gc_count += 1
                 elif letter == b'C' or letter == b'c':
+                    seq.digits[i] = C
                     bitmap.set(seq.seq, j+1)
                     gc_count += 1
                 else:
+                    seq.digits[i] = N
                     bitmap.set(seq.seq,  j+1)
                     bitmap.set(seq.useq, i)
             rcom_seq(seq.seq, seq.rseq, seq.useq, seq.slen)
@@ -140,17 +165,22 @@ cdef class Sequence:
             for i, j in enumerate(range(0, seq.slen * 2, 2)):
                 letter = PyUnicode_READ(kind, data, i)
                 if letter == u'A' or letter == u'a':
+                    seq.digits[i] = A
                     pass
                 elif letter == u'T' or letter == u't':
+                    seq.digits[i] = T
                     bitmap.set(seq.seq, j)
                     bitmap.set(seq.seq, j+1)
                 elif letter == u'G' or letter == u'g':
+                    seq.digits[i] = G
                     bitmap.set(seq.seq, j)
                     gc_count += 1
                 elif letter == u'C' or letter == u'c':
+                    seq.digits[i] = C
                     bitmap.set(seq.seq, j+1)
                     gc_count += 1
                 else:
+                    seq.digits[i] = N
                     bitmap.set(seq.seq,  j+1)
                     bitmap.set(seq.useq, i)
             rcom_seq(seq.seq, seq.rseq, seq.useq, seq.slen)
@@ -158,6 +188,117 @@ cdef class Sequence:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
 
         return seq
+
+    cdef inline bint _is_start(self, int i, int tt, int strand = 1) nogil:
+        cdef uint8_t x0
+        cdef uint8_t x1
+        cdef uint8_t x2
+
+        if strand == 1:
+            x0 = self.digits[i]
+            x1 = self.digits[i+1]
+            x2 = self.digits[i+2]
+        else:
+            x0 = _translation[self.digits[self.slen - 1 - i]]
+            x1 = _translation[self.digits[self.slen - 2 - i]]
+            x2 = _translation[self.digits[self.slen - 3 - i]]
+
+        # ATG
+        if x0 == A and x1 == T and x2 == G:
+            return True
+        # Codes that only use ATG
+        if tt == 6 or tt == 10 or tt == 14 or tt == 15 or tt == 16 or tt == 2:
+            return False
+        # GTG
+        if x0 == G and x1 == T and x2 == G:
+            return not (tt == 1 or tt == 3 or tt == 12 or tt == 2)
+        # TTG
+        if x0 == T and x1 == T and x2 == G:
+            return not (tt < 4 or tt == 9 or (tt >= 21 and tt < 25))
+        # other codons
+        return False
+
+    cdef inline bint _is_stop(self, int i, int tt, int strand = 1) nogil:
+        cdef uint8_t x0
+        cdef uint8_t x1
+        cdef uint8_t x2
+
+        if strand == 1:
+            x0 = self.digits[i]
+            x1 = self.digits[i+1]
+            x2 = self.digits[i+2]
+        else:
+            x0 = _translation[self.digits[self.slen - 1 - i]]
+            x1 = _translation[self.digits[self.slen - 2 - i]]
+            x2 = _translation[self.digits[self.slen - 3 - i]]
+
+        # TAG
+        if x0 == T and x1 == A and x2 == G:
+            return not (tt == 6 or tt == 15 or tt == 16 or tt == 22)
+        # TGA
+        if x0 == T and x1 == G and x2 == A:
+            return not (
+                    tt == 2 or tt == 3 or tt == 4 or tt == 5
+                 or tt == 9 or tt == 10 or tt == 13 or tt == 14
+                 or tt == 21 or tt == 25
+            )
+        # TAA
+        if x0 == T and x1 == A and x2 == A:
+            return not (tt == 6 or tt == 14)
+        # Code 2
+        if tt == 2:
+            return x0 == A and x1 == G and (x2 == A or x2 == G)
+        # Code 22
+        elif tt == 22:
+            return x0 == T and x1 == C and x2 == A
+        # Code 23
+        elif tt == 23:
+            return x0 == T and x1 == T and x2 == A
+        # other codons
+        return False
+
+    cdef inline bint _is_atg(self, int i, int strand = 1) nogil:
+        cdef uint8_t x0
+        cdef uint8_t x1
+        cdef uint8_t x2
+        if strand == 1:
+            x0 = self.digits[i]
+            x1 = self.digits[i+1]
+            x2 = self.digits[i+2]
+        else:
+            x0 = _translation[self.digits[self.slen - 1 - i]]
+            x1 = _translation[self.digits[self.slen - 2 - i]]
+            x2 = _translation[self.digits[self.slen - 3 - i]]
+        return x0 == A and x1 == T and x2 == G
+
+    cdef inline bint _is_gtg(self, int i, int strand = 1) nogil:
+        cdef uint8_t x0
+        cdef uint8_t x1
+        cdef uint8_t x2
+        if strand == 1:
+            x0 = self.digits[i]
+            x1 = self.digits[i+1]
+            x2 = self.digits[i+2]
+        else:
+            x0 = _translation[self.digits[self.slen - 1 - i]]
+            x1 = _translation[self.digits[self.slen - 2 - i]]
+            x2 = _translation[self.digits[self.slen - 3 - i]]
+        return x0 == G and x1 == T and x2 == G
+
+    cdef inline bint _is_ttg(self, int i, int strand = 1) nogil:
+        cdef uint8_t x0
+        cdef uint8_t x1
+        cdef uint8_t x2
+        if strand == 1:
+            x0 = self.digits[i]
+            x1 = self.digits[i+1]
+            x2 = self.digits[i+2]
+        else:
+            x0 = _translation[self.digits[self.slen - 1 - i]]
+            x1 = _translation[self.digits[self.slen - 2 - i]]
+            x2 = _translation[self.digits[self.slen - 3 - i]]
+        return x0 == T and x1 == T and x2 == G
+
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -985,7 +1126,7 @@ cdef class Pyrodigal:
 
         return tinf
 
-# --- C-level API ------------------------------------------------------------
+# --- C-level API reimplementation -------------------------------------------
 
 cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False) nogil except -1:
     """Adds nodes to the node list, based on the sequence.
@@ -1000,6 +1141,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
     cdef bint   saw_start[3]
     cdef int    slmod        = seq.slen % 3
     cdef int    nn           = 0
+    cdef int    tt           = tinf.tinf.trans_table
     # TODO(@althonos): handle region masking
     cdef _mask* mlist = NULL
     cdef int    nm    = 0
@@ -1017,14 +1159,14 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
             while last[(i+slmod)%3] + 3 > seq.slen:
                 last[(i+slmod)%3] -= 3
     for i in range(seq.slen-3, -1, -1):
-        if sequence.is_stop(seq.seq, i, tinf.tinf):
+        if seq._is_stop(i, tt):
             if saw_start[i%3]:
                 nodes._add_node(
                     ndx = last[i%3],
                     type = node_type.STOP,
                     strand = 1,
                     stop_val = i,
-                    edge = not sequence.is_stop(seq.seq, last[i%3], tinf.tinf),
+                    edge = not seq._is_stop(last[i%3], tt),
                 )
                 nn += 1
             min_dist[i%3] = MIN_GENE
@@ -1034,8 +1176,8 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
         if last[i%3] >= seq.slen:
             continue
         if not cross_mask(i, last[i%3], mlist, nm):
-            if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.seq, i, tinf.tinf):
-                if sequence.is_atg(seq.seq, i):
+            if last[i%3] - i + 3 >= min_dist[i%3] and seq._is_start(i, tt):
+                if seq._is_atg(i):
                     saw_start[i%3] = True
                     nodes._add_node(
                         ndx = i,
@@ -1045,7 +1187,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False
                     )
                     nn += 1
-                elif sequence.is_ttg(seq.seq, i):
+                elif seq._is_ttg(i):
                     saw_start[i%3] = True
                     nodes._add_node(
                         ndx = i,
@@ -1055,7 +1197,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False
                     )
                     nn += 1
-                elif sequence.is_gtg(seq.seq, i):
+                elif seq._is_gtg(i):
                     saw_start[i%3] = True
                     nodes._add_node(
                         ndx = i,
@@ -1082,7 +1224,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                 type = node_type.STOP,
                 strand = 1,
                 stop_val = i - 6,
-                edge = not sequence.is_stop(seq.seq, last[i%3], tinf.tinf)
+                edge = not seq._is_stop(last[i%3], tt)
             )
             nn += 1
     # Reverse strand nodes
@@ -1094,14 +1236,14 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
             while last[(i+slmod) % 3] + 3 > seq.slen:
                 last[(i+slmod)%3] -= 3
     for i in range(seq.slen-3, -1, -1):
-        if sequence.is_stop(seq.rseq, i, tinf.tinf):
+        if seq._is_stop(i, tt, strand=-1):
             if saw_start[i%3]:
                 nodes._add_node(
                     ndx = seq.slen - last[i%3] - 1,
                     type = node_type.STOP,
                     strand = -1,
                     stop_val = seq.slen - i - 1,
-                    edge = not sequence.is_stop(seq.rseq, last[i%3], tinf.tinf)
+                    edge = not seq._is_stop(last[i%3], tt, strand=-1)
                 )
                 nn += 1
             min_dist[i%3] = MIN_GENE
@@ -1112,7 +1254,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
             continue
         if not cross_mask(i, last[i%3], mlist, nm):
             if last[i%3] - i + 3 >= min_dist[i%3] and sequence.is_start(seq.rseq, i, tinf.tinf):
-                if sequence.is_atg(seq.rseq, i):
+                if seq._is_atg(i, strand=-1):
                     saw_start[i%3] = True
                     nodes._add_node(
                         ndx = seq.slen - i - 1,
@@ -1122,7 +1264,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False
                     )
                     nn += 1
-                elif sequence.is_gtg(seq.rseq, i):
+                elif seq._is_gtg(i, strand=-1):
                     saw_start[i%3] = True
                     nodes._add_node(
                         ndx = seq.slen - i - 1,
@@ -1132,7 +1274,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False
                     )
                     nn += 1
-                elif sequence.is_ttg(seq.rseq, i):
+                elif seq._is_ttg(i, strand=-1):
                     saw_start[i%3] = 1
                     nodes._add_node(
                         ndx = seq.slen - i - 1,
@@ -1159,7 +1301,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                 type = node_type.STOP,
                 strand = -1,
                 stop_val = seq.slen - i + 5,
-                edge = not sequence.is_stop(seq.rseq, last[i%3], tinf.tinf),
+                edge = not seq._is_stop(last[i%3], tt, strand=-1),
             )
             nn += 1
 
@@ -1203,12 +1345,6 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
         path = nodes.nodes[path].tracef
 
     return ng
-
-cpdef inline void reset_node_scores(Nodes nodes) nogil:
-    node.reset_node_scores(nodes.nodes, nodes.length)
-
-cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
-    node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
 
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
     """score_nodes(nodes, seq, tinf, closed=False, is_meta=False)\n--
@@ -1261,8 +1397,8 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
         if nodes.nodes[i].edge:
             edge_gene += 1
         if (
-                nodes.nodes[i].strand == 1 and not sequence.is_stop(seq.seq, nodes.nodes[i].stop_val, tinf.tinf)
-            or  nodes.nodes[i].strand == -1 and not sequence.is_stop(seq.rseq, seq.slen - 1 - nodes.nodes[i].stop_val, tinf.tinf)
+                nodes.nodes[i].strand == 1 and not seq._is_stop(nodes.nodes[i].stop_val, tinf.tinf.trans_table)
+            or  nodes.nodes[i].strand == -1 and not seq._is_stop(seq.slen - 1 - nodes.nodes[i].stop_val, tinf.tinf.trans_table, strand=-1)
         ):
             edge_gene += 1
 
@@ -1370,6 +1506,14 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
             and nodes.nodes[i].sscore < 0.0
         ):
             nodes.nodes[i].sscore -= tinf.tinf.st_wt
+
+# --- Wrappers ---------------------------------------------------------------
+
+cpdef inline void reset_node_scores(Nodes nodes) nogil:
+    node.reset_node_scores(nodes.nodes, nodes.length)
+
+cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
+    node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
 
 cpdef inline int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
     return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, is_meta)
