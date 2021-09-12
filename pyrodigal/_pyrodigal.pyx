@@ -11,6 +11,7 @@ from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
+from libc.math cimport sqrt
 from libc.stdlib cimport free, qsort
 from libc.string cimport memchr, memset, strstr
 
@@ -1209,17 +1210,166 @@ cpdef inline void reset_node_scores(Nodes nodes) nogil:
 cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
     node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
 
-cpdef inline void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
-    node.score_nodes(
-        seq.seq,
-        seq.rseq,
-        seq.slen,
-        nodes.nodes,
-        nodes.length,
-        tinf.tinf,
-        closed,
-        is_meta
-    )
+cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
+    """score_nodes(nodes, seq, tinf, closed=False, is_meta=False)\n--
+
+    Score the start nodes currently scored in ``nodes``.
+
+    Note:
+        This function is reimplemented from the ``score_nodes`` function of
+        ``node.c`` from the Prodigal source, and already contains the patch
+        from `hyattpd/Prodigal#88 <https://github.com/hyattpd/Prodigal/pull/88>`_.
+
+    """
+    cdef size_t i
+    cdef size_t j
+    cdef size_t orf_length
+    cdef double negf
+    cdef double posf
+    cdef double rbs1
+    cdef double rbs2
+    cdef double sd_score
+    cdef double edge_gene
+    cdef double min_meta_len
+
+    # Calculate raw coding potential for every start-stop pair
+    node.calc_orf_gc(seq.seq, seq.rseq, seq.slen, nodes.nodes, nodes.length, tinf.tinf)
+    raw_coding_score(seq, nodes, tinf)
+
+    # Calculate raw RBS Scores for every start node.
+    if tinf.tinf.uses_sd:
+        rbs_score(seq, nodes, tinf)
+    else:
+        for i in range(nodes.length):
+            if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
+                continue
+            node.find_best_upstream_motif(tinf.tinf, seq.seq, seq.rseq, seq.slen, &nodes.nodes[i], 2)
+
+    # Score the start nodes
+    for i in range(nodes.length):
+        if nodes.nodes[i].type == node_type.STOP:
+            continue
+
+        # compute ORF length, we'll need it later several times
+        if nodes.nodes[i].ndx > nodes.nodes[i].stop_val:
+            orf_length = nodes.nodes[i].ndx - nodes.nodes[i].stop_val
+        else:
+            orf_length = nodes.nodes[i].stop_val - nodes.nodes[i].ndx
+
+        # Does this gene run off the edge?
+        edge_gene = 0
+        if nodes.nodes[i].edge:
+            edge_gene += 1
+        if (
+                nodes.nodes[i].strand == 1 and not sequence.is_stop(seq.seq, nodes.nodes[i].stop_val, tinf.tinf)
+            or  nodes.nodes[i].strand == -1 and not sequence.is_stop(seq.rseq, seq.slen - 1 - nodes.nodes[i].stop_val, tinf.tinf)
+        ):
+            edge_gene += 1
+
+        # Edge Nodes : stops with no starts, give a small bonus
+        if nodes.nodes[i].edge:
+            nodes.nodes[i].tscore = node.EDGE_BONUS*tinf.tinf.st_wt / edge_gene
+            nodes.nodes[i].uscore = 0.0
+            nodes.nodes[i].rscore = 0.0
+        else:
+            # Type Score
+            nodes.nodes[i].tscore = tinf.tinf.type_wt[nodes.nodes[i].type] * tinf.tinf.st_wt
+
+            # RBS Motif Score
+            rbs1 = tinf.tinf.rbs_wt[nodes.nodes[i].rbs[0]];
+            rbs2 = tinf.tinf.rbs_wt[nodes.nodes[i].rbs[1]];
+            sd_score = node.dmax(rbs1, rbs2) * tinf.tinf.st_wt
+            if tinf.tinf.uses_sd:
+                nodes.nodes[i].rscore = sd_score
+            else:
+                nodes.nodes[i].rscore = tinf.tinf.st_wt * nodes.nodes[i].mot.score
+                if nodes.nodes[i].rscore < sd_score and tinf.tinf.no_mot > -0.5:
+                    nodes.nodes[i].rscore = sd_score
+
+            # Upstream Score
+            if nodes.nodes[i].strand == 1:
+                node.score_upstream_composition(seq.seq, seq.slen, &nodes.nodes[i], tinf.tinf)
+            else:
+                node.score_upstream_composition(seq.rseq, seq.slen, &nodes.nodes[i], tinf.tinf)
+
+            # Penalize upstream score if choosing this start would stop the gene
+            # from running off the edge
+            if not closed and nodes.nodes[i].ndx <= 2 and nodes.nodes[i].strand == 1:
+                nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
+            elif not closed and nodes.nodes[i].ndx >= seq.slen - 3 and nodes.nodes[i].strand == -1:
+                nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
+            elif i < 500 and nodes.nodes[i].strand == 1:
+                for j in range(i-1, -1, -1):
+                    if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
+                        nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
+                        break
+            elif i >= nodes.length - 500 and nodes.nodes[i].strand == -1:
+                for j in range(i+1, nodes.length):
+                    if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
+                        nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
+                        break
+
+        # Convert starts at base 1 and slen to edge genes if closed = 0
+        if (
+                not closed
+            and not nodes.nodes[i].edge
+            and ((nodes.nodes[i].ndx <= 2 and nodes.nodes[i].strand == 1) or (nodes.nodes[i].ndx >= seq.slen - 3 and nodes.nodes[i].strand == -1))
+        ):
+            edge_gene += 1
+            nodes.nodes[i].edge = True
+            nodes.nodes[i].tscore = 0.0
+            nodes.nodes[i].uscore = node.EDGE_BONUS*tinf.tinf.st_wt / edge_gene
+            nodes.nodes[i].rscore = 0.0
+
+        # Penalize starts with no stop codon
+        if not nodes.nodes[i].edge and edge_gene == 1:
+            nodes.nodes[i].uscore -= 0.5*node.EDGE_BONUS*tinf.tinf.st_wt
+
+        # Penalize non-edge genes < 250bp
+        if edge_gene == 0 and orf_length < 250:
+            negf = 250.0 / <float> orf_length
+            posf = <float> orf_length / 250.0
+            nodes.nodes[i].rscore *= negf if nodes.nodes[i].rscore < 0 else posf
+            nodes.nodes[i].uscore *= negf if nodes.nodes[i].uscore < 0 else posf
+            nodes.nodes[i].tscore *= negf if nodes.nodes[i].tscore < 0 else posf
+
+        # Coding Penalization in Metagenomic Fragments:  Internal genes must
+        # have a score of 5.0 and be >= 120bp.  High GC genes are also penalized.                                  */
+        if (
+                is_meta
+            and seq.slen < 3000
+            and edge_gene == 0
+            and (nodes.nodes[i].cscore < 5.0 or orf_length < 120)
+        ):
+            nodes.nodes[i].cscore -= node.META_PEN * node.dmax(0, (3000.0 - seq.slen) / 2700.0)
+
+        # Base Start Score
+        nodes.nodes[i].sscore = nodes.nodes[i].tscore + nodes.nodes[i].rscore + nodes.nodes[i].uscore
+
+        # Penalize starts if coding is negative.  Larger penalty for edge genes,
+        # since the start is offset by a smaller amount of coding than normal.
+        if nodes.nodes[i].cscore < 0.0:
+            if edge_gene > 0 and not nodes.nodes[i].edge:
+                if not is_meta or seq.slen > 1500:
+                    nodes.nodes[i].sscore -= tinf.tinf.st_wt
+                else:
+                    nodes.nodes[i].sscore -= 10.31 - 0.004*seq.slen
+            elif is_meta and seq.slen < 3000 and nodes.nodes[i].edge:
+                min_meta_len = sqrt(<double> seq.slen)*5.0
+                if orf_length >= min_meta_len:
+                    if nodes.nodes[i].cscore >= 0:
+                        nodes.nodes[i].cscore = -1.0
+                    nodes.nodes[i].sscore = 0.0
+                    nodes.nodes[i].uscore = 0.0
+            else:
+                nodes.nodes[i].sscore -= 0.5
+        elif (
+                is_meta
+            and nodes.nodes[i].cscore < 5.0
+            and orf_length < 120
+            and nodes.nodes[i].sscore < 0.0
+        ):
+            nodes.nodes[i].sscore -= tinf.tinf.st_wt
 
 cpdef inline int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
     return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, is_meta)

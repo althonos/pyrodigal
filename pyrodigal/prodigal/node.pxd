@@ -57,7 +57,9 @@ cdef extern from "node.h" nogil:
     void calc_amino_bg(_training*, unsigned char*, unsigned char*, int, _node*, int)
 
     void score_nodes(unsigned char*, unsigned char*, int, _node*, int, _training*, int, int)
-    void rbs_score(unsigned char*, unsigned char*, int, _node *, int, _training *);
+    void calc_orf_gc(unsigned char*, unsigned char*, int, _node*, int, _training*)
+    void rbs_score(unsigned char*, unsigned char*, int, _node *, int, _training*)
+    void score_upstream_composition(unsigned char*, int, _node*, _training*)
 
     void raw_coding_score(bitmap_t seq, bitmap_t rseq, int slen, _node *nod, int nn, _training *tinf)
 
@@ -66,4 +68,9 @@ cdef extern from "node.h" nogil:
     void train_starts_sd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
     void train_starts_nonsd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
 
+    void find_best_upstream_motif(_training*, unsigned char*, unsigned char*, int, _node*, int)
+
     bint cross_mask(int, int, _mask*, int)
+
+    double dmax(double, double)
+    double dmin(double, double)
