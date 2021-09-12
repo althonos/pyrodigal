@@ -40,6 +40,7 @@ cdef class Sequence:
     cdef bint _is_ttg(self, int i, int strand=*) nogil
 
     cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
+    cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
 
 
 # --- Nodes ------------------------------------------------------------------

@@ -42,31 +42,19 @@ cdef set   TRANSLATION_TABLES   = set(range(1, 7)) | set(range(9, 17)) | set(ran
 # --- Input sequence ---------------------------------------------------------
 
 cdef enum:
-    A = 0
-    C = 1
-    G = 2
-    T = 3
-    N = 15
+    A = 0b000
+    G = 0b001
+    C = 0b010
+    T = 0b011
+    N = 0b100  # use 6 so that N & 0x3 == C
 
-cdef uint8_t _translation[16]
-for i in range(16):
+cdef uint8_t _translation[N+1]
+for i in range(N+1):
     _translation[i] = N
 _translation[A] = T
 _translation[T] = A
 _translation[C] = G
 _translation[G] = C
-
-cdef uint8_t _bitcode[16]
-for i in range(16):
-    _bitcode[i] = 0b10
-_bitcode[A] = 0b00
-_bitcode[T] = 0b11
-_bitcode[C] = 0b10
-_bitcode[G] = 0b01
-
-cdef uint8_t _bitcode_translation[16]
-for i in range(16):
-    _bitcode_translation[i] = _bitcode[_translation[i]]
 
 
 cdef class Sequence:
@@ -331,13 +319,101 @@ cdef class Sequence:
         if strand == 1:
             for j, k in enumerate(range(i, i+length)):
                 x = self.digits[k]
-                ndx |= _bitcode[x] << 2*j
+                ndx |= (x & 0b11) << 2*j
         else:
             for j, k in enumerate(range(self.slen - 1 - i, self.slen - 1 - i - length, -1)):
                 x = self.digits[k]
-                ndx |= _bitcode_translation[x] << 2*j
+                ndx |= (_translation[x] & 0b11) << 2*j
 
         return ndx
+
+    cdef char _amino(self, int i, int tt, int strand = 1, bint is_init = False) nogil:
+
+        cdef uint8_t x0
+        cdef uint8_t x1
+        cdef uint8_t x2
+
+        if strand == 1:
+            x0 = self.digits[i]
+            x1 = self.digits[i+1]
+            x2 = self.digits[i+2]
+        else:
+            x0 = _translation[self.digits[self.slen - 1 - i]]
+            x1 = _translation[self.digits[self.slen - 2 - i]]
+            x2 = _translation[self.digits[self.slen - 3 - i]]
+
+        if self._is_stop(i, tt, strand=strand):
+            return b"*"
+        if self._is_start(i, tt, strand=strand) and is_init:
+            return b"M"
+        if x0 == T and x1 == T and (x2 == T or x2 == C):
+            return b"F"
+        if x0 == T and x1 == T and (x2 == A or x2 == G):
+            return b"L"
+        if x0 == T and x1 == C and x2 != N:
+            return b"S"
+        if x0 == T and x1 == A and x2 == T:
+            return b"Y"
+        if x0 == T and x1 == A and x2 == C:
+            return b"Y"
+        if x0 == T and x1 == A and x2 == A:
+            if tt == 6:
+                return b"Q"
+            elif tt == 14:
+                return b"Y"
+        if x0 == T and x1 == A and x2 == G:
+            if tt == 6 or tt == 15:
+                return b"Q"
+            elif tt == 22:
+                return b"L"
+        if x0 == T and x1 == G and (x2 == T or x2 == C):
+            return b"C"
+        if x0 == T and x1 == G and x2 == A:
+            return b"G" if tt == 25 else b"W"
+        if x0 == T and x1 == G and x2 == G:
+            return b"W"
+        if x0 == C and x1 == T and (x2 == T or x2 == C or x2 == A):
+            return b"T" if tt == 3 else b"L"
+        if x0 == C and x1 == T and x2 == G:
+            return b"T" if tt == 3 else b"S" if tt == 12 else b"L"
+        if x0 == C and x1 == C and x2 != N:
+            return b"P"
+        if x0 == C and x1 == A and (x2 == T or x2 == C):
+            return b"H"
+        if x0 == C and x1 == A and (x2 == A or x2 == G):
+            return b"Q"
+        if x0 == C and x1 == G and x2 != N:
+            return b"R"
+        if x0 == A and x1 == T and (x2 == T or x2 == C):
+            return b"I"
+        if x0 == A and x1 == T and x2 == A:
+            return b"M" if tt == 2 or tt == 3 or tt == 5 or tt == 13 or tt == 22 else b"I"
+        if x0 == A and x1 == T and x2 == G:
+            return b"M"
+        if x0 == A and x1 == C and x2 != N:
+            return b"T"
+        if x0 == A and x1 == A and (x2 == T or x2 == C):
+            return b"N"
+        if x0 == A and x1 == A and x2 == A:
+            return b"N" if tt == 9 or tt == 14 or tt == 21 else b"K"
+        if x0 == A and x1 == A and x2 == G:
+            return b"K"
+        if x0 == A and x1 == G and (x2 == T or x2 == C):
+            return b"S"
+        if x0 == A and x1 == G and (x2 == A or x2 == G):
+            return b"G" if tt == 13 else b"S" if tt == 5 or tt == 9 or tt == 14 or tt == 21 else b"R"
+        if x0 == G and x1 == T and x2 != N:
+            return b"V"
+        if x0 == G and x1 == C and x2 != N:
+            return b"A"
+        if x0 == G and x1 == A and (x2 == T or x2 == C):
+            return b"D"
+        if x0 == G and x1 == A and (x2 == A or x2 == G):
+            return b"E"
+        if x0 == G and x1 == G and x2 != N:
+            return b"G"
+
+        return b'X'
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -991,22 +1067,14 @@ cdef class Prediction:
         if strand == 1:
             begin = gene.begin - 1
             end = gene.end - 1
-            seq = self.owner.sequence.seq
-            unk = gene.begin - 1
         else:
             begin = slen - gene.end
             end = slen - gene.begin
-            seq = self.owner.sequence.rseq
-            unk = gene.end - 3
 
         with nogil:
             for i, j in enumerate(range(begin, end, 3)):
-                if bitmap.test(useq, unk) or bitmap.test(useq, unk+1) or bitmap.test(useq, unk+2):
-                    aa = unknown_residue
-                else:
-                    aa = sequence.amino(seq, j, tinf, i==0 and edge==0)
+                aa = self.owner.sequence._amino(j, tinf.trans_table, strand=strand, is_init=i==0 and not edge)
                 PyUnicode_WRITE(kind, data, i, aa)
-                unk += 3 * strand
 
         # return the string containing the protein sequence
         return protein
@@ -1666,9 +1734,9 @@ cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, Trainin
             continue
 
         if strand == 1:
-            mer = _bitcode[seq.digits[start - i]]
+            mer = seq.digits[start - i] & 0b11
         else:
-            mer = _bitcode_translation[seq.digits[seq.slen - 1 - start + i]]
+            mer = _translation[seq.digits[seq.slen - 1 - start + i]] & 0b11
 
         nodes.nodes[ni].uscore += 0.4 * tinf.tinf.st_wt * tinf.tinf.ups_comp[count][mer]
         count += 1
