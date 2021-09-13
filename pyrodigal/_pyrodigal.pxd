@@ -32,6 +32,8 @@ cdef class Sequence:
 
     cdef int _allocate(self, int slen) except 1
 
+    cdef bint _is_a(self, int i, int strand=*) nogil
+    cdef bint _is_g(self, int i, int strand=*) nogil
     cdef bint _is_gc(self, int i, int strand=*) nogil
     cdef bint _is_stop(self, int i, int tt, int strand=*) nogil
     cdef bint _is_start(self, int i, int tt, int strand=*) nogil
@@ -145,6 +147,8 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
 cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*, bint is_meta=*) nogil
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil
+cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
+cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
 
 # --- Wrappers ---------------------------------------------------------------
 
