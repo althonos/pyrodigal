@@ -11,8 +11,9 @@ from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
-from libc.math cimport sqrt
+from libc.math cimport sqrt, log, pow, fmax, fmin
 from libc.stdint cimport uint8_t
+from libc.stdio cimport printf
 from libc.stdlib cimport free, qsort
 from libc.string cimport memchr, memset, strstr
 
@@ -46,7 +47,7 @@ cdef enum:
     G = 0b001
     C = 0b010
     T = 0b011
-    N = 0b100  # use 6 so that N & 0x3 == C
+    N = 0b110  # use 6 so that N & 0x3 == C
 
 cdef uint8_t _translation[N+1]
 for i in range(N+1):
@@ -1565,6 +1566,116 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
         nodes.nodes[ni].mot.spacer = max_spacer
         nodes.nodes[ni].mot.score = max_sc
 
+cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
+
+    cdef double  score[3]
+    cdef double  lfac
+    cdef double  no_stop
+    cdef double  gsize
+    cdef ssize_t last[3]
+    cdef size_t  phase
+    cdef ssize_t j
+    cdef ssize_t i
+    cdef ssize_t nn = nodes.length
+
+    if tinf.tinf.trans_table != 11:
+        no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 8.0
+        no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
+        no_stop = 1 - no_stop
+    else:
+        no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 4.0
+        no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
+        no_stop = 1 - no_stop
+
+    # Initial Pass: Score coding potential (start->stop)
+    score[0] = score[1] = score[2] = 0.0
+    for i in range(nn-1, -1, -1):
+        phase = nodes.nodes[i].ndx%3
+        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
+            last[phase] = nodes.nodes[i].ndx
+            score[phase] = 0.0
+        elif nodes.nodes[i].strand == 1:
+            for j in range(last[phase]-3, nodes.nodes[i].ndx - 1, -3):
+                score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
+            nodes.nodes[i].cscore = score[phase]
+            last[phase] = nodes.nodes[i].ndx
+    score[0] = score[1] = score[2] = 0.0
+    for i in range(nn):
+        phase = nodes.nodes[i].ndx%3
+        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
+            last[phase] = nodes.nodes[i].ndx
+            score[phase] = 0.0
+        elif nodes.nodes[i].strand == -1:
+            for j in range(last[phase]+3, nodes.nodes[i].ndx+1, 3):
+                score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
+            nodes.nodes[i].cscore = score[phase]
+            last[phase] = nodes.nodes[i].ndx
+
+    # Second Pass: Penalize start nodes with ascending coding to their left
+    score[0] = score[1] = score[2] = -10000.0;
+    for i in range(nn):
+        phase = nodes.nodes[i].ndx%3
+        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
+            score[phase] = -10000.0
+        elif nodes.nodes[i].strand == 1:
+          if nodes.nodes[i].cscore > score[phase]:
+              score[phase] = nodes.nodes[i].cscore
+          else:
+              nodes.nodes[i].cscore -= score[phase] - nodes.nodes[i].cscore
+    score[0] = score[1] = score[2] = -10000.0
+    for i in range(nn-1, -1, -1):
+        phase = nodes.nodes[i].ndx%3
+        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
+            score[phase] = -10000.0
+        elif nodes.nodes[i].strand == -1:
+            if nodes.nodes[i].cscore > score[phase]:
+                score[phase] = nodes.nodes[i].cscore
+            else:
+                nodes.nodes[i].cscore -= (score[phase] - nodes.nodes[i].cscore);
+
+    # Third Pass: Add length-based factor to the score
+    # Penalize start nodes based on length to their left
+    for i in range(nn):
+        phase = nodes.nodes[i].ndx%3
+        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
+            score[phase] = -10000.0;
+        elif nodes.nodes[i].strand == 1:
+            gsize = ((<double> nodes.nodes[i].stop_val - nodes.nodes[i].ndx)+3.0)/3.0
+            if gsize > 1000.0:
+                lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
+                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                lfac *= (gsize - 80) / 920.0;
+            else:
+                lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
+                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+            if lfac > score[phase]:
+                score[phase] = lfac
+            else:
+                lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+            if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
+                nodes.nodes[i].cscore = 0.5*lfac;
+            nodes.nodes[i].cscore += lfac;
+    for i in range(nn-1, -1, -1):
+        phase = nodes.nodes[i].ndx%3;
+        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
+            score[phase] = -10000.0;
+        elif nodes.nodes[i].strand == -1:
+            gsize = ((<double> nodes.nodes[i].ndx - nodes.nodes[i].stop_val)+3.0)/3.0
+            if(gsize > 1000.0):
+                lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
+                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                lfac *= (gsize - 80) / 920.0;
+            else:
+                lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
+                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+            if lfac > score[phase]:
+                score[phase] = lfac
+            else:
+                lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+            if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
+                nodes.nodes[i].cscore = 0.5*lfac
+            nodes.nodes[i].cscore += lfac
+
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
 
     cdef int i
@@ -1621,7 +1732,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
 
     # Calculate raw coding potential for every start-stop pair
     calc_orf_gc(nodes, seq, tinf)
-    raw_coding_score(seq, nodes, tinf)
+    raw_coding_score(nodes, seq, tinf)
 
     # Calculate raw RBS Scores for every start node.
     if tinf.tinf.uses_sd:
@@ -2017,9 +2128,6 @@ cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, 
 cpdef inline void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil:
     node.calc_dicodon_gene(tinf.tinf, sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, ipath)
 
-cpdef inline void raw_coding_score(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
-    node.raw_coding_score(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
-
 cpdef inline void train_starts_sd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
     node.train_starts_sd(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
 
@@ -2054,7 +2162,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         ipath = dynamic_programming(nodes, tinf, is_meta=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
-        raw_coding_score(sequence, nodes, tinf)
+        raw_coding_score(nodes, sequence, tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
         rbs_score(nodes, sequence, tinf)
         train_starts_sd(sequence, nodes, tinf)
