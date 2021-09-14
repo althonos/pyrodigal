@@ -1555,7 +1555,7 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
     else:
         start = seq.slen - 1 - nodes.nodes[ni].ndx
 
-    for i in reversed(range(3)):
+    for i in reversed(range(4)):
         for j in range(start-18-i, start-5-i):
             if j < 0:
                 continue
@@ -2151,8 +2151,6 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     cdef ssize_t j
     cdef ssize_t nn = nodes.length
 
-    node.train_starts_sd(seq.seq, seq.rseq, seq.slen, nodes.nodes, nodes.length, tinf.tinf)
-
     # reset training info
     for j in range(3):
         tinf.tinf.type_wt[j] = 0.0
@@ -2344,6 +2342,231 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
               if tinf.tinf.ups_comp[i][j] < -4.0:
                   tinf.tinf.ups_comp[i][j] = -4.0
 
+cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
+
+    cdef int i
+    cdef int j
+    cdef int k
+    cdef int l
+    cdef int fr
+    cdef int stage
+    cdef int bndx[3]
+    cdef int mgood[4][4][4096]
+    cdef double sum
+    cdef double ngenes
+    cdef double zbg
+    cdef double zreal
+    cdef double best[3]
+    cdef double tbg[3]
+    cdef double treal[3]
+    cdef double mbg[4][4][4096]
+    cdef double mreal[4][4][4096]
+    cdef double wt                = tinf.tinf.st_wt
+    cdef double sthresh           = 35.0;
+    cdef int    nn                = nodes.length
+
+    for i in range(32):
+        for j in range(4):
+            tinf.tinf.ups_comp[i][j] = 0.0
+
+    # Build the background of random types
+    for i in range(3):
+        tinf.tinf.type_wt[i] = 0.0
+        tbg[i] = 0.0;
+    for i in range(nn):
+        if nodes.nodes[i].type == node_type.STOP:
+            continue
+        tbg[nodes.nodes[i].type] += 1.0
+    sum = 0.0
+    for i in range(3):
+        sum += tbg[i]
+    for i in range(3):
+        tbg[i] /= sum
+
+    # Iterate 20 times through the list of nodes
+    # Converge upon optimal weights for ATG vs GTG vs TTG and RBS motifs
+    # (convergence typically takes 4-5 iterations, but we run a few
+    # extra to be safe)
+    for i in range(20):
+        # Determine which stage of motif finding we're in */
+        if i < 4:
+            stage = 0
+        elif i < 12:
+            stage = 1
+        else:
+            stage = 2
+
+        # Recalculate the upstream motif background and set 'real' counts to 0
+        for j in range(4):
+            for k in range(4):
+                for l in range(4096):
+                    mbg[j][k][l] = 0.0
+        zbg = 0.0
+        for j in range(nn):
+            if nodes.nodes[j].type == node_type.STOP or nodes.nodes[j].edge:
+                continue
+            # node.find_best_upstream_motif(tinf.tinf, seq.seq, seq.rseq, seq.slen, &nodes.nodes[j], stage);
+            find_best_upstream_motif(nodes, j, seq, tinf, stage);
+            update_motif_counts(mbg, &zbg, seq, &nodes.nodes[j], stage)
+        sum = 0.0
+        for j in range(4):
+            for k in range(4):
+                for l in range(4096):
+                    sum += mbg[j][k][l]
+        sum += zbg
+        for j in range(4):
+            for k in range(4):
+                for l in range(4096):
+                    mbg[j][k][l] /= sum
+        zbg /= sum
+
+        # Reset counts of 'real' motifs/types to 0
+        for j in range(4):
+            for k in range(4):
+                for l in range(4096):
+                    mreal[j][k][l] = 0.0
+        zreal = 0.0
+        for j in range(3):
+            treal[j] = 0.0
+        ngenes = 0.0
+
+        # Forward strand pass
+        for j in range(3):
+            best[j] = 0.0
+            bndx[j] = -1
+        for j in range(nn):
+            if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
+                continue
+            fr = (nodes.nodes[j].ndx)%3;
+            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == 1:
+                if best[fr] >= sthresh:
+                    ngenes += 1.0
+                    treal[nodes.nodes[bndx[fr]].type] += 1.0
+                    update_motif_counts(mreal, &zreal, seq, &nodes.nodes[bndx[fr]], stage)
+                    if i == 19:
+                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[fr]].ndx, strand=1)
+                best[fr] = 0.0;
+                bndx[fr] = -1;
+            elif nodes.nodes[j].strand == 1:
+                if nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[fr]:
+                    best[fr] = nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                    bndx[fr] = j
+
+        # Reverse strand pass
+        for j in range(3):
+            best[j] = 0.0
+            bndx[j] = -1
+        for j in reversed(range(nn)):
+            if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
+                continue
+            fr = (nodes.nodes[j].ndx)%3;
+            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == -1:
+                if best[fr] >= sthresh:
+                    ngenes += 1.0;
+                    treal[nodes.nodes[bndx[fr]].type] += 1.0;
+                    update_motif_counts(mreal, &zreal, seq, &nodes.nodes[bndx[fr]], stage)
+                    if i == 19:
+                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[fr]].ndx, strand=-1)
+                best[fr] = 0.0
+                bndx[fr] = -1
+            elif nodes.nodes[j].strand == -1:
+                if nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[fr]:
+                    best[fr] = nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                    bndx[fr] = j
+
+        # Update the log likelihood weights for type and RBS motifs
+        if stage < 2:
+            node.build_coverage_map(mreal, mgood, ngenes, stage)
+        sum = 0.0
+        for j in range(4):
+            for k in range(4):
+                for l in range(4096):
+                    sum += mreal[j][k][l]
+        sum += zreal;
+        if sum == 0.0:
+            for j in range(4):
+                for k in range(4):
+                    for l in range(4096):
+                        tinf.tinf.mot_wt[j][k][l] = 0.0
+            tinf.tinf.no_mot = 0.0;
+        else:
+            for j in range(4):
+                for k in range(4):
+                    for l in range(4096):
+                        if mgood[j][k][l] == 0:
+                            zreal += mreal[j][k][l]
+                            zbg += mreal[j][k][l]
+                            mreal[j][k][l] = 0.0
+                            mbg[j][k][l] = 0.0
+                        mreal[j][k][l] /= sum;
+                        if mbg[j][k][l] != 0:
+                            tinf.tinf.mot_wt[j][k][l] = log(mreal[j][k][l]/mbg[j][k][l])
+                        else:
+                            tinf.tinf.mot_wt[j][k][l] = -4.0
+                        if tinf.tinf.mot_wt[j][k][l] > 4.0:
+                            tinf.tinf.mot_wt[j][k][l] = 4.0
+                        elif tinf.tinf.mot_wt[j][k][l] < -4.0:
+                            tinf.tinf.mot_wt[j][k][l] = -4.0
+        zreal /= sum
+        if zbg != 0:
+            tinf.tinf.no_mot = log(zreal/zbg)
+        else:
+            tinf.tinf.no_mot = -4.0
+        if tinf.tinf.no_mot > 4.0:
+            tinf.tinf.no_mot = 4.0
+        elif tinf.tinf.no_mot < -4.0:
+            tinf.tinf.no_mot = -4.0
+        sum = 0.0;
+        for j in range(3):
+            sum += treal[j]
+        if sum == 0.0:
+            for j in range(3):
+                tinf.tinf.type_wt[j] = 0.0
+        else:
+            for j in range(3):
+                treal[j] /= sum;
+                if tbg[j] != 0:
+                    tinf.tinf.type_wt[j] = log(treal[j]/tbg[j])
+                else:
+                    tinf.tinf.type_wt[j] = -4.0;
+                if tinf.tinf.type_wt[j] > 4.0:
+                    tinf.tinf.type_wt[j] = 4.0
+                elif tinf.tinf.type_wt[j] < -4.0:
+                    tinf.tinf.type_wt[j] = -4.0
+        if sum * 2000.0 <= nn:
+            sthresh /= 2.0
+
+    # Convert upstream base composition to a log score
+    for i in range(32):
+        sum = 0.0
+        for j in range(4):
+            sum += tinf.tinf.ups_comp[i][j]
+        if sum == 0.0:
+            for j in range(4):
+                tinf.tinf.ups_comp[i][j] = 0.0
+        else:
+            for j in range(4):
+                tinf.tinf.ups_comp[i][j] /= sum
+                if tinf.tinf.gc > 0.1 and tinf.tinf.gc < 0.9:
+                    if j == 0 or j == 3:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/(1.0-tinf.tinf.gc));
+                    else:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/tinf.tinf.gc);
+                elif tinf.tinf.gc <= 0.1:
+                    if j == 0 or j == 3:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+                    else:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+                else:
+                    if j == 0 or j == 3:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+                    else:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+                if tinf.tinf.ups_comp[i][j] > 4.0:
+                    tinf.tinf.ups_comp[i][j] = 4.0
+                elif tinf.tinf.ups_comp[i][j] < -4.0:
+                    tinf.tinf.ups_comp[i][j] = -4.0
+
 
 # --- Wrappers ---------------------------------------------------------------
 
@@ -2368,12 +2591,11 @@ cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, 
 cpdef inline void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil:
     node.calc_dicodon_gene(tinf.tinf, sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, ipath)
 
-cpdef inline void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil:
-    node.train_starts_nonsd(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
-
 cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
     node.determine_sd_usage(tinf.tinf)
 
+cdef inline void update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil:
+    node.update_motif_counts(mcnt, zero, seq.seq, seq.rseq, seq.slen, nod, stage)
 
 # --- Main functions ---------------------------------------------------------
 

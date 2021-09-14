@@ -70,7 +70,9 @@ cdef extern from "node.h" nogil:
 
     void count_upstream_composition(unsigned char*, int, int, int, _training*)
 
+    void build_coverage_map(double[4][4][4096], int[4][4][4096], double, int)
     void find_best_upstream_motif(_training*, unsigned char*, unsigned char*, int, _node*, int)
+    void update_motif_counts(double[4][4][4096], double*, unsigned char*, unsigned char*, int, _node*, int)
 
     bint cross_mask(int, int, _mask*, int)
 
