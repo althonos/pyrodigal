@@ -68,6 +68,8 @@ cdef extern from "node.h" nogil:
     void train_starts_sd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
     void train_starts_nonsd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
 
+    void count_upstream_composition(unsigned char*, int, int, int, _training*)
+
     void find_best_upstream_motif(_training*, unsigned char*, unsigned char*, int, _node*, int)
 
     bint cross_mask(int, int, _mask*, int)

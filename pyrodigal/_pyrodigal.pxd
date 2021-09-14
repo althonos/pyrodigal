@@ -150,6 +150,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil
 cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
 cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
+cpdef void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
 
 # --- Wrappers ---------------------------------------------------------------
 
@@ -160,9 +161,8 @@ cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
 cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil
 cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
-cpdef void train_starts_sd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil
+cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
 cpdef void determine_sd_usage(TrainingInfo tinf) nogil
-cpdef void train_starts_nonsd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil
 
 # --- Main functions ---------------------------------------------------------
 

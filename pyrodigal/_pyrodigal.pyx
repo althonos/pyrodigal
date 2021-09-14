@@ -2105,7 +2105,227 @@ cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf,
 
     return max_val
 
+cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
+
+    cdef int phase
+    cdef int rbs[3]
+    cdef int type[3]
+    cdef int bndx[3]
+    cdef int max_rb
+    cdef double sum
+    cdef double rbg[28]
+    cdef double rreal[28]
+    cdef double best[3]
+    cdef double tbg[3]
+    cdef double treal[3]
+    cdef double sthresh   = 35.0
+    cdef double wt        = tinf.tinf.st_wt
+
+    cdef ssize_t i
+    cdef ssize_t j
+    cdef ssize_t nn = nodes.length
+
+    node.train_starts_sd(seq.seq, seq.rseq, seq.slen, nodes.nodes, nodes.length, tinf.tinf)
+
+    # reset training info
+    for j in range(3):
+        tinf.tinf.type_wt[j] = 0.0
+    for j in range(28):
+        tinf.tinf.rbs_wt[j] = 0.0
+    for i in range(32):
+        for j in range(4):
+            tinf.tinf.ups_comp[i][j] = 0.0
+
+    # Build the background of random types
+    for i in range(3):
+        tbg[i] = 0.0
+    for i in range(nn):
+        if nodes.nodes[i].type == node_type.STOP:
+            continue
+        tbg[nodes.nodes[i].type] += 1.0
+    sum = 0.0
+    for i in range(3):
+        sum += tbg[i]
+    for i in range(3):
+        tbg[i] /= sum
+
+    # Iterate 10 times through the list of nodes
+    # Converge upon optimal weights for ATG vs GTG vs TTG and RBS motifs
+    # (convergence typically takes 4-5 iterations, but we run a few
+    # extra to be safe)
+    for i in range(10):
+        # Recalculate the RBS motif background */
+        for j in range(28):
+            rbg[j] = 0.0
+        for j in range(nn):
+            if nodes.nodes[j].type == node_type.STOP or nodes.nodes[j].edge:
+                continue
+            if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]+1.0 or nodes.nodes[j].rbs[1] == 0:
+                max_rb = nodes.nodes[j].rbs[0]
+            elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]-1.0 or nodes.nodes[j].rbs[0] == 0:
+                max_rb = nodes.nodes[j].rbs[1]
+            elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
+                max_rb = nodes.nodes[j].rbs[0]
+            else:
+                max_rb = nodes.nodes[j].rbs[1]
+            rbg[max_rb] += 1.0;
+
+        sum = 0.0
+        for j in range(28):
+            sum += rbg[j]
+        for j in range(28):
+            rbg[j] /= sum
+
+        for j in range(28):
+            rreal[j] = 0.0
+        for j in range(3):
+            treal[j] = 0.0
+
+        # Forward strand pass
+        for j in range(3):
+            best[j] = 0.0; bndx[j] = -1; rbs[j] = 0; type[j] = 0;
+        for j in range(nn):
+            if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge == 1:
+                continue
+            phase = nodes.nodes[j].ndx % 3
+            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == 1:
+                if best[phase] >= sthresh and nodes.nodes[bndx[phase]].ndx%3 == phase:
+                    rreal[rbs[phase]] += 1.0;
+                    treal[type[phase]] += 1.0;
+                    if i == 9:
+                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[phase]].ndx, strand=1);
+                best[phase] = 0.0; bndx[phase] = -1; rbs[phase] = 0; type[phase] = 0;
+            elif nodes.nodes[j].strand == 1:
+                if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]+1.0 or nodes.nodes[j].rbs[1] == 0:
+                    max_rb = nodes.nodes[j].rbs[0];
+                elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]-1.0 or nodes.nodes[j].rbs[0] == 0:
+                    max_rb = nodes.nodes[j].rbs[1];
+                elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
+                    max_rb = nodes.nodes[j].rbs[0]
+                else:
+                    max_rb = nodes.nodes[j].rbs[1]
+                if nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[phase]:
+                    best[phase] = nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb];
+                    best[phase] += wt*tinf.tinf.type_wt[nodes.nodes[j].type];
+                    bndx[phase] = j;
+                    type[phase] = nodes.nodes[j].type;
+                    rbs[phase] = max_rb;
+
+        # Reverse strand pass
+        for j in range(3):
+            best[j] = 0.0
+            bndx[j] = -1
+            rbs[j] = 0
+            type[j] = 0
+        for j in range(nn-1, -1, -1):
+            if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
+                continue
+            phase =  nodes.nodes[j].ndx % 3
+            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == -1:
+                if best[phase] >= sthresh and nodes.nodes[bndx[phase]].ndx%3 == phase:
+                    rreal[rbs[phase]] += 1.0
+                    treal[type[phase]] += 1.0
+                    if i == 9:
+                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[phase]].ndx, strand=-1);
+                best[phase] = 0.0
+                bndx[phase] = -1
+                rbs[phase] = 0
+                type[phase] = 0
+            elif nodes.nodes[j].strand == -1:
+                if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]] + 1.0 or nodes.nodes[j].rbs[1] == 0:
+                    max_rb = nodes.nodes[j].rbs[0]
+                elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]] - 1.0 or nodes.nodes[j].rbs[0] == 0:
+                    max_rb = nodes.nodes[j].rbs[1]
+                elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
+                    max_rb = nodes.nodes[j].rbs[0]
+                else:
+                    max_rb = nodes.nodes[j].rbs[1]
+                if nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[phase]:
+                    best[phase] = nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                    bndx[phase] = j
+                    type[phase] = nodes.nodes[j].type
+                    rbs[phase] = max_rb
+
+        # Update RBS weights
+        sum = 0.0;
+        for j in range(28):
+            sum += rreal[j]
+        if sum == 0.0:
+            for j in range(28):
+                tinf.tinf.rbs_wt[j] = 0.0
+        else:
+            for j in range(28):
+                rreal[j] /= sum
+                if rbg[j] != 0:
+                    tinf.tinf.rbs_wt[j] = log(rreal[j]/rbg[j])
+                else:
+                    tinf.tinf.rbs_wt[j] = -4.0
+                if tinf.tinf.rbs_wt[j] > 4.0:
+                    tinf.tinf.rbs_wt[j] = 4.0
+                elif tinf.tinf.rbs_wt[j] < -4.0:
+                    tinf.tinf.rbs_wt[j] = -4.0
+
+        # Update type weights
+        sum = 0.0
+        for j in range(3):
+            sum += treal[j]
+        if sum == 0.0:
+            for j in range(3):
+                tinf.tinf.type_wt[j] = 0.0
+        else:
+            for j in range(3):
+                treal[j] /= sum;
+                if tbg[j] != 0:
+                    tinf.tinf.type_wt[j] = log(treal[j]/tbg[j])
+                else:
+                    tinf.tinf.type_wt[j] = -4.0
+                if tinf.tinf.type_wt[j] > 4.0:
+                    tinf.tinf.type_wt[j] = 4.0
+                elif tinf.tinf.type_wt[j] < -4.0:
+                    tinf.tinf.type_wt[j] = -4.0;
+        if sum*2000.0 <= nodes.length:
+            sthresh /= 2.0
+
+
+    # Convert upstream base composition to a log score
+    for i in range(32):
+        sum = 0.0;
+        for j in range(4):
+            sum += tinf.tinf.ups_comp[i][j];
+        if sum == 0.0:
+            for j in range(4):
+                tinf.tinf.ups_comp[i][j] = 0.0;
+        else:
+          for j in range(4):
+              tinf.tinf.ups_comp[i][j] /= sum;
+              if tinf.tinf.gc > 0.1 and tinf.tinf.gc < 0.9:
+                  if j == 0 or j == 3:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/(1.0-tinf.tinf.gc))
+                  else:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/tinf.tinf.gc)
+              elif tinf.tinf.gc <= 0.1:
+                  if j == 0 or j == 3:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+                  else:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+              else:
+                  if j == 0 or j == 3:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+                  else:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+              if tinf.tinf.ups_comp[i][j] > 4.0:
+                  tinf.tinf.ups_comp[i][j] = 4.0
+              if tinf.tinf.ups_comp[i][j] < -4.0:
+                  tinf.tinf.ups_comp[i][j] = -4.0
+
+
 # --- Wrappers ---------------------------------------------------------------
+
+cpdef inline void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, int strand=1) nogil:
+    if strand == 1:
+        node.count_upstream_composition(seq.seq, seq.slen, strand, pos, tinf.tinf)
+    else:
+        node.count_upstream_composition(seq.rseq, seq.slen, strand, pos, tinf.tinf)
 
 cpdef inline void reset_node_scores(Nodes nodes) nogil:
     node.reset_node_scores(nodes.nodes, nodes.length)
@@ -2128,14 +2348,12 @@ cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, 
 cpdef inline void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil:
     node.calc_dicodon_gene(tinf.tinf, sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, ipath)
 
-cpdef inline void train_starts_sd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
-    node.train_starts_sd(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
+cpdef inline void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil:
+    node.train_starts_nonsd(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
 
 cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
     node.determine_sd_usage(tinf.tinf)
 
-cpdef inline void train_starts_nonsd(Sequence sequence, Nodes nodes, TrainingInfo tinf) nogil:
-    node.train_starts_nonsd(sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, nodes.length, tinf.tinf)
 
 # --- Main functions ---------------------------------------------------------
 
@@ -2165,13 +2383,13 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         raw_coding_score(nodes, sequence, tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
         rbs_score(nodes, sequence, tinf)
-        train_starts_sd(sequence, nodes, tinf)
+        train_starts_sd(nodes, sequence, tinf)
         if force_nonsd:
             tinf.tinf.uses_sd = False
         else:
             determine_sd_usage(tinf)
         if not tinf.tinf.uses_sd:
-            train_starts_nonsd(sequence, nodes, tinf)
+            train_starts_nonsd(nodes, sequence, tinf)
 
     return tinf
 
