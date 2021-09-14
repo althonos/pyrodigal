@@ -1281,7 +1281,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
         if not closed:
             while last[(i+slmod)%3] + 3 > seq.slen:
                 last[(i+slmod)%3] -= 3
-    for i in range(seq.slen-3, -1, -1):
+    for i in reversed(range(seq.slen-2)):
         if seq._is_stop(i, tt):
             if saw_start[i%3]:
                 nodes._add_node(
@@ -1358,7 +1358,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
         if not closed:
             while last[(i+slmod) % 3] + 3 > seq.slen:
                 last[(i+slmod)%3] -= 3
-    for i in range(seq.slen-3, -1, -1):
+    for i in reversed(range(seq.slen-2)):
         if seq._is_stop(i, tt, strand=-1):
             if saw_start[i%3]:
                 nodes._add_node(
@@ -1479,7 +1479,7 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
 
     # direct strand
     gc[0] = gc[1] = gc[2] = 0.0
-    for i in range(nodes.length - 1, -1, -1):
+    for i in reversed(range(nodes.length)):
         phase = nodes.nodes[i].ndx %3
         if nodes.nodes[i].strand == 1:
             if nodes.nodes[i].type == node_type.STOP:
@@ -1529,7 +1529,7 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
     else:
         start = seq.slen - 1 - nodes.nodes[ni].ndx
 
-    for i in range(3, -1, -1):
+    for i in reversed(range(3)):
         for j in range(start-18-i, start-5-i):
             if j < 0:
                 continue
@@ -1589,13 +1589,13 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
 
     # Initial Pass: Score coding potential (start->stop)
     score[0] = score[1] = score[2] = 0.0
-    for i in range(nn-1, -1, -1):
+    for i in reversed(range(nn)):
         phase = nodes.nodes[i].ndx%3
         if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
             last[phase] = nodes.nodes[i].ndx
             score[phase] = 0.0
         elif nodes.nodes[i].strand == 1:
-            for j in range(last[phase]-3, nodes.nodes[i].ndx - 1, -3):
+            for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
                 score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
             nodes.nodes[i].cscore = score[phase]
             last[phase] = nodes.nodes[i].ndx
@@ -1606,7 +1606,7 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
             last[phase] = nodes.nodes[i].ndx
             score[phase] = 0.0
         elif nodes.nodes[i].strand == -1:
-            for j in range(last[phase]+3, nodes.nodes[i].ndx+1, 3):
+            for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
                 score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
             nodes.nodes[i].cscore = score[phase]
             last[phase] = nodes.nodes[i].ndx
@@ -1623,7 +1623,7 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
           else:
               nodes.nodes[i].cscore -= score[phase] - nodes.nodes[i].cscore
     score[0] = score[1] = score[2] = -10000.0
-    for i in range(nn-1, -1, -1):
+    for i in reversed(range(nn)):
         phase = nodes.nodes[i].ndx%3
         if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
             score[phase] = -10000.0
@@ -1655,7 +1655,7 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
             if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
                 nodes.nodes[i].cscore = 0.5*lfac;
             nodes.nodes[i].cscore += lfac;
-    for i in range(nn-1, -1, -1):
+    for i in reversed(range(nn)):
         phase = nodes.nodes[i].ndx%3;
         if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
             score[phase] = -10000.0;
@@ -1794,7 +1794,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
             elif not closed and nodes.nodes[i].ndx >= seq.slen - 3 and nodes.nodes[i].strand == -1:
                 nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
             elif i < 500 and nodes.nodes[i].strand == 1:
-                for j in range(i-1, -1, -1):
+                for j in reversed(range(i)):
                     if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
                         nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
                         break
@@ -2217,7 +2217,7 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
             bndx[j] = -1
             rbs[j] = 0
             type[j] = 0
-        for j in range(nn-1, -1, -1):
+        for j in reversed(range(nn)):
             if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
                 continue
             phase =  nodes.nodes[j].ndx % 3
