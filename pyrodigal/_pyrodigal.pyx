@@ -21,7 +21,7 @@ from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
-from pyrodigal.prodigal.node cimport _node, MIN_EDGE_GENE, MIN_GENE, cross_mask
+from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, cross_mask
 from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._utils cimport _mini_training
@@ -1469,6 +1469,77 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
 
     return ng
 
+cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence seq, Nodes nodes, int ipath) nogil:
+    """Compute the dicodon frequency in genes and in the background.
+
+    Stores the log-likelihood of each 6-mer relative to the background.
+
+    """
+    cdef int    i
+    cdef int    right
+    cdef int    counts[4096]
+    cdef double prob[4096]
+    cdef double bg[4096]
+    cdef int    in_gene      = 0
+    cdef int    path         = ipath
+    cdef int    left         = -1
+    cdef int    glob
+
+    for i in range(4096):
+        prob[i] = 0.0
+        bg[i] = 0.0
+
+    # get background counts
+    # (shortened code from `calc_mer_bg` without malloc)
+    glob = 0
+    memset(counts, 0, 4096*sizeof(int))
+    for i in range(seq.slen - 5):
+        counts[seq._mer_ndx(i, length=6, strand=+1)] += 1
+        counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
+        glob += 2
+    for i in range(4096):
+        bg[i] = (<double> counts[i]) / (<double> glob)
+
+    # get counts in genes
+    glob = 0
+    memset(counts, 0, 4096*sizeof(int))
+    while path != -1:
+        if nodes.nodes[path].strand == 1:
+            if nodes.nodes[path].type == node_type.STOP:
+                in_gene = 1
+                right = nodes.nodes[path].ndx+2
+            elif in_gene == 1:
+                left = nodes.nodes[path].ndx
+                for i in range(left, right-5, 3):
+                    counts[seq._mer_ndx(i, length=6, strand=1)] += 1
+                    glob += 1
+                in_gene = 0
+        else:
+            if nodes.nodes[path].type != node_type.STOP:
+                in_gene = -1
+                left = seq.slen - nodes.nodes[path].ndx - 1
+            elif in_gene == -1:
+                right = seq.slen - nodes.nodes[path].ndx + 1
+                for i in range(left, right-5, 3):
+                    counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
+                    glob += 1
+                in_gene = 0
+        path = nodes.nodes[path].traceb
+
+    # compute log likelihood
+    for i in range(4096):
+        prob[i] = (<double> counts[i])/(<double> glob)
+        if prob[i] == 0 and bg[i] != 0:
+            tinf.tinf.gene_dc[i] = -5.0;
+        elif bg[i] == 0:
+            tinf.tinf.gene_dc[i] = 0.0
+        else:
+            tinf.tinf.gene_dc[i] = log(prob[i]/bg[i])
+        if tinf.tinf.gene_dc[i] > 5.0:
+            tinf.tinf.gene_dc[i] = 5.0
+        elif tinf.tinf.gene_dc[i] < -5.0:
+            tinf.tinf.gene_dc[i] = -5.0
+
 cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1:
     cdef int i
     cdef int j
@@ -2405,7 +2476,6 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogi
         for j in range(nn):
             if nodes.nodes[j].type == node_type.STOP or nodes.nodes[j].edge:
                 continue
-            # node.find_best_upstream_motif(tinf.tinf, seq.seq, seq.rseq, seq.slen, &nodes.nodes[j], stage);
             find_best_upstream_motif(nodes, j, seq, tinf, stage);
             update_motif_counts(mbg, &zbg, seq, &nodes.nodes[j], stage)
         sum = 0.0
@@ -2567,6 +2637,62 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogi
                 elif tinf.tinf.ups_comp[i][j] < -4.0:
                     tinf.tinf.ups_comp[i][j] = -4.0
 
+cdef void update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil:
+    cdef int     i
+    cdef int     j
+    cdef int     k
+    cdef int     start
+    cdef int     spacendx
+    cdef _motif* mot      = &nod.mot
+
+    if nod.type == node_type.STOP or nod.edge == 1:
+        return
+    if mot.len == 0:
+        zero[0] += 1.0
+        return
+
+    if nod.strand == 1:
+        start = nod.ndx
+    else:
+        start = seq.slen-1-nod.ndx
+
+    # Stage 0:  Count all motifs.
+    # If a motif is detected, it is counted for every distance in stage 0.
+    # This is done to make sure off-distance good motifs are recognized.
+    if stage == 0:
+        for i in reversed(range(4)):
+            for j in range(start - 18 - i, start - 5 - i):
+                if j < 0:
+                    continue
+                if j <= start-16-i:
+                    spacendx = 3
+                elif j <= start-14-i:
+                    spacendx = 2
+                elif j >= start-7-i:
+                    spacendx = 1
+                else:
+                    spacendx = 0
+                for k in range(4):
+                    mcnt[i][k][seq._mer_ndx(j, length=i+3, strand=nod.strand)] += 1.0
+    # Stage 1:  Count only the best motif, but also count all its sub-motifs.
+    elif stage == 1:
+        mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0;
+        for i in range(mot.len - 3):
+            for j in range(start-mot.spacer-mot.len, start-mot.spacer-i-2):
+                if j < 0:
+                    continue
+                if j <= start-16-i:
+                    spacendx = 3
+                elif j <= start-14-i:
+                    spacendx = 2
+                elif j >= start-7-i:
+                    spacendx = 1
+                else:
+                    spacendx = 0
+                mcnt[i][spacendx][seq._mer_ndx(j, length=i+3, strand=nod.strand)] += 1.0
+    # Stage 2:  Only count the highest scoring motif.
+    elif stage == 2:
+        mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
 
 # --- Wrappers ---------------------------------------------------------------
 
@@ -2588,14 +2714,9 @@ cpdef inline void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf
 cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil:
     gene.record_gene_data(genes.genes, genes.length, nodes.nodes, tinf.tinf, sequence_index)
 
-cpdef inline void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil:
-    node.calc_dicodon_gene(tinf.tinf, sequence.seq, sequence.rseq, sequence.slen, nodes.nodes, ipath)
-
 cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
     node.determine_sd_usage(tinf.tinf)
 
-cdef inline void update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil:
-    node.update_motif_counts(mcnt, zero, seq.seq, seq.rseq, seq.slen, nod, stage)
 
 # --- Main functions ---------------------------------------------------------
 
