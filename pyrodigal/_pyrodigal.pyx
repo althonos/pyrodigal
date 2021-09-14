@@ -1507,6 +1507,32 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
                 nodes.nodes[i].gc_cont = gc[phase] / gsize
                 last[phase] = nodes.nodes[i].ndx
 
+cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, int strand=1) nogil:
+
+    cdef int start
+    cdef int j
+    cdef int i     = 0
+
+    if strand == 1:
+        for j in range(1, 3):
+            if pos - j >= 0:
+                tinf.tinf.ups_comp[i][seq.digits[pos-j] & 0b11] += 1
+            i += 1
+        for j in range(15, 45):
+            if pos - j >= 0:
+                tinf.tinf.ups_comp[i][seq.digits[pos-j] & 0b11] += 1
+            i += 1
+    else:
+        start = seq.slen - 1 - pos
+        for j in range(1, 3):
+            if pos + j < seq.slen:
+                tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
+            i += 1
+        for j in range(15, 45):
+            if pos + j < seq.slen:
+                tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
+            i += 1
+
 cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1:
     cdef int i
     cdef int j
@@ -2320,12 +2346,6 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
 
 
 # --- Wrappers ---------------------------------------------------------------
-
-cpdef inline void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, int strand=1) nogil:
-    if strand == 1:
-        node.count_upstream_composition(seq.seq, seq.slen, strand, pos, tinf.tinf)
-    else:
-        node.count_upstream_composition(seq.rseq, seq.slen, strand, pos, tinf.tinf)
 
 cpdef inline void reset_node_scores(Nodes nodes) nogil:
     node.reset_node_scores(nodes.nodes, nodes.length)
