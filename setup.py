@@ -63,9 +63,11 @@ class build_ext(_build_ext):
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
-            ext.extra_objects.append(self.compiler.library_filename(
+            libfile = self.compiler.library_filename(
                 lib.name, output_dir=self._clib_cmd.build_clib
-            ))
+            )
+            ext.depends.append(libfile)
+            ext.extra_objects.append(libfile)
 
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
@@ -199,36 +201,52 @@ class build_clib(_build_clib):
             elif self.compiler.compiler_type == "msvc":
                 library.extra_compile_args.append("/Od")
 
+        # store compile args
+        compile_args = (
+            library.define_macros,
+            library.include_dirs,
+            self.debug,
+            library.extra_compile_args,
+            None,
+            library.depends,
+        )
+
         # compile Prodigal
         sources_lib = library.sources.copy()
         sources_lib.remove(self.training_file)
-        objects_lib = self.compiler.compile(
-            sources_lib,
-            output_dir=self.build_temp,
-            include_dirs=library.include_dirs,
-            macros=library.define_macros,
-            debug=self.debug,
-            depends=library.depends,
-            extra_preargs=library.extra_compile_args,
-        )
+        objects_lib = [
+            os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
+            for s in sources_lib
+        ]
+        for source, object in zip(sources_lib, objects_lib):
+            self.make_file(
+                [source],
+                object,
+                self.compiler.compile,
+                ([source], self.build_temp, *compile_args)
+            )
 
         # compile `training.c` source files
         sources_training = sorted(glob.iglob(os.path.join(self.training_temp, "*.c")))
-        objects_training = self.compiler.compile(
-            sources_training,
-            include_dirs=library.include_dirs,
-            macros=library.define_macros,
-            debug=self.debug,
-            depends=library.depends,
-            extra_preargs=library.extra_compile_args,
-        )
+        objects_training = [s.replace(".c", self.compiler.obj_extension) for s in sources_training]
+        for source, object in zip(sources_training, objects_training):
+            self.make_file(
+                [source],
+                object,
+                self.compiler.compile,
+                ([source], None, *compile_args)
+            )
 
         # link into a static library
-        self.compiler.create_static_lib(
-            objects_lib + objects_training,
+        libfile = self.compiler.library_filename(
             library.name,
             output_dir=self.build_clib,
-            debug=self.debug,
+        )
+        self.make_file(
+            objects_lib + objects_training,
+            libfile,
+            self.compiler.create_static_lib,
+            (objects_lib + objects_training, library.name, self.build_clib, None, self.debug)
         )
 
 
