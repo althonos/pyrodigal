@@ -25,9 +25,6 @@ cdef public set    TRANSLATION_TABLES
 cdef class Sequence:
     cdef          int      slen
     cdef          uint8_t* digits
-    cdef          bitmap_t seq
-    cdef          bitmap_t rseq
-    cdef          bitmap_t useq
     cdef readonly double   gc
 
     cdef int _allocate(self, int slen) except 1
@@ -142,6 +139,8 @@ cdef class Pyrodigal:
 
 cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*) nogil except -1
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
+cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
+cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
 cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1
 cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1
 cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil

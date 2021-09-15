@@ -14,7 +14,7 @@ from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
 from libc.math cimport sqrt, log, pow, fmax, fmin
 from libc.stdint cimport uint8_t
 from libc.stdio cimport printf
-from libc.stdlib cimport free, qsort
+from libc.stdlib cimport malloc, free, qsort
 from libc.string cimport memchr, memset, strstr
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
@@ -22,7 +22,7 @@ from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, cross_mask
-from pyrodigal.prodigal.sequence cimport calc_most_gc_frame, _mask, node_type, rcom_seq
+from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._utils cimport _mini_training
 from pyrodigal._unicode cimport *
@@ -36,6 +36,7 @@ import threading
 
 cdef int    IDEAL_SINGLE_GENOME = 100000
 cdef int    MIN_SINGLE_GENOME   = 20000
+cdef size_t WINDOW              = 120
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
 cdef set   TRANSLATION_TABLES   = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
@@ -65,41 +66,24 @@ cdef class Sequence:
     def __cinit__(self):
         self.slen = 0
         self.gc = 0.0
-        self.seq = self.rseq = self.useq = self.digits = NULL
+        self.digits = NULL
 
     def __dealloc__(self):
-        PyMem_Free(self.seq)
-        PyMem_Free(self.rseq)
-        PyMem_Free(self.useq)
         PyMem_Free(self.digits)
 
     def __len__(self):
         return self.slen
 
     def __sizeof__(self):
-        cdef size_t blen = self.slen//4 + (self.slen%4 != 0)
-        cdef size_t ulen = self.slen//8 + (self.slen%8 != 0)
-        return (ulen + 2 * blen) * sizeof(unsigned char) + self.slen * sizeof(uint8_t) + sizeof(self)
+        return self.slen * sizeof(uint8_t) + sizeof(self)
 
     cdef int _allocate(self, int slen) except 1:
-        cdef size_t blen = slen//4 + (slen%4 != 0)
-        cdef size_t ulen = slen//8 + (slen%8 != 0)
-
         self.slen = slen
-        self.seq  = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
-        self.rseq = <bitmap_t> PyMem_Malloc(blen * sizeof(unsigned char))
-        self.useq = <bitmap_t> PyMem_Malloc(ulen * sizeof(unsigned char))
         self.digits = <uint8_t*> PyMem_Malloc(slen * sizeof(uint8_t))
-
-        if self.seq == NULL or self.rseq == NULL or self.useq == NULL or self.digits == NULL:
+        if self.digits == NULL:
             raise MemoryError()
-
         with nogil:
-            memset(self.seq, 0,  blen * sizeof(unsigned char))
-            memset(self.rseq, 0, blen * sizeof(unsigned char))
-            memset(self.useq, 0, ulen * sizeof(unsigned char))
             memset(self.digits, 0, slen * sizeof(uint8_t))
-
         return 0
 
     @classmethod
@@ -118,24 +102,16 @@ cdef class Sequence:
                 letter = sequence[i]
                 if letter == b'A' or letter == b'a':
                     seq.digits[i] = A
-                    pass
                 elif letter == b'T' or letter == b't':
                     seq.digits[i] = T
-                    bitmap.set(seq.seq, j)
-                    bitmap.set(seq.seq, j+1)
                 elif letter == b'G' or letter == b'g':
                     seq.digits[i] = G
-                    bitmap.set(seq.seq, j)
                     gc_count += 1
                 elif letter == b'C' or letter == b'c':
                     seq.digits[i] = C
-                    bitmap.set(seq.seq, j+1)
                     gc_count += 1
                 else:
                     seq.digits[i] = N
-                    bitmap.set(seq.seq,  j+1)
-                    bitmap.set(seq.useq, i)
-            rcom_seq(seq.seq, seq.rseq, seq.useq, seq.slen)
             if seq.slen > 0:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
 
@@ -167,24 +143,16 @@ cdef class Sequence:
                 letter = PyUnicode_READ(kind, data, i)
                 if letter == u'A' or letter == u'a':
                     seq.digits[i] = A
-                    pass
                 elif letter == u'T' or letter == u't':
                     seq.digits[i] = T
-                    bitmap.set(seq.seq, j)
-                    bitmap.set(seq.seq, j+1)
                 elif letter == u'G' or letter == u'g':
                     seq.digits[i] = G
-                    bitmap.set(seq.seq, j)
                     gc_count += 1
                 elif letter == u'C' or letter == u'c':
                     seq.digits[i] = C
-                    bitmap.set(seq.seq, j+1)
                     gc_count += 1
                 else:
                     seq.digits[i] = N
-                    bitmap.set(seq.seq,  j+1)
-                    bitmap.set(seq.useq, i)
-            rcom_seq(seq.seq, seq.rseq, seq.useq, seq.slen)
             if seq.slen > 0:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
 
@@ -1047,7 +1015,6 @@ cdef class Prediction:
         cdef Py_UCS4        aa
         cdef _gene*         gene        = self.gene.gene
         cdef int            slen        = self.owner.sequence.slen
-        cdef bitmap_t       useq        = self.owner.sequence.useq
         cdef int            edge        = self.owner.nodes.nodes[gene.start_ndx].edge
         cdef int            strand      = self.owner.nodes.nodes[gene.start_ndx].strand
         cdef bitmap_t       seq
@@ -1539,6 +1506,53 @@ cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence seq, Nodes nodes, int i
             tinf.tinf.gene_dc[i] = 5.0
         elif tinf.tinf.gene_dc[i] < -5.0:
             tinf.tinf.gene_dc[i] = -5.0
+
+cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
+    cdef size_t i
+    cdef size_t j
+    cdef int    win
+    cdef int*   fwd
+    cdef int*   bwd
+    cdef int*   tot
+    cdef int*   gp
+
+    gp = <int*> malloc(seq.slen*sizeof(int));
+    fwd = <int*> malloc(seq.slen*sizeof(int));
+    bwd = <int*> malloc(seq.slen*sizeof(int));
+    tot = <int*> malloc(seq.slen*sizeof(int));
+    if fwd == NULL or bwd == NULL or gp == NULL or tot == NULL:
+        free(gp)
+        free(bwd)
+        free(tot)
+        return NULL
+
+    for i in range(seq.slen):
+        fwd[i] = 0
+        bwd[i] = 0
+        tot[i] = 0
+        gp[i] = -1
+
+    for j in range(0, seq.slen):
+        if j < 3:
+            fwd[j] = seq._is_gc(j)
+            bwd[seq.slen-j-1] = seq._is_gc(seq.slen-j-1)
+        else:
+            fwd[j] = fwd[j-3] + seq._is_gc(j)
+            bwd[seq.slen-j-1] = bwd[seq.slen-j+2] + seq._is_gc(seq.slen-j-1)
+    for i in range(seq.slen):
+        tot[i] = fwd[i] + bwd[i] - seq._is_gc(i);
+        if i >= WINDOW//2:
+            tot[i] -= fwd[i-WINDOW//2]
+        if i + WINDOW//2 < seq.slen:
+            tot[i] -= bwd[i+WINDOW//2]
+    free(bwd);
+    for i in range(0, seq.slen-2, 3):
+        win = sequence.max_fr(tot[i], tot[i+1], tot[i+2])
+        for j in range(3):
+            gp[i+j] = win
+    free(tot);
+
+    return gp;
 
 cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1:
     cdef int i
@@ -2732,7 +2746,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         nodes._sort()
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
-        gc_frame = calc_most_gc_frame(sequence.seq, sequence.slen)
+        gc_frame = calc_most_gc_frame(sequence)
         if not gc_frame:
             raise MemoryError()
         node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)

@@ -40,6 +40,8 @@ cdef extern from "sequence.h" nogil:
     int amino_num(char)
     char amino_letter(int)
 
+    int max_fr(int, int, int)
+
     int* calc_most_gc_frame(bitmap_t seq, int slen)
 
     int mer_ndx(int, unsigned char*, int)
