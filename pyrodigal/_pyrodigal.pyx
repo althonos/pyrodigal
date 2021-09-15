@@ -1701,45 +1701,47 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     # Initial Pass: Score coding potential (start->stop)
     score[0] = score[1] = score[2] = 0.0
     for i in reversed(range(nn)):
-        phase = nodes.nodes[i].ndx%3
-        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
-            last[phase] = nodes.nodes[i].ndx
-            score[phase] = 0.0
-        elif nodes.nodes[i].strand == 1:
-            for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
-                score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
-            nodes.nodes[i].cscore = score[phase]
-            last[phase] = nodes.nodes[i].ndx
+        if nodes.nodes[i].strand == 1:
+            phase = nodes.nodes[i].ndx%3
+            if nodes.nodes[i].type == node_type.STOP:
+                last[phase] = nodes.nodes[i].ndx
+                score[phase] = 0.0
+            else:
+                for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
+                    score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
+                nodes.nodes[i].cscore = score[phase]
+                last[phase] = nodes.nodes[i].ndx
     score[0] = score[1] = score[2] = 0.0
     for i in range(nn):
-        phase = nodes.nodes[i].ndx%3
-        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
-            last[phase] = nodes.nodes[i].ndx
-            score[phase] = 0.0
-        elif nodes.nodes[i].strand == -1:
-            for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
-                score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
-            nodes.nodes[i].cscore = score[phase]
-            last[phase] = nodes.nodes[i].ndx
+        if nodes.nodes[i].strand == -1:
+            phase = nodes.nodes[i].ndx%3
+            if nodes.nodes[i].type == node_type.STOP:
+                last[phase] = nodes.nodes[i].ndx
+                score[phase] = 0.0
+            else:
+                for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
+                    score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
+                nodes.nodes[i].cscore = score[phase]
+                last[phase] = nodes.nodes[i].ndx
 
     # Second Pass: Penalize start nodes with ascending coding to their left
     score[0] = score[1] = score[2] = -10000.0;
     for i in range(nn):
-        phase = nodes.nodes[i].ndx%3
-        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
-            score[phase] = -10000.0
-        elif nodes.nodes[i].strand == 1:
-          if nodes.nodes[i].cscore > score[phase]:
-              score[phase] = nodes.nodes[i].cscore
-          else:
-              nodes.nodes[i].cscore -= score[phase] - nodes.nodes[i].cscore
+        if nodes.nodes[i].strand == 1:
+            phase = nodes.nodes[i].ndx%3
+            if nodes.nodes[i].type == node_type.STOP:
+                score[phase] = -10000.0
+            elif nodes.nodes[i].cscore > score[phase]:
+                score[phase] = nodes.nodes[i].cscore
+            else:
+                nodes.nodes[i].cscore -= score[phase] - nodes.nodes[i].cscore
     score[0] = score[1] = score[2] = -10000.0
     for i in reversed(range(nn)):
-        phase = nodes.nodes[i].ndx%3
-        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
-            score[phase] = -10000.0
-        elif nodes.nodes[i].strand == -1:
-            if nodes.nodes[i].cscore > score[phase]:
+        if nodes.nodes[i].strand == -1:
+            phase = nodes.nodes[i].ndx%3
+            if nodes.nodes[i].type == node_type.STOP:
+                score[phase] = -10000.0
+            elif nodes.nodes[i].cscore > score[phase]:
                 score[phase] = nodes.nodes[i].cscore
             else:
                 nodes.nodes[i].cscore -= (score[phase] - nodes.nodes[i].cscore);
@@ -1747,45 +1749,47 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     # Third Pass: Add length-based factor to the score
     # Penalize start nodes based on length to their left
     for i in range(nn):
-        phase = nodes.nodes[i].ndx%3
-        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP:
-            score[phase] = -10000.0;
-        elif nodes.nodes[i].strand == 1:
-            gsize = ((<double> nodes.nodes[i].stop_val - nodes.nodes[i].ndx)+3.0)/3.0
-            if gsize > 1000.0:
-                lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
-                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-                lfac *= (gsize - 80) / 920.0;
+        if nodes.nodes[i].strand == 1:
+            phase = nodes.nodes[i].ndx%3
+            if nodes.nodes[i].type == node_type.STOP:
+                score[phase] = -10000.0;
             else:
-                lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
-                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-            if lfac > score[phase]:
-                score[phase] = lfac
-            else:
-                lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
-            if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
-                nodes.nodes[i].cscore = 0.5*lfac;
-            nodes.nodes[i].cscore += lfac;
+                gsize = ((<double> nodes.nodes[i].stop_val - nodes.nodes[i].ndx)+3.0)/3.0
+                if gsize > 1000.0:
+                    lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0))
+                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
+                    lfac *= (gsize - 80) / 920.0
+                else:
+                    lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize))
+                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
+                if lfac > score[phase]:
+                    score[phase] = lfac
+                else:
+                    lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+                if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
+                    nodes.nodes[i].cscore = 0.5*lfac
+                nodes.nodes[i].cscore += lfac
     for i in reversed(range(nn)):
-        phase = nodes.nodes[i].ndx%3;
-        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
-            score[phase] = -10000.0;
-        elif nodes.nodes[i].strand == -1:
-            gsize = ((<double> nodes.nodes[i].ndx - nodes.nodes[i].stop_val)+3.0)/3.0
-            if(gsize > 1000.0):
-                lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
-                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-                lfac *= (gsize - 80) / 920.0;
+        if nodes.nodes[i].strand == -1:
+            phase = nodes.nodes[i].ndx%3;
+            if nodes.nodes[i].type == node_type.STOP:
+                score[phase] = -10000.0;
             else:
-                lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
-                lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-            if lfac > score[phase]:
-                score[phase] = lfac
-            else:
-                lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
-            if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
-                nodes.nodes[i].cscore = 0.5*lfac
-            nodes.nodes[i].cscore += lfac
+                gsize = ((<double> nodes.nodes[i].ndx - nodes.nodes[i].stop_val)+3.0)/3.0
+                if(gsize > 1000.0):
+                    lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
+                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                    lfac *= (gsize - 80) / 920.0;
+                else:
+                    lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
+                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                if lfac > score[phase]:
+                    score[phase] = lfac
+                else:
+                    lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+                if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
+                    nodes.nodes[i].cscore = 0.5*lfac
+                nodes.nodes[i].cscore += lfac
 
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
 
@@ -1995,7 +1999,7 @@ cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, Trainin
     for i in range(1, 45):
         if i > 2 and i < 15:
             continue
-        if start - i < 0:
+        if start < i:
             continue
 
         if strand == 1:
@@ -2294,31 +2298,31 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
         for j in range(3):
             best[j] = 0.0; bndx[j] = -1; rbs[j] = 0; type[j] = 0;
         for j in range(nn):
-            if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge == 1:
+            if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
                 continue
-            phase = nodes.nodes[j].ndx % 3
-            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == 1:
-                if best[phase] >= sthresh and nodes.nodes[bndx[phase]].ndx%3 == phase:
-                    rreal[rbs[phase]] += 1.0;
-                    treal[type[phase]] += 1.0;
-                    if i == 9:
-                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[phase]].ndx, strand=1);
-                best[phase] = 0.0; bndx[phase] = -1; rbs[phase] = 0; type[phase] = 0;
-            elif nodes.nodes[j].strand == 1:
-                if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]+1.0 or nodes.nodes[j].rbs[1] == 0:
-                    max_rb = nodes.nodes[j].rbs[0];
-                elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]-1.0 or nodes.nodes[j].rbs[0] == 0:
-                    max_rb = nodes.nodes[j].rbs[1];
-                elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
-                    max_rb = nodes.nodes[j].rbs[0]
+            if nodes.nodes[j].strand == 1:
+                phase = nodes.nodes[j].ndx % 3
+                if nodes.nodes[j].type == node_type.STOP:
+                    if best[phase] >= sthresh and nodes.nodes[bndx[phase]].ndx%3 == phase:
+                        rreal[rbs[phase]] += 1.0
+                        treal[type[phase]] += 1.0
+                        if i == 9:
+                            count_upstream_composition(seq, tinf, nodes.nodes[bndx[phase]].ndx, strand=1)
+                    best[phase] = 0.0; bndx[phase] = -1; rbs[phase] = 0; type[phase] = 0;
                 else:
-                    max_rb = nodes.nodes[j].rbs[1]
-                if nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[phase]:
-                    best[phase] = nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb];
-                    best[phase] += wt*tinf.tinf.type_wt[nodes.nodes[j].type];
-                    bndx[phase] = j;
-                    type[phase] = nodes.nodes[j].type;
-                    rbs[phase] = max_rb;
+                    if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]+1.0 or nodes.nodes[j].rbs[1] == 0:
+                        max_rb = nodes.nodes[j].rbs[0]
+                    elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]]-1.0 or nodes.nodes[j].rbs[0] == 0:
+                        max_rb = nodes.nodes[j].rbs[1]
+                    elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
+                        max_rb = nodes.nodes[j].rbs[0]
+                    else:
+                        max_rb = nodes.nodes[j].rbs[1]
+                    if nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[phase]:
+                        best[phase] = nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                        bndx[phase] = j
+                        type[phase] = nodes.nodes[j].type
+                        rbs[phase] = max_rb
 
         # Reverse strand pass
         for j in range(3):
@@ -2329,31 +2333,32 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
         for j in reversed(range(nn)):
             if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
                 continue
-            phase =  nodes.nodes[j].ndx % 3
-            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == -1:
-                if best[phase] >= sthresh and nodes.nodes[bndx[phase]].ndx%3 == phase:
-                    rreal[rbs[phase]] += 1.0
-                    treal[type[phase]] += 1.0
-                    if i == 9:
-                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[phase]].ndx, strand=-1);
-                best[phase] = 0.0
-                bndx[phase] = -1
-                rbs[phase] = 0
-                type[phase] = 0
-            elif nodes.nodes[j].strand == -1:
-                if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]] + 1.0 or nodes.nodes[j].rbs[1] == 0:
-                    max_rb = nodes.nodes[j].rbs[0]
-                elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]] - 1.0 or nodes.nodes[j].rbs[0] == 0:
-                    max_rb = nodes.nodes[j].rbs[1]
-                elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
-                    max_rb = nodes.nodes[j].rbs[0]
+            if nodes.nodes[j].strand == -1:
+                phase =  nodes.nodes[j].ndx % 3
+                if nodes.nodes[j].type == node_type.STOP:
+                    if best[phase] >= sthresh and nodes.nodes[bndx[phase]].ndx%3 == phase:
+                        rreal[rbs[phase]] += 1.0
+                        treal[type[phase]] += 1.0
+                        if i == 9:
+                            count_upstream_composition(seq, tinf, nodes.nodes[bndx[phase]].ndx, strand=-1);
+                    best[phase] = 0.0
+                    bndx[phase] = -1
+                    rbs[phase] = 0
+                    type[phase] = 0
                 else:
-                    max_rb = nodes.nodes[j].rbs[1]
-                if nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[phase]:
-                    best[phase] = nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
-                    bndx[phase] = j
-                    type[phase] = nodes.nodes[j].type
-                    rbs[phase] = max_rb
+                    if tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] > tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]] + 1.0 or nodes.nodes[j].rbs[1] == 0:
+                        max_rb = nodes.nodes[j].rbs[0]
+                    elif tinf.tinf.rbs_wt[nodes.nodes[j].rbs[0]] < tinf.tinf.rbs_wt[nodes.nodes[j].rbs[1]] - 1.0 or nodes.nodes[j].rbs[0] == 0:
+                        max_rb = nodes.nodes[j].rbs[1]
+                    elif nodes.nodes[j].rbs[0] > nodes.nodes[j].rbs[1]:
+                        max_rb = nodes.nodes[j].rbs[0]
+                    else:
+                        max_rb = nodes.nodes[j].rbs[1]
+                    if nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[phase]:
+                        best[phase] = nodes.nodes[j].cscore + wt*tinf.tinf.rbs_wt[max_rb] + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                        bndx[phase] = j
+                        type[phase] = nodes.nodes[j].type
+                        rbs[phase] = max_rb
 
         # Update RBS weights
         sum = 0.0;
@@ -2406,22 +2411,22 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
                 tinf.tinf.ups_comp[i][j] = 0.0;
         else:
           for j in range(4):
-              tinf.tinf.ups_comp[i][j] /= sum;
-              if tinf.tinf.gc > 0.1 and tinf.tinf.gc < 0.9:
+              tinf.tinf.ups_comp[i][j] /= sum
+              if tinf.tinf.gc <= 0.1:
+                  if j == 0 or j == 3:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+                  else:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+              elif tinf.tinf.gc >= 0.9:
+                  if j == 0 or j == 3:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+                  else:
+                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+              else:
                   if j == 0 or j == 3:
                       tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/(1.0-tinf.tinf.gc))
                   else:
                       tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/tinf.tinf.gc)
-              elif tinf.tinf.gc <= 0.1:
-                  if j == 0 or j == 3:
-                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
-                  else:
-                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
-              else:
-                  if j == 0 or j == 3:
-                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
-                  else:
-                      tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
               if tinf.tinf.ups_comp[i][j] > 4.0:
                   tinf.tinf.ups_comp[i][j] = 4.0
               if tinf.tinf.ups_comp[i][j] < -4.0:
@@ -2521,20 +2526,21 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogi
         for j in range(nn):
             if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
                 continue
-            fr = (nodes.nodes[j].ndx)%3;
-            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == 1:
-                if best[fr] >= sthresh:
-                    ngenes += 1.0
-                    treal[nodes.nodes[bndx[fr]].type] += 1.0
-                    update_motif_counts(mreal, &zreal, seq, &nodes.nodes[bndx[fr]], stage)
-                    if i == 19:
-                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[fr]].ndx, strand=1)
-                best[fr] = 0.0;
-                bndx[fr] = -1;
-            elif nodes.nodes[j].strand == 1:
-                if nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[fr]:
-                    best[fr] = nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
-                    bndx[fr] = j
+            if nodes.nodes[j].strand == 1:
+                fr = (nodes.nodes[j].ndx)%3;
+                if nodes.nodes[j].type == node_type.STOP:
+                    if best[fr] >= sthresh:
+                        ngenes += 1.0
+                        treal[nodes.nodes[bndx[fr]].type] += 1.0
+                        update_motif_counts(mreal, &zreal, seq, &nodes.nodes[bndx[fr]], stage)
+                        if i == 19:
+                            count_upstream_composition(seq, tinf, nodes.nodes[bndx[fr]].ndx, strand=1)
+                    best[fr] = 0.0;
+                    bndx[fr] = -1;
+                else:
+                    if nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[fr]:
+                        best[fr] = nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                        bndx[fr] = j
 
         # Reverse strand pass
         for j in range(3):
@@ -2543,20 +2549,21 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogi
         for j in reversed(range(nn)):
             if nodes.nodes[j].type != node_type.STOP and nodes.nodes[j].edge:
                 continue
-            fr = (nodes.nodes[j].ndx)%3;
-            if nodes.nodes[j].type == node_type.STOP and nodes.nodes[j].strand == -1:
-                if best[fr] >= sthresh:
-                    ngenes += 1.0;
-                    treal[nodes.nodes[bndx[fr]].type] += 1.0;
-                    update_motif_counts(mreal, &zreal, seq, &nodes.nodes[bndx[fr]], stage)
-                    if i == 19:
-                        count_upstream_composition(seq, tinf, nodes.nodes[bndx[fr]].ndx, strand=-1)
-                best[fr] = 0.0
-                bndx[fr] = -1
-            elif nodes.nodes[j].strand == -1:
-                if nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[fr]:
-                    best[fr] = nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
-                    bndx[fr] = j
+            if nodes.nodes[j].strand == -1:
+                fr = (nodes.nodes[j].ndx)%3;
+                if nodes.nodes[j].type == node_type.STOP:
+                    if best[fr] >= sthresh:
+                        ngenes += 1.0;
+                        treal[nodes.nodes[bndx[fr]].type] += 1.0;
+                        update_motif_counts(mreal, &zreal, seq, &nodes.nodes[bndx[fr]], stage)
+                        if i == 19:
+                            count_upstream_composition(seq, tinf, nodes.nodes[bndx[fr]].ndx, strand=-1)
+                    best[fr] = 0.0
+                    bndx[fr] = -1
+                else:
+                    if nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type] >= best[fr]:
+                        best[fr] = nodes.nodes[j].cscore + wt*nodes.nodes[j].mot.score + wt*tinf.tinf.type_wt[nodes.nodes[j].type]
+                        bndx[fr] = j
 
         # Update the log likelihood weights for type and RBS motifs
         if stage < 2:
@@ -2631,21 +2638,21 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogi
         else:
             for j in range(4):
                 tinf.tinf.ups_comp[i][j] /= sum
-                if tinf.tinf.gc > 0.1 and tinf.tinf.gc < 0.9:
+                if tinf.tinf.gc <= 0.1:
+                    if j == 0 or j == 3:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+                    else:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+                elif tinf.tinf.gc >= 0.9:
+                    if j == 0 or j == 3:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
+                    else:
+                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
+                else:
                     if j == 0 or j == 3:
                         tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/(1.0-tinf.tinf.gc));
                     else:
                         tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/tinf.tinf.gc);
-                elif tinf.tinf.gc <= 0.1:
-                    if j == 0 or j == 3:
-                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
-                    else:
-                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
-                else:
-                    if j == 0 or j == 3:
-                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.10)
-                    else:
-                        tinf.tinf.ups_comp[i][j] = log(tinf.tinf.ups_comp[i][j]*2.0/0.90)
                 if tinf.tinf.ups_comp[i][j] > 4.0:
                     tinf.tinf.ups_comp[i][j] = 4.0
                 elif tinf.tinf.ups_comp[i][j] < -4.0:
