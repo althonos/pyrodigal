@@ -23,3 +23,5 @@ cdef extern from "gene.h" nogil:
 
     void write_translations(FILE *fh, _gene* genes, int ng, _node* nod, bitmap_t seq, bitmap_t rseq, bitmap_t useq, int slen, _training* tinf, int sctr, char* short_hdr)
     void print_genes(FILE*, _gene*, int, _node*, int, int, int, int, char*, _training*, char*, char*, char*)
+
+    double calculate_confidence(double score, double start_weight)

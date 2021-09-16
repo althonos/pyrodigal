@@ -96,6 +96,7 @@ cdef class Prediction:
     cdef readonly Predictions owner
     cdef readonly Gene        gene
 
+    cpdef double confidence(self)
     cpdef unicode translate(
         self,
         object translation_table=?,

@@ -639,12 +639,29 @@ cdef class Prediction:
         """
         return self.owner.nodes.nodes[self.gene.gene.start_ndx].uscore
 
+    cpdef double confidence(self):
+        """confidence(self)\n--
+
+        Estimate the confidence of the prediction.
+
+        Returns:
+            `float`: A confidence percentage between *0* and *100*.
+
+        """
+        cdef int ndx = self.gene.gene.start_ndx
+        return gene.calculate_confidence(
+            self.nodes.nodes[ndx].cscore + self.nodes.nodes[ndx].sscore,
+            self.owner.training_info.tinf.st_wt
+        )
+
     cpdef unicode translate(
         self,
         object translation_table=None,
         Py_UCS4 unknown_residue=u"X",
     ):
-        """Translate the predicted gene into a protein sequence.
+        """translate(self, translation_table=None, unknown_residue="X")\n--
+
+        Translate the predicted gene into a protein sequence.
 
         Arguments:
             translation_table (`int`, optional): An alternative translation table
