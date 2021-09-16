@@ -79,6 +79,13 @@ class _TestPyrodigalMode(object):
             else:
                 self.assertIs(gene.rbs_spacer, None)
 
+    def assertGCContentEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(proteins))
+        for gene, protein in zip(predictions, proteins):
+            *_, raw_data = protein.description.split(" # ")
+            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            self.assertAlmostEqual(gene.gc_cont, float(data["gc_cont"]), places=2)
+
     def test_find_genes_KK037166(self):
         record = _load_record("KK037166")
         proteins = _load_proteins("KK037166", self.mode)
@@ -89,6 +96,7 @@ class _TestPyrodigalMode(object):
         self.assertRbsMotifsEqual(preds, proteins)
         self.assertStartTypesEqual(preds, proteins)
         self.assertRbsSpacersEqual(preds, proteins)
+        self.assertGCContentEqual(preds, proteins)
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
         self.assertTranslationsEqual(preds_bin, proteins)
@@ -96,6 +104,7 @@ class _TestPyrodigalMode(object):
         self.assertRbsMotifsEqual(preds_bin, proteins)
         self.assertStartTypesEqual(preds_bin, proteins)
         self.assertRbsSpacersEqual(preds_bin, proteins)
+        self.assertGCContentEqual(preds_bin, proteins)
 
     def test_find_genes_SRR492066(self):
         record = _load_record("SRR492066")
@@ -107,6 +116,7 @@ class _TestPyrodigalMode(object):
         self.assertRbsMotifsEqual(preds, proteins)
         self.assertStartTypesEqual(preds, proteins)
         self.assertRbsSpacersEqual(preds, proteins)
+        self.assertGCContentEqual(preds, proteins)
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
         self.assertTranslationsEqual(preds_bin, proteins)
@@ -114,6 +124,7 @@ class _TestPyrodigalMode(object):
         self.assertRbsMotifsEqual(preds_bin, proteins)
         self.assertStartTypesEqual(preds_bin, proteins)
         self.assertRbsSpacersEqual(preds_bin, proteins)
+        self.assertGCContentEqual(preds_bin, proteins)
 
     def test_find_genes_MIIJ01000039(self):
         record = _load_record("MIIJ01000039")
@@ -125,6 +136,7 @@ class _TestPyrodigalMode(object):
         self.assertStartTypesEqual(preds, proteins)
         self.assertRbsSpacersEqual(preds, proteins)
         self.assertTranslationsEqual(preds, proteins)
+        self.assertGCContentEqual(preds, proteins)
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
         self.assertCoordinatesEqual(preds_bin, proteins)
@@ -132,6 +144,7 @@ class _TestPyrodigalMode(object):
         self.assertStartTypesEqual(preds_bin, proteins)
         self.assertRbsSpacersEqual(preds_bin, proteins)
         self.assertTranslationsEqual(preds_bin, proteins)
+        self.assertGCContentEqual(preds_bin, proteins)
 
 
 class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):

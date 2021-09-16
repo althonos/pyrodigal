@@ -586,11 +586,7 @@ cdef class Prediction:
     def gc_cont(self):
         """`float`: The GC content of the gene (between *0* and *1*).
         """
-        cdef char* data = self.gene.gene.gene_data
-        cdef char* i = strstr(data, "gc_cont")
-        cdef char* j = <char*> memchr(i, b'\0', 30)
-        cdef size_t length = j - i
-        return float(i[8:length])
+        return self.owner.nodes.nodes[self.gene.gene.start_ndx].gc_cont
 
     @property
     def translation_table(self):
