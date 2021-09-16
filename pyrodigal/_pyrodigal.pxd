@@ -155,7 +155,7 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf)
 
 cpdef void reset_node_scores(Nodes nodes) nogil
 cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
-cpdef int  dynamic_programming(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
+cpdef int  dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=*) nogil
 cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
 cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil

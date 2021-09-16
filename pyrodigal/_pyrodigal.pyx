@@ -11,7 +11,7 @@ from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
-from libc.math cimport sqrt, log, pow, fmax, fmin
+from libc.math cimport sqrt, log, pow, fmax, fmin, fabs
 from libc.stdint cimport uint8_t
 from libc.stdio cimport printf
 from libc.stdlib cimport malloc, free, qsort
@@ -164,7 +164,7 @@ cdef class Sequence:
         if strand == 1:
             return self.digits[i] == A
         else:
-            return self.digits[self.slen - 1 - i] == _translation[A]
+            return self.digits[self.slen - 1 - i] == T
 
     cdef inline bint _is_g(self, int i, int strand = 1) nogil:
         cdef uint8_t x
@@ -172,7 +172,7 @@ cdef class Sequence:
         if strand == 1:
             return self.digits[i] == G
         else:
-            return self.digits[self.slen - 1 - i] == _translation[G]
+            return self.digits[self.slen - 1 - i] == C
 
     cdef inline bint _is_gc(self, int i, int strand = 1) nogil:
         cdef uint8_t x
@@ -182,7 +182,12 @@ cdef class Sequence:
         else:
             x = self.digits[self.slen - 1 - i]
 
-        return x == C or x == G
+        # NB(@althonos): In the original Prodigal implementation, any unknown
+        #                character gets encoded as a C, so it gets counted
+        #                when computing the GC percent. We reproduce this
+        #                behaviour here, but a better solution would be to
+        #                count only known letters.
+        return x == C or x == G or x == N
 
     cdef inline bint _is_start(self, int i, int tt, int strand = 1) nogil:
         cdef uint8_t x0
@@ -1565,30 +1570,30 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
     # direct strand
     gc[0] = gc[1] = gc[2] = 0.0
     for i in reversed(range(nodes.length)):
-        phase = nodes.nodes[i].ndx %3
         if nodes.nodes[i].strand == 1:
+            phase = nodes.nodes[i].ndx %3
             if nodes.nodes[i].type == node_type.STOP:
-                last[phase] = nodes.nodes[i].ndx
-                gc[phase] = seq._is_gc(nodes.nodes[i].ndx) + seq._is_gc(nodes.nodes[i].ndx+1) + seq._is_gc(nodes.nodes[i].ndx+2)
+                last[phase] = j = nodes.nodes[i].ndx
+                gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
             else:
                 for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
-                    gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-                gsize = <float> nodes.nodes[i].stop_val - nodes.nodes[i].ndx + 3.0
+                    gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                gsize = fabs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
                 nodes.nodes[i].gc_cont = gc[phase] / gsize
                 last[phase] = nodes.nodes[i].ndx
 
     # reverse strand
     gc[0] = gc[1] = gc[2] = 0.0
     for i in range(nodes.length):
-        phase = nodes.nodes[i].ndx % 3
         if nodes.nodes[i].strand == -1:
+            phase = nodes.nodes[i].ndx % 3
             if nodes.nodes[i].type == node_type.STOP:
-                last[phase] = nodes.nodes[i].ndx
-                gc[phase] = seq._is_gc(nodes.nodes[i].ndx) + seq._is_gc(nodes.nodes[i].ndx-1) + seq._is_gc(nodes.nodes[i].ndx-2)
+                last[phase] = j = nodes.nodes[i].ndx
+                gc[phase] = seq._is_gc(j) + seq._is_gc(j-1) + seq._is_gc(j-2)
             else:
                 for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
                     gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-                gsize = <float> nodes.nodes[i].ndx - nodes.nodes[i].stop_val + 3.0
+                gsize = fabs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
                 nodes.nodes[i].gc_cont = gc[phase] / gsize
                 last[phase] = nodes.nodes[i].ndx
 
@@ -2723,8 +2728,8 @@ cpdef inline void reset_node_scores(Nodes nodes) nogil:
 cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
     node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
 
-cpdef inline int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
-    return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, is_meta)
+cpdef inline int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) nogil:
+    return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, final)
 
 cpdef inline void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil:
     dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
@@ -2761,7 +2766,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
         record_overlapping_starts(nodes, tinf, is_meta=False)
-        ipath = dynamic_programming(nodes, tinf, is_meta=False)
+        ipath = dynamic_programming(nodes, tinf, final=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
         raw_coding_score(nodes, sequence, tinf)
@@ -2792,7 +2797,7 @@ cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint c
         reset_node_scores(nodes)
         score_nodes(nodes, sequence, tinf, closed=closed, is_meta=False)
         record_overlapping_starts(nodes, tinf, is_meta=True)
-        ipath = dynamic_programming(nodes, tinf, is_meta=True)
+        ipath = dynamic_programming(nodes, tinf, final=True)
         # eliminate eventual bad genes in the nodes
         if nodes.length > 0:
             eliminate_bad_genes(nodes, ipath, tinf)
@@ -2847,7 +2852,7 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
             reset_node_scores(nodes)
             score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
             record_overlapping_starts(nodes, tinf, is_meta=True)
-            ipath = dynamic_programming(nodes, tinf, is_meta=True)
+            ipath = dynamic_programming(nodes, tinf, final=True)
             # update genes if the current bin had a better score
             if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
                 # record best phase and score
