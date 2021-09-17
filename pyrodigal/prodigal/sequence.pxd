@@ -25,6 +25,7 @@ cdef extern from "sequence.h" nogil:
     bint is_c(bitmap_t seq, int n)
     bint is_g(bitmap_t seq, int n)
     bint is_t(bitmap_t seq, int n)
+    bint is_n(bitmap_t, int)
     bint is_gc(bitmap_t seq, int n)
 
     bint is_stop(bitmap_t, int, _training*)

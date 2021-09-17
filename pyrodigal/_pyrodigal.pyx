@@ -654,6 +654,66 @@ cdef class Prediction:
             self.owner.training_info.tinf.st_wt
         )
 
+    cpdef unicode sequence(self):
+        """sequence(self)\n--
+
+        Build the nucleotide sequence of this predicted gene.
+
+        """
+
+        cdef size_t   i
+        cdef size_t   j
+        cdef bitmap_t seq
+        cdef size_t   begin
+        cdef size_t   end
+        cdef size_t   unk
+        cdef unicode  dna
+        cdef int      kind
+        cdef void*    data
+        cdef Py_UCS4  nuc
+        cdef size_t   length
+        cdef _gene*   gene   = self.gene.gene
+        cdef int      slen   = self.owner.sequence.slen
+        cdef int      strand = self.owner.nodes.nodes[gene.start_ndx].strand
+        cdef bitmap_t useq   = self.owner.sequence.useq
+
+        # compute the right length to hold the nucleotides
+        length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
+        # create an empty protein string that we can write to
+        # with the appropriate functions
+        dna  = PyUnicode_New(length, 0x7F)
+        kind = PyUnicode_KIND(dna)
+        data = PyUnicode_DATA(dna)
+
+        # compute the offsets in the sequence bitmap
+        if strand == 1:
+            begin = gene.begin - 1
+            end = gene.end
+            seq = self.owner.sequence.seq
+            unk = gene.begin - 1
+        else:
+            begin = slen - gene.end
+            end = slen + 1 - gene.begin
+            seq = self.owner.sequence.rseq
+            unk = gene.end - 1
+
+        with nogil:
+            for i, j in enumerate(range(begin, end)):
+                if sequence.is_n(useq, unk):
+                    nuc = "N"
+                elif sequence.is_a(seq, j):
+                    nuc = "A"
+                elif sequence.is_t(seq, j):
+                    nuc = "T"
+                elif sequence.is_g(seq, j):
+                    nuc = "G"
+                else:
+                    nuc = "C"
+                PyUnicode_WRITE(kind, data, i, nuc)
+                unk += strand
+
+        return dna
+
     cpdef unicode translate(
         self,
         object translation_table=None,
@@ -713,8 +773,8 @@ cdef class Prediction:
                 raise RuntimeError("failed to dynamically change the translation table")
 
         # compute the right length to hold the protein
-        nucl_length = (<size_t> gene.end) - (<size_t> gene.begin)
-        prot_length = nucl_length//3 + (nucl_length%3 != 0)
+        nucl_length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
+        prot_length = nucl_length//3
         # create an empty protein string that we can write to
         # with the appropriate functions
         protein = PyUnicode_New(prot_length, 0x7F)

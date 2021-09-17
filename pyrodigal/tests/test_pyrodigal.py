@@ -86,12 +86,20 @@ class _TestPyrodigalMode(object):
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             self.assertAlmostEqual(gene.gc_cont, float(data["gc_cont"]), places=2)
 
+    def assertGenesEqual(self, predictions, genes):
+        self.assertEqual(len(predictions), len(genes))
+        for pred, gene in zip(predictions, genes):
+            self.assertSequenceEqual(pred.sequence(), str(gene.seq))
+
+
     def test_find_genes_KK037166(self):
         record = _load_record("KK037166")
         proteins = _load_proteins("KK037166", self.mode)
+        genes = _load_genes("KK037166", self.mode)
 
         preds = self.find_genes(record.seq)
         self.assertTranslationsEqual(preds, proteins)
+        self.assertGenesEqual(preds, genes)
         self.assertCoordinatesEqual(preds, proteins)
         self.assertRbsMotifsEqual(preds, proteins)
         self.assertStartTypesEqual(preds, proteins)
@@ -100,6 +108,7 @@ class _TestPyrodigalMode(object):
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
         self.assertTranslationsEqual(preds_bin, proteins)
+        self.assertGenesEqual(preds_bin, genes)
         self.assertCoordinatesEqual(preds_bin, proteins)
         self.assertRbsMotifsEqual(preds_bin, proteins)
         self.assertStartTypesEqual(preds_bin, proteins)
@@ -109,9 +118,11 @@ class _TestPyrodigalMode(object):
     def test_find_genes_SRR492066(self):
         record = _load_record("SRR492066")
         proteins = _load_proteins("SRR492066", self.mode)
+        genes = _load_genes("SRR492066", self.mode)
 
         preds = self.find_genes(record.seq)
         self.assertCoordinatesEqual(preds, proteins)
+        self.assertGenesEqual(preds, genes)
         self.assertTranslationsEqual(preds, proteins)
         self.assertRbsMotifsEqual(preds, proteins)
         self.assertStartTypesEqual(preds, proteins)
@@ -120,6 +131,7 @@ class _TestPyrodigalMode(object):
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
         self.assertTranslationsEqual(preds_bin, proteins)
+        self.assertGenesEqual(preds_bin, genes)
         self.assertCoordinatesEqual(preds_bin, proteins)
         self.assertRbsMotifsEqual(preds_bin, proteins)
         self.assertStartTypesEqual(preds_bin, proteins)
@@ -129,9 +141,11 @@ class _TestPyrodigalMode(object):
     def test_find_genes_MIIJ01000039(self):
         record = _load_record("MIIJ01000039")
         proteins = _load_proteins("MIIJ01000039", self.mode)
+        genes = _load_genes("MIIJ01000039", self.mode)
 
         preds = self.find_genes(record.seq)
         self.assertCoordinatesEqual(preds, proteins)
+        self.assertGenesEqual(preds, genes)
         self.assertRbsMotifsEqual(preds, proteins)
         self.assertStartTypesEqual(preds, proteins)
         self.assertRbsSpacersEqual(preds, proteins)
@@ -140,6 +154,7 @@ class _TestPyrodigalMode(object):
 
         preds_bin = self.find_genes(record.seq.encode("ascii"))
         self.assertCoordinatesEqual(preds_bin, proteins)
+        self.assertGenesEqual(preds_bin, genes)
         self.assertRbsMotifsEqual(preds_bin, proteins)
         self.assertStartTypesEqual(preds_bin, proteins)
         self.assertRbsSpacersEqual(preds_bin, proteins)

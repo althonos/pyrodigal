@@ -97,6 +97,7 @@ cdef class Prediction:
     cdef readonly Gene        gene
 
     cpdef double confidence(self)
+    cpdef unicode sequence(self)
     cpdef unicode translate(
         self,
         object translation_table=?,
