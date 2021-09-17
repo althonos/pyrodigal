@@ -58,6 +58,14 @@ _translation[T] = A
 _translation[C] = G
 _translation[G] = C
 
+cdef Py_UCS4 _letters[N+1]
+for i in range(N+1):
+    _letters[i] = "N"
+_letters[A] = "A"
+_letters[T] = "T"
+_letters[C] = "C"
+_letters[G] = "G"
+
 
 cdef class Sequence:
     """A compressed input sequence.
@@ -910,7 +918,6 @@ cdef class Prediction:
 
         cdef size_t   i
         cdef size_t   j
-        cdef bitmap_t seq
         cdef size_t   begin
         cdef size_t   end
         cdef size_t   unk
@@ -919,7 +926,7 @@ cdef class Prediction:
         cdef _gene*   gene   = self.gene.gene
         cdef int      slen   = self.owner.sequence.slen
         cdef int      strand = self.owner.nodes.nodes[gene.start_ndx].strand
-        cdef bitmap_t useq   = self.owner.sequence.useq
+        cdef uint8_t* digits   = self.owner.sequence.digits
 
         # compute the right length to hold the nucleotides
         length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
@@ -928,12 +935,10 @@ cdef class Prediction:
         if strand == 1:
             begin = gene.begin - 1
             end = gene.end
-            seq = self.owner.sequence.seq
             unk = gene.begin - 1
         else:
             begin = slen - gene.end
             end = slen + 1 - gene.begin
-            seq = self.owner.sequence.rseq
             unk = gene.end - 1
 
         # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
@@ -949,7 +954,6 @@ cdef class Prediction:
             # create an empty byte buffer that we can write to
             dna = PyBytes_FromStringAndSize(NULL, length)
             data = <void*> PyBytes_AsString(dna)
-
         ELSE:
             cdef unicode  dna
             cdef int      kind
@@ -961,16 +965,10 @@ cdef class Prediction:
 
         with nogil:
             for i, j in enumerate(range(begin, end)):
-                if sequence.is_n(useq, unk):
-                    nuc = u"N"
-                elif sequence.is_a(seq, j):
-                    nuc = u"A"
-                elif sequence.is_t(seq, j):
-                    nuc = u"T"
-                elif sequence.is_g(seq, j):
-                    nuc = u"G"
+                if strand == 1:
+                    nuc = _letters[digits[j]]
                 else:
-                    nuc = u"C"
+                    nuc = _letters[_translation[digits[slen - 1 - j]]]
                 IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
                     (<char*> data)[i] = nuc
                 ELSE:
