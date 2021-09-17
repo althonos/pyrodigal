@@ -15,6 +15,7 @@ def parse(path):
     with file:
 
         id_ = None
+        seq = []
         for line in file:
             if line.startswith(">"):
                 if id_ is not None:
