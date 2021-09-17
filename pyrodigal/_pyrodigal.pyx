@@ -1621,6 +1621,89 @@ cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, 
                 tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
             i += 1
 
+cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) nogil:
+    cdef int    i
+    cdef int    j
+    cdef int    min
+    cdef int    path
+    cdef int    nxt
+    cdef int    tmp
+    cdef int    max_ndx = -1
+    cdef double max_sc  = -1.0
+
+    if nodes.length == 0:
+        return -1
+
+    for i in range(nodes.length):
+        nodes.nodes[i].score = 0
+        nodes.nodes[i].traceb = -1
+        nodes.nodes[i].tracef = -1
+
+    for i in range(nodes.length):
+        # Set up distance constraints for making connections,
+        # but make exceptions for giant ORFS.
+        min = 0 if i < dprog.MAX_NODE_DIST else i - dprog.MAX_NODE_DIST
+        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type != node_type.STOP and nodes.nodes[min].ndx >= nodes.nodes[i].stop_val:
+            if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
+                min = 0
+        elif nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP and nodes.nodes[min].ndx >= nodes.nodes[i].stop_val:
+            if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
+                min = 0
+        min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
+        for j in range(min, i):
+            dprog.score_connection(nodes.nodes, j, i, tinf.tinf, final)
+
+    for i in reversed(range(nodes.length)):
+        if nodes.nodes[i].strand == 1 and nodes.nodes[i].type != node_type.STOP:
+            continue
+        if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
+            continue
+        if nodes.nodes[i].score > max_sc:
+            max_sc = nodes.nodes[i].score
+            max_ndx = i
+
+    # First Pass: untangle the triple overlaps
+    path = max_ndx
+    while nodes.nodes[path].traceb != -1:
+        nxt = nodes.nodes[path].traceb
+        if nodes.nodes[path].strand == -1 and nodes.nodes[path].type == node_type.STOP and nodes.nodes[nxt].strand == 1 and nodes.nodes[nxt].type == node_type.STOP and nodes.nodes[path].ov_mark != -1 and nodes.nodes[path].ndx > nodes.nodes[nxt].ndx:
+            tmp = nodes.nodes[path].star_ptr[nodes.nodes[path].ov_mark];
+            i = tmp
+            while nodes.nodes[i].ndx != nodes.nodes[tmp].stop_val:
+                i -= 1
+            nodes.nodes[path].traceb = tmp
+            nodes.nodes[tmp].traceb = i
+            nodes.nodes[i].ov_mark = -1
+            nodes.nodes[i].traceb = nxt
+        path = nodes.nodes[path].traceb
+
+    # Second Pass: Untangle the simple overlaps
+    path = max_ndx
+    while nodes.nodes[path].traceb != -1:
+        nxt = nodes.nodes[path].traceb
+        if nodes.nodes[path].strand == -1 and nodes.nodes[path].type != node_type.STOP and nodes.nodes[nxt].strand == 1 and nodes.nodes[nxt].type == node_type.STOP:
+            i = path
+            while nodes.nodes[i].ndx != nodes.nodes[path].stop_val:
+                i -= 1
+            nodes.nodes[path].traceb = i
+            nodes.nodes[i].traceb = nxt
+        if nodes.nodes[path].strand == 1 and nodes.nodes[path].type == node_type.STOP and nodes.nodes[nxt].strand == 1 and nodes.nodes[nxt].type == node_type.STOP:
+            nodes.nodes[path].traceb = nodes.nodes[nxt].star_ptr[nodes.nodes[path].ndx%3]
+            nodes.nodes[nodes.nodes[path].traceb].traceb = nxt
+        if nodes.nodes[path].strand == -1 and nodes.nodes[path].type == node_type.STOP and nodes.nodes[nxt].strand == -1 and nodes.nodes[nxt].type == node_type.STOP:
+            nodes.nodes[path].traceb = nodes.nodes[path].star_ptr[nodes.nodes[nxt].ndx%3]
+            nodes.nodes[nodes.nodes[path].traceb].traceb = nxt
+        path = nodes.nodes[path].traceb
+
+    # Mark forward pointers
+    path = max_ndx
+    while nodes.nodes[path].traceb != -1:
+        nodes.nodes[nodes.nodes[path].traceb].tracef = path
+        path = nodes.nodes[path].traceb
+
+    return -1 if nodes.nodes[max_ndx].traceb == -1 else max_ndx
+
+
 cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1:
     cdef int i
     cdef int j
@@ -2725,9 +2808,6 @@ cpdef inline void reset_node_scores(Nodes nodes) nogil:
 
 cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
     node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
-
-cpdef inline int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) nogil:
-    return dprog.dprog(nodes.nodes, nodes.length, tinf.tinf, final)
 
 cpdef inline void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil:
     dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
