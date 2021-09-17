@@ -6,6 +6,7 @@
 
 # ----------------------------------------------------------------------------
 
+from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
 from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
@@ -667,11 +668,8 @@ cdef class Prediction:
         cdef size_t   begin
         cdef size_t   end
         cdef size_t   unk
-        cdef unicode  dna
-        cdef int      kind
-        cdef void*    data
-        cdef Py_UCS4  nuc
         cdef size_t   length
+        cdef Py_UCS4  nuc
         cdef _gene*   gene   = self.gene.gene
         cdef int      slen   = self.owner.sequence.slen
         cdef int      strand = self.owner.nodes.nodes[gene.start_ndx].strand
@@ -679,11 +677,6 @@ cdef class Prediction:
 
         # compute the right length to hold the nucleotides
         length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
-        # create an empty protein string that we can write to
-        # with the appropriate functions
-        dna  = PyUnicode_New(length, 0x7F)
-        kind = PyUnicode_KIND(dna)
-        data = PyUnicode_DATA(dna)
 
         # compute the offsets in the sequence bitmap
         if strand == 1:
@@ -697,22 +690,52 @@ cdef class Prediction:
             seq = self.owner.sequence.rseq
             unk = gene.end - 1
 
+        # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
+        #                the use of the PyUnicode API here, and will just not
+        #                write any letter with PyUnicode_WRITE. The bug
+        #                doesn't seem to affect `Prediction.translate`, so
+        #                I'm not sure what's going on, but in that case we
+        #                can build an ASCII string and decode afterwards.
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+            cdef bytes dna
+            cdef int   kind
+            cdef void* data
+            # create an empty byte buffer that we can write to
+            dna = PyBytes_FromStringAndSize(NULL, length)
+            data = <void*> PyBytes_AsString(dna)
+
+        ELSE:
+            cdef unicode  dna
+            cdef int      kind
+            cdef void*    data
+            # create an empty string that we can write to
+            dna  = PyUnicode_New(length, 0x7F)
+            kind = PyUnicode_KIND(dna)
+            data = PyUnicode_DATA(dna)
+
         with nogil:
             for i, j in enumerate(range(begin, end)):
                 if sequence.is_n(useq, unk):
-                    nuc = "N"
+                    nuc = u"N"
                 elif sequence.is_a(seq, j):
-                    nuc = "A"
+                    nuc = u"A"
                 elif sequence.is_t(seq, j):
-                    nuc = "T"
+                    nuc = u"T"
                 elif sequence.is_g(seq, j):
-                    nuc = "G"
+                    nuc = u"G"
                 else:
-                    nuc = "C"
-                PyUnicode_WRITE(kind, data, i, nuc)
+                    nuc = u"C"
+                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                    (<char*> data)[i] = nuc
+                ELSE:
+                    PyUnicode_WRITE(kind, data, i, nuc)
                 unk += strand
 
-        return dna
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+            return dna.decode("ascii")
+        ELSE:
+            return dna
+
 
     cpdef unicode translate(
         self,
