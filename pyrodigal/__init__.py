@@ -1,4 +1,7 @@
-from collections.abc import Sequence as _Sequence
+from collections.abc import (
+    Sequence as _Sequence,
+    Sized as _Sized,
+)
 
 from . import _pyrodigal
 from ._pyrodigal import (
@@ -30,8 +33,9 @@ __all__ = [
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
 __license__ = "GPLv3"
-__version__ = "0.5.3"
+__version__ = "0.5.4"
 
+_Sized.register(Sequence)
 _Sequence.register(Genes)
 _Sequence.register(Nodes)
 _Sequence.register(Predictions)

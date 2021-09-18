@@ -6,7 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.4...HEAD
+
+
+## [v0.5.4] - 2021-09-18
+[v0.5.4]: https://github.com/althonos/pyrodigal/compare/v0.5.3...v0.5.4
+
+### Added
+- `Prediction.confidence` method to compute the confidence for a prediction like reported in Prodigal's GFF output.
+- `Prediction.sequence` method get the nucleotide sequence of a predicted gene ([#4](https://github.com/althonos/pyrodigal/issues/4)).
+
+### Changed
+- Replaced internal storage of input sequences to use a byte array instead of a bitmap.
+
+### Fixed
+- Extract `Prediction.gc_cont` number directly from the start node instead of the text representation to get full accuracy.
+- Prodigal bug causing nodes on the reverse strand to always receive a penalty instead of penalizing only small ORFs ([hyattpd/Prodigal#88](https://github.com/hyattpd/Prodigal/pull/88)).
 
 
 ## [v0.5.3] - 2021-09-12
