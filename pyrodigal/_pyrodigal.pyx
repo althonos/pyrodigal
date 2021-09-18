@@ -74,7 +74,7 @@ import threading
 
 cdef int    IDEAL_SINGLE_GENOME = 100000
 cdef int    MIN_SINGLE_GENOME   = 20000
-cdef size_t WINDOW              = 120
+cdef int    WINDOW              = 120
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
 cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
@@ -1633,13 +1633,14 @@ cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence seq, Nodes nodes, int i
             tinf.tinf.gene_dc[i] = -5.0
 
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
-    cdef size_t i
-    cdef size_t j
-    cdef int    win
-    cdef int*   fwd
-    cdef int*   bwd
-    cdef int*   tot
-    cdef int*   gp
+    cdef int  i
+    cdef int  j
+    cdef int  win
+    cdef int* fwd
+    cdef int* bwd
+    cdef int* tot
+    cdef int* gp
+    cdef int  slen = seq.slen
 
     gp = <int*> malloc(seq.slen*sizeof(int));
     fwd = <int*> malloc(seq.slen*sizeof(int));
@@ -1649,29 +1650,30 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
         free(gp)
         free(bwd)
         free(tot)
-        return NULL
+        with gil:
+            raise MemoryError("could not allocate GC frame buffers")
 
-    for i in range(seq.slen):
+    for i in range(slen):
         fwd[i] = 0
         bwd[i] = 0
         tot[i] = 0
         gp[i] = -1
 
-    for j in range(0, seq.slen):
+    for j in range(0, slen):
         if j < 3:
             fwd[j] = seq._is_gc(j)
             bwd[seq.slen-j-1] = seq._is_gc(seq.slen-j-1)
         else:
             fwd[j] = fwd[j-3] + seq._is_gc(j)
-            bwd[seq.slen-j-1] = bwd[seq.slen-j+2] + seq._is_gc(seq.slen-j-1)
-    for i in range(seq.slen):
+            bwd[slen-j-1] = bwd[slen-j+2] + seq._is_gc(slen-j-1)
+    for i in range(slen):
         tot[i] = fwd[i] + bwd[i] - seq._is_gc(i);
         if i >= WINDOW//2:
             tot[i] -= fwd[i-WINDOW//2]
         if i + WINDOW//2 < seq.slen:
             tot[i] -= bwd[i+WINDOW//2]
     free(bwd);
-    for i in range(0, seq.slen-2, 3):
+    for i in range(0, slen-2, 3):
         win = sequence.max_fr(tot[i], tot[i+1], tot[i+2])
         for j in range(3):
             gp[i+j] = win
@@ -1689,7 +1691,7 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
 
     # direct strand
     gc[0] = gc[1] = gc[2] = 0.0
-    for i in reversed(range(nodes.length)):
+    for i in reversed(range(<int> nodes.length)):
         if nodes.nodes[i].strand == 1:
             phase = nodes.nodes[i].ndx %3
             if nodes.nodes[i].type == node_type.STOP:
@@ -1704,7 +1706,7 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
 
     # reverse strand
     gc[0] = gc[1] = gc[2] = 0.0
-    for i in range(nodes.length):
+    for i in range(<int> nodes.length):
         if nodes.nodes[i].strand == -1:
             phase = nodes.nodes[i].ndx % 3
             if nodes.nodes[i].type == node_type.STOP:
@@ -1755,12 +1757,12 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) 
     if nodes.length == 0:
         return -1
 
-    for i in range(nodes.length):
+    for i in range(<int> nodes.length):
         nodes.nodes[i].score = 0
         nodes.nodes[i].traceb = -1
         nodes.nodes[i].tracef = -1
 
-    for i in range(nodes.length):
+    for i in range(<int> nodes.length):
         # Set up distance constraints for making connections,
         # but make exceptions for giant ORFS.
         min = 0 if i < dprog.MAX_NODE_DIST else i - dprog.MAX_NODE_DIST
@@ -1774,7 +1776,7 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) 
         for j in range(min, i):
             dprog.score_connection(nodes.nodes, j, i, tinf.tinf, final)
 
-    for i in reversed(range(nodes.length)):
+    for i in reversed(range(<int> nodes.length)):
         if nodes.nodes[i].strand == 1 and nodes.nodes[i].type != node_type.STOP:
             continue
         if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
@@ -2000,8 +2002,9 @@ cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     cdef int i
     cdef int j
     cdef int cur_sc[2]
+    cdef int slen      = seq.slen
 
-    for i in range(nodes.length):
+    for i in range(<int> nodes.length):
         if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
             continue
         nodes.nodes[i].rbs[0] = nodes.nodes[i].rbs[1] = 0
@@ -2017,11 +2020,11 @@ cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
                 if cur_sc[1] > nodes.nodes[i].rbs[1]:
                     nodes.nodes[i].rbs[1] = cur_sc[1]
         else:
-            for j in range(seq.slen - nodes.nodes[i].ndx - 21, seq.slen - nodes.nodes[i].ndx - 6):
-                if j > seq.slen-1:
+            for j in range(slen - nodes.nodes[i].ndx - 21, slen - nodes.nodes[i].ndx - 6):
+                if j + 1 > slen:
                     continue
-                cur_sc[0] = shine_dalgarno_exact(seq, j, seq.slen-1-nodes.nodes[i].ndx, tinf, strand=-1)
-                cur_sc[1] = shine_dalgarno_mm(seq, j, seq.slen-1-nodes.nodes[i].ndx, tinf, strand=-1)
+                cur_sc[0] = shine_dalgarno_exact(seq, j, slen-1-nodes.nodes[i].ndx, tinf, strand=-1)
+                cur_sc[1] = shine_dalgarno_mm(seq, j, slen-1-nodes.nodes[i].ndx, tinf, strand=-1)
                 if cur_sc[0] > nodes.nodes[i].rbs[0]:
                     nodes.nodes[i].rbs[0] = cur_sc[0]
                 if cur_sc[1] > nodes.nodes[i].rbs[1]:
@@ -2117,7 +2120,7 @@ cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed
                     if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
                         nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
                         break
-            elif i >= nodes.length - 500 and nodes.nodes[i].strand == -1:
+            elif i + 500>= nodes.length and nodes.nodes[i].strand == -1:
                 for j in range(i+1, nodes.length):
                     if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
                         nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
