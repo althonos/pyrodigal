@@ -2,6 +2,44 @@
 # cython: language_level=3, linetrace=True
 
 """Bindings to Prodigal, an ORF finder for genomes, progenomes and metagenomes.
+
+Example:
+    Pyrodigal can work on any DNA sequence stored in either a text or a byte
+    array. To load a sequence from one of the common sequence formats, you can
+    for instance use `Biopython <https://github.com/biopython/biopython>`_::
+
+        >>> import gzip
+        >>> import Bio.SeqIO
+        >>> with gzip.open("pyrodigal/tests/data/KK037166.fna.gz") as f:
+        ...     record = Bio.SeqIO.read(f, "fasta")
+
+    Then use Pyrodigal to find the genes in *metagenomic* mode (without
+    training first), and then build a map of codon frequencies for each
+    gene::
+
+        >>> from collections import Counter
+        >>> import pyrodigal
+        >>> p = pyrodigal.Pyrodigal(meta=True)
+        >>> for prediction in p.find_genes(record.seq.encode()):
+        ...     gene_seq = prediction.sequence()
+        ...     codon_counter = Counter()
+        ...     for i in range(len(gene_seq), 3):
+        ...         codon_counter[gene_seq[i:i+3]] += 1
+        ...     codon_frequencies = {
+        ...         codon:count/(len(gene_seq)//3)
+        ...         for codon, count in codon_counter.items()
+        ...     }
+
+Caution:
+    In Pyrodigal, sequences are assumed to contain only the usual nucleotides
+    (A/T/G/C) as lowercase or uppercase letters; any other symbol will be
+    treated as an unknown nucleotide. Be careful to remove the gap characters
+    if loading sequences from a multiple alignment file.
+
+See Also:
+    The `academic paper for Prodigal <https://doi.org/10.1186/1471-2105-11-119>_`
+    which describes the algorithm in use.
+
 """
 
 # ----------------------------------------------------------------------------
@@ -39,7 +77,7 @@ cdef int    MIN_SINGLE_GENOME   = 20000
 cdef size_t WINDOW              = 120
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
-cdef set   TRANSLATION_TABLES   = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
+cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 
 # --- Input sequence ---------------------------------------------------------
 
@@ -415,17 +453,61 @@ cdef class Sequence:
 
 # --- Nodes ------------------------------------------------------------------
 
-cdef class Motif:
-    pass
-
 cdef class Node:
+    """A dynamic programming node used by Prodigal to score ORFs.
+
+    .. versionadded:: 0.5.4
+
+    """
+
+    @property
+    def type(self):
+        """`str`: The node type (ATG, GTG, TTG, or Stop).
+        """
+        assert self.node != NULL
+        return ["ATG", "GTG", "TTG" , "Stop"][self.node.type]
+
+    @property
+    def edge(self):
+        """`bool`: `True` if the node runs off the edge.
+        """
+        assert self.node != NULL
+        return self.node.edge
+
+    @property
+    def gc_bias(self):
+        """`int`: The frame of highest GC content within this node.
+        """
+        assert self.node != NULL
+        return self.node.gc_bias
+
+    @property
+    def cscore(self):
+        """`float`: The coding score for this node, based on 6-mer usage.
+        """
+        assert self.node != NULL
+        return self.node.cscore
+
+    @property
+    def gc_cont(self):
+        """`float`: The GC content for the node.
+        """
+        assert self.node != NULL
+        return self.node.gc_cont
 
     @property
     def score(self):
+        """`float`: The score of the total solution up to this node.
+        """
         assert self.node != NULL
         return self.node.score
 
 cdef class Nodes:
+    """A list of dynamic programming nodes used by Prodigal to score ORFs.
+
+    .. versionadded:: 0.5.4
+
+    """
 
     def __cinit__(self):
         self.nodes = NULL
@@ -494,6 +576,8 @@ cdef class Nodes:
         memset(self.nodes, 0, old_length * sizeof(_node))
 
     def clear(self):
+        """Remove all nodes from the vector.
+        """
         with nogil:
             self._clear()
 
@@ -503,6 +587,8 @@ cdef class Nodes:
         qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
 
     def sort(self):
+        """Sort all nodes in the vector by their index and strand.
+        """
         with nogil:
             self._sort()
 
@@ -510,6 +596,9 @@ cdef class Nodes:
 
 cdef class Gene:
     """A single raw gene found by Prodigal within a DNA sequence.
+
+    .. versionadded:: 0.5.4
+
     """
 
     @property
@@ -526,14 +615,21 @@ cdef class Gene:
 
     @property
     def start_ndx(self):
+        """`int`: The index of the start node in the `Nodes` list.
+        """
         return self.gene.start_ndx
 
     @property
     def stop_ndx(self):
+        """`int`: The index of the stop node in the `Nodes` list.
+        """
         return self.gene.stop_ndx
 
 cdef class Genes:
     """A list of raw genes found by Prodigal in a single sequence.
+
+    .. versionadded:: 0.5.4
+
     """
 
     def __cinit__(self):
@@ -601,12 +697,19 @@ cdef class Genes:
         memset(self.genes, 0, old_length * sizeof(_gene))
 
     def clear(self):
+        """Remove all nodes from the vector.
+        """
         with nogil:
             self._clear()
 
 # --- Training Info ----------------------------------------------------------
 
 cdef class TrainingInfo:
+    """A collection of parameters obtained after training.
+
+    .. versionadded:: 0.5.0
+
+    """
 
     def __cinit__(self):
         self.owned = False
@@ -706,6 +809,8 @@ cdef class TrainingInfo:
 # --- Metagenomic Bins -------------------------------------------------------
 
 cdef class MetagenomicBin:
+    """A pre-trained collection used to find genes in metagenomic mode.
+    """
 
     @property
     def index(self):
@@ -914,6 +1019,8 @@ cdef class Prediction:
 
         Build the nucleotide sequence of this predicted gene.
 
+        .. versionadded:: 0.5.4
+
         """
 
         cdef size_t   i
@@ -979,7 +1086,6 @@ cdef class Prediction:
             return dna.decode("ascii")
         ELSE:
             return dna
-
 
     cpdef unicode translate(
         self,
@@ -1106,12 +1212,28 @@ cdef class Predictions:
 # --- Pyrodigal --------------------------------------------------------------
 
 cdef class Pyrodigal:
+    """An efficient ORF finder for genomes, progenomes and metagenomes.
+
+    Attributes:
+        meta (`bool`): Whether or not this object is configured to
+           find genes using the metagenomic bins or manually created
+           training infos.
+       closed (`bool`): Whether or not proteins can run off edges when
+           finding genes in a sequence.
+       training_info (`~pyrodigal.TrainingInfo`): The object storing the
+           training information, or `None` if the object is in metagenomic
+           mode or hasn't been trained yet.
+
+
+    """
 
     def __cinit__(self):
         self._num_seq = 1
 
     def __init__(self, meta=False, closed=False):
-        """Instantiate and configure a new ORF finder.
+        """__init__(self, meta=False, closed=False)\n--
+
+        Instantiate and configure a new ORF finder.
 
         Arguments:
             meta (`bool`): Set to `True` to run in metagenomic mode, using a
@@ -1401,10 +1523,10 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
     return nn
 
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
-
-    cdef int  path = ipath
-    cdef int  ng   = 0
-
+    """Adds genes to the gene list, based on the nodes.
+    """
+    cdef int  path      = ipath
+    cdef int  ng        = 0
     cdef int  begin     = 0
     cdef int  end       = 0
     cdef int  start_ndx = 0
@@ -1596,7 +1718,6 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
                 last[phase] = nodes.nodes[i].ndx
 
 cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, int strand=1) nogil:
-
     cdef int start
     cdef int j
     cdef int i     = 0
@@ -1703,7 +1824,6 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) 
 
     return -1 if nodes.nodes[max_ndx].traceb == -1 else max_ndx
 
-
 cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1:
     cdef int i
     cdef int j
@@ -1764,7 +1884,6 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
         nodes.nodes[ni].mot.score = max_sc
 
 cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
-
     cdef double  score[3]
     cdef double  lfac
     cdef double  no_stop
@@ -1878,7 +1997,6 @@ cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
                 nodes.nodes[i].cscore += lfac
 
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
-
     cdef int i
     cdef int j
     cdef int cur_sc[2]
@@ -2307,7 +2425,6 @@ cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf,
     return max_val
 
 cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
-
     cdef int phase
     cdef int rbs[3]
     cdef int type[3]
@@ -2519,7 +2636,6 @@ cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
                   tinf.tinf.ups_comp[i][j] = -4.0
 
 cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
-
     cdef int i
     cdef int j
     cdef int k

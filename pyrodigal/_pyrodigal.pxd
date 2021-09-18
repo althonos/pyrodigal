@@ -8,7 +8,7 @@ from libc.stdint cimport uint8_t
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin
-from pyrodigal.prodigal.node cimport _node
+from pyrodigal.prodigal.node cimport _node, _motif
 from pyrodigal.prodigal.sequence cimport _mask
 from pyrodigal.prodigal.training cimport _training
 
@@ -45,7 +45,8 @@ cdef class Sequence:
 # --- Nodes ------------------------------------------------------------------
 
 cdef class Motif:
-    pass
+    cdef Node    owner
+    cdef _motif* motif
 
 cdef class Node:
     cdef Nodes  owner
