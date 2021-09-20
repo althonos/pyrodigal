@@ -502,15 +502,17 @@ cdef class ConnectionScorer:
             elif backend == "sse":
                 IF not SSE2_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without SSE2 support")
-                if not _SSE2_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run SSE2 instructions on this machine")
-                self.backend = simd_backend.SSE2
+                ELSE:
+                    if not _SSE2_RUNTIME_SUPPORT:
+                        raise RuntimeError("Cannot run SSE2 instructions on this machine")
+                    self.backend = simd_backend.SSE2
             elif backend == "avx":
                 IF not AVX2_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without AVX2 support")
-                if not _AVX2_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run AVX2 instructions on this machine")
-                self.backend = simd_backend.AVX2
+                ELSE:
+                    if not _AVX2_RUNTIME_SUPPORT:
+                        raise RuntimeError("Cannot run AVX2 instructions on this machine")
+                    self.backend = simd_backend.AVX2
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
