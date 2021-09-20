@@ -1,3 +1,3 @@
 [submodule "Prodigal"]
-	path = Prodigal
+	path = vendor/Prodigal
 	url = https://github.com/hyattpd/Prodigal

@@ -278,7 +278,7 @@ setuptools.setup(
         Library(
             "prodigal",
             sources=[
-                os.path.join("Prodigal", base)
+                os.path.join("vendor", "Prodigal", base)
                 for base in [
                     "bitmap.c",
                     "dprog.c",
@@ -289,7 +289,9 @@ setuptools.setup(
                     "training.c"
                 ]
             ],
-            include_dirs=["Prodigal"],
+            include_dirs=[
+                os.path.join("vendor", "Prodigal")
+            ],
         )
     ],
     ext_modules=[
@@ -300,7 +302,10 @@ setuptools.setup(
                 "pyrodigal/impl/avx.c",
                 "pyrodigal/_pyrodigal.pyx"
             ],
-            include_dirs=["Prodigal", "pyrodigal"],
+            include_dirs=[
+                "pyrodigal",
+                os.path.join("vendor", "Prodigal"),
+            ],
             libraries=["prodigal"],
         ),
     ],
