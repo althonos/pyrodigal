@@ -5,6 +5,7 @@
 #include "dprog.h"
 #include "sse.h"
 
+#ifdef __SSE2__
 void skippable_sse(
     const int8_t* strands,
     const uint8_t* types,
@@ -81,3 +82,4 @@ void skippable_sse(
       _mm_store_si128((__m128i*) &skip[j], s);
   }
 }
+#endif

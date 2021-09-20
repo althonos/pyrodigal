@@ -5,6 +5,7 @@
 #include "dprog.h"
 #include "avx.h"
 
+#ifdef __AVX2__
 void skippable_avx(
     const int8_t* strands,
     const uint8_t* types,
@@ -29,12 +30,11 @@ void skippable_avx(
     __m256i n2_types   = _mm256_set1_epi8(types[i]);
     __m256i n2_frames  = _mm256_set1_epi8(frames[i]);
 
-    memset(&skip[min], 0, sizeof(uint8_t) * (i - min));
     for (j = (min + 0x1F) & (~0x1F); j + 31 < i; j += 32) {
         n1_strands = _mm256_load_si256((__m256i*) &strands[j]);
         n1_types =   _mm256_load_si256((__m256i*) &types[j]);
         n1_frames =  _mm256_load_si256((__m256i*) &frames[j]);
-        s = _mm256_xor_si256(s, s);
+        s = _mm256_set1_epi8(0);
         // 5'fwd->5'fwd
         // n1->strand == n2->strand && n2->type != STOP && n1->type != STOP
         x =                     _mm256_cmpeq_epi8(n1_strands, n2_strands);
@@ -76,8 +76,8 @@ void skippable_avx(
         x = _mm256_andnot_si256(_mm256_cmpeq_epi8(n2_types,   all_stops),  x);
         x = _mm256_andnot_si256(_mm256_cmpeq_epi8(n1_frames,  n2_frames),  x);
         s = _mm256_or_si256(                                            s, x);
-
         // store result mask
         _mm256_store_si256((__m256i*) &skip[j], s);
     }
 }
+#endif
