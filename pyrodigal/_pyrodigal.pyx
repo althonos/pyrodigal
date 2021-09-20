@@ -453,6 +453,71 @@ cdef class Sequence:
 
         return b'X'
 
+# --- Connection Scorer ------------------------------------------------------
+
+cdef class ConnectionScorer:
+
+    def __cinit__(self):
+        self.capacity = 0
+        self.skip_connection = self.skip_connection_raw = NULL
+        self.node_types      = self.node_types_raw      = NULL
+        self.node_strands    = self.node_strands_raw    = NULL
+        self.node_frames     = self.node_frames_raw     = NULL
+
+    def __dealloc__(self):
+        PyMem_Free(self.node_types_raw)
+        PyMem_Free(self.node_strands_raw)
+        PyMem_Free(self.node_frames_raw)
+        PyMem_Free(self.skip_connection_raw)
+
+    cdef bint _is_skippable(self, int j) nogil:
+        return self.skip_connection[j] != 0
+
+    cdef int _index(self, Nodes nodes) nogil except 1:
+        cdef size_t i
+        if self.capacity < nodes.length:
+            with gil:
+                # reallocate new memory
+                self.skip_connection_raw = <uint8_t*> PyMem_Realloc(self.skip_connection_raw, nodes.length * sizeof(uint8_t) + 0x1F)
+                self.node_types_raw = <uint8_t*> PyMem_Realloc(self.node_types_raw, nodes.length * sizeof(uint8_t) + 0x1F)
+                self.node_strands_raw = <int8_t*> PyMem_Realloc(self.node_strands_raw, nodes.length * sizeof(int8_t) + 0x1F)
+                self.node_frames_raw = <uint8_t*> PyMem_Realloc(self.node_frames_raw, nodes.length * sizeof(uint8_t) + 0x1F)
+                # check that allocations were successful
+                if self.skip_connection_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for scoring bypass index")
+                if self.node_types_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for node type array")
+                if self.node_strands_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for node strand array")
+                if self.node_frames_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for node frame array")
+            # record new capacity
+            self.capacity = nodes.length
+            # compute pointers to aligned memory
+            self.node_frames = <uint8_t*> ((<uintptr_t> self.node_frames_raw + 0x1F) & (~0x1F))
+            self.skip_connection = <uint8_t*> ((<uintptr_t> self.skip_connection_raw + 0x1F) & (~0x1F))
+            self.node_types = <uint8_t*> ((<uintptr_t> self.node_types_raw + 0x1F) & (~0x1F))
+            self.node_strands = <int8_t*> ((<uintptr_t> self.node_strands_raw + 0x1F) & (~0x1F))
+
+
+        for i in range(nodes.length):
+            self.node_types[i] = nodes.nodes[i].type
+            self.node_strands[i] = nodes.nodes[i].strand
+            self.node_frames[i] = nodes.nodes[i].ndx % 3
+
+        return 0
+
+    cdef int _compute_skippable(self, int min, int i) nogil except 1:
+        skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        return 0
+
+    cdef int _score_connections(self, Nodes nodes, int min, int i, TrainingInfo tinf, bint final=False) nogil except 1:
+        cdef int j
+        for j in range(min, i):
+            if self.skip_connection[j] == 0:
+                dprog.score_connection(nodes.nodes, j, i, tinf.tinf, final)
+        return 0
+
 # --- Nodes ------------------------------------------------------------------
 
 cdef class Node:
@@ -515,21 +580,12 @@ cdef class Nodes:
         self.nodes = NULL
         self.capacity = 0
         self.length = 0
-        self._skip_connection = self._skip_connection_raw = NULL
-        self._node_types = self._node_types_raw = NULL
-        self._node_strands = self._node_strands_raw = NULL
-        self._node_frames = self._node_frames_raw = NULL
-        self._bypass_capacity = 0
 
     def __init__(self):
         self._clear()
 
     def __dealloc__(self):
         PyMem_Free(self.nodes)
-        PyMem_Free(self._node_types_raw)
-        PyMem_Free(self._node_strands_raw)
-        PyMem_Free(self._node_frames_raw)
-        PyMem_Free(self._skip_connection_raw)
 
     def __len__(self):
         return self.length
@@ -578,38 +634,6 @@ cdef class Nodes:
         node.stop_val = stop_val
         node.edge = edge
         return node
-
-    cdef int _index(self) nogil except 1:
-        cdef size_t i
-        if self._bypass_capacity < self.length:
-            with gil:
-                self._skip_connection_raw = <uint8_t*> PyMem_Realloc(self._skip_connection_raw, self.length * sizeof(uint8_t) + 0x1F)
-                if self._skip_connection_raw == NULL:
-                    raise MemoryError("Failed to allocate memory for scoring bypass index")
-                self._skip_connection = <uint8_t*> ((<uintptr_t> self._skip_connection_raw + 0x1F) & (~0x1F))
-
-                self._node_types_raw = <uint8_t*> PyMem_Realloc(self._node_types_raw, self.length * sizeof(uint8_t) + 0x1F)
-                if self._node_types_raw == NULL:
-                    raise MemoryError("Failed to allocate memory for node type array")
-                self._node_types = <uint8_t*> ((<uintptr_t> self._node_types_raw + 0x1F) & (~0x1F))
-
-                self._node_strands_raw = <int8_t*> PyMem_Realloc(self._node_strands_raw, self.length * sizeof(int8_t) + 0x1F)
-                if self._node_strands_raw == NULL:
-                    raise MemoryError("Failed to allocate memory for node strand array")
-                self._node_strands = <int8_t*> ((<uintptr_t> self._node_strands_raw + 0x1F) & (~0x1F))
-
-                self._node_frames_raw = <uint8_t*> PyMem_Realloc(self._node_frames_raw, self.length * sizeof(uint8_t) + 0x1F)
-                if self._node_frames_raw == NULL:
-                    raise MemoryError("Failed to allocate memory for node frame array")
-                self._node_frames = <uint8_t*> ((<uintptr_t> self._node_frames_raw + 0x1F) & (~0x1F))
-            self._bypass_capacity = self.length
-
-        for i in range(self.length):
-            self._node_types[i] = self.nodes[i].type
-            self._node_strands[i] = self.nodes[i].strand
-            self._node_frames[i] = self.nodes[i].ndx % 3
-
-        return 0
 
     cdef int _clear(self) nogil except 1:
         """Remove all nodes from the vector.
@@ -1787,7 +1811,7 @@ cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, 
                 tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
             i += 1
 
-cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) nogil:
+cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer scorer, bint final=False) nogil:
     cdef int    i
     cdef int    j
     cdef int    min
@@ -1804,7 +1828,6 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) 
         nodes.nodes[i].score = 0
         nodes.nodes[i].traceb = -1
         nodes.nodes[i].tracef = -1
-        nodes._skip_connection[i] = False
 
     for i in range(<int> nodes.length):
         # Set up distance constraints for making connections,
@@ -1818,11 +1841,9 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) 
                 min = 0
         min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
         # Check which nodes can be skipped
-        skippable_avx(nodes._node_strands, nodes._node_types, nodes._node_frames, min, i, nodes._skip_connection)
+        scorer._compute_skippable(min, i)
         # Score connections
-        for j in range(min, i):
-            if not nodes._skip_connection[j]:
-                dprog.score_connection(nodes.nodes, j, i, tinf.tinf, final)
+        scorer._score_connections(nodes, min, i, tinf, final)
 
     for i in reversed(range(<int> nodes.length)):
         if nodes.nodes[i].strand == 1 and nodes.nodes[i].type != node_type.STOP:
@@ -2996,12 +3017,13 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
     cdef int*         gc_frame
     cdef Nodes        nodes    = Nodes()
     cdef TrainingInfo tinf     = TrainingInfo(sequence.gc, start_weight, translation_table)
+    cdef ConnectionScorer scorer = ConnectionScorer()
 
     with nogil:
         # find all the potential starts and stops
         add_nodes(nodes, sequence, tinf, closed=closed)
         nodes._sort()
-        nodes._index()
+        scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
         gc_frame = calc_most_gc_frame(sequence)
@@ -3012,7 +3034,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
         record_overlapping_starts(nodes, tinf, is_meta=False)
-        ipath = dynamic_programming(nodes, tinf, final=False)
+        ipath = dynamic_programming(nodes, tinf, scorer, final=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
         raw_coding_score(nodes, sequence, tinf)
@@ -3033,18 +3055,19 @@ cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint c
     cdef int   ipath
     cdef Genes genes = Genes()
     cdef Nodes nodes = Nodes()
+    cdef ConnectionScorer scorer = ConnectionScorer()
 
     with nogil:
         # find all the potential starts and stops, and sort them
         add_nodes(nodes, sequence, tinf, closed=closed)
         nodes._sort()
-        nodes._index()
+        scorer._index(nodes)
         # second dynamic programming, using the dicodon statistics as the
         # scoring function
         reset_node_scores(nodes)
         score_nodes(nodes, sequence, tinf, closed=closed, is_meta=False)
         record_overlapping_starts(nodes, tinf, is_meta=True)
-        ipath = dynamic_programming(nodes, tinf, final=True)
+        ipath = dynamic_programming(nodes, tinf, scorer, final=True)
         # eliminate eventual bad genes in the nodes
         if nodes.length > 0:
             eliminate_bad_genes(nodes, ipath, tinf)
@@ -3066,6 +3089,7 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
     cdef Genes        genes     = Genes()
     cdef Nodes        nodes     = Nodes()
     cdef TrainingInfo tinf      = TrainingInfo.__new__(TrainingInfo)
+    cdef ConnectionScorer scorer = ConnectionScorer()
     cdef int          max_phase = 0
     cdef double       max_score = -100.0
 
@@ -3095,12 +3119,12 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
                 nodes._clear()
                 add_nodes(nodes, sequence, tinf, closed=closed)
                 nodes._sort()
-                nodes._index()
+                scorer._index(nodes)
             # compute the score for the current bin
             reset_node_scores(nodes)
             score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
             record_overlapping_starts(nodes, tinf, is_meta=True)
-            ipath = dynamic_programming(nodes, tinf, final=True)
+            ipath = dynamic_programming(nodes, tinf, scorer, final=True)
             # update genes if the current bin had a better score
             if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
                 # record best phase and score
