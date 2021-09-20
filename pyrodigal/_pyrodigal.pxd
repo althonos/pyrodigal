@@ -3,7 +3,7 @@
 
 # ----------------------------------------------------------------------------
 
-from libc.stdint cimport uint8_t
+from libc.stdint cimport int8_t, uint8_t
 
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
@@ -53,9 +53,26 @@ cdef class Node:
     cdef _node* node
 
 cdef class Nodes:
+    # contiguous array of nodes, with capacity and length
     cdef _node* nodes
     cdef size_t capacity
     cdef size_t length
+
+    IF FAST_SCORING_BYPASS:
+        # capacity of bypassing buffers
+        cdef size_t   _bypass_capacity
+        # connection skip lookup table
+        cdef uint8_t* _skip_connection
+        cdef uint8_t* _skip_connection_raw
+        # aligned storage of node types
+        cdef uint8_t* _node_types
+        cdef uint8_t* _node_types_raw
+        # aligned storage of node strands
+        cdef int8_t*  _node_strands
+        cdef int8_t*  _node_strands_raw
+        # aligned storage of node frame
+        cdef uint8_t* _node_frames
+        cdef uint8_t* _node_frames_raw
 
     cdef inline _node* _add_node(
         self,
@@ -68,6 +85,7 @@ cdef class Nodes:
 
     cdef int _clear(self) nogil except 1
     cdef int _sort(self) nogil except 1
+    cdef int _index(self) nogil except 1
 
 # --- Genes ------------------------------------------------------------------
 

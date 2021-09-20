@@ -86,6 +86,9 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
                 "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
+                # check if fast connection scoring bypass should be compiled
+                # (typically, if SSE or another vectorization is in use)
+                "FAST_SCORING_BYPASS": True
             }
         }
         if self.force:
@@ -292,8 +295,12 @@ setuptools.setup(
     ext_modules=[
         Extension(
             "pyrodigal._pyrodigal",
-            sources=["pyrodigal/_pyrodigal.pyx"],
-            include_dirs=["Prodigal"],
+            sources=[
+                "pyrodigal/impl/sse.c",
+                "pyrodigal/impl/avx.c",
+                "pyrodigal/_pyrodigal.pyx"
+            ],
+            include_dirs=["Prodigal", "pyrodigal"],
             libraries=["prodigal"],
         ),
     ],
