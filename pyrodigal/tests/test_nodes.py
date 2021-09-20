@@ -40,3 +40,12 @@ class TestNodes(unittest.TestCase):
         self.assertEqual(add_nodes(nodes, seq, METAGENOMIC_BINS[24].training_info), 2293)
         self.assertEqual(len(nodes), 2293)
         nodes.clear()
+
+    def test_copy(self):
+        seq = Sequence.from_string(self.record.seq)
+        nodes1 = Nodes()
+        add_nodes(nodes1, seq, METAGENOMIC_BINS[0].training_info)
+        nodes2 = nodes.copy()
+        for n1, n2 in zip(nodes1, nodes2):
+            self.assertEqual(n1.ndx, n2.ndx)
+            self.assertEqual(n1.type, n2.type)
