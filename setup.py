@@ -1,11 +1,11 @@
 import configparser
 import glob
-import mock
 import os
 import platform
 import re
 import subprocess
 import sys
+from unittest import mock
 
 import setuptools
 from distutils import log
