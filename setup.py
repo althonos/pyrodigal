@@ -68,6 +68,7 @@ class build_ext(_build_ext):
         self._clib_cmd = self.get_finalized_command("build_clib")
         self._clib_cmd.debug = self.debug
         self._clib_cmd.force = self.force
+        self._clib_cmd.verbose = self.verbose
 
     def build_extension(self, ext):
         # show the compiler being used
@@ -140,10 +141,12 @@ class build_ext(_build_ext):
             cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
             for ext in self.extensions:
                 ext.extra_compile_args.append(self._clib_cmd._avx2_flag())
+                ext.define_macros.append(("__AVX2__", 1))
         if self._clib_cmd._sse2_supported:
             cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
             for ext in self.extensions:
                 ext.extra_compile_args.append(self._clib_cmd._sse2_flag())
+                ext.define_macros.append(("__SSE2__", 1))
 
         # cythonize the extensions
         self.extensions = cythonize(self.extensions, **cython_args)
@@ -162,17 +165,12 @@ class build_clib(_build_clib):
 
     # --- Autotools-like helpers ---
 
-    def _silent_spawn(self, cmd):
-        try:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        except subprocess.CalledProcessError as err:
-            raise CompileError(err.stderr)
-
     def _check_simd_generic(self, name, flag, header, vector, set, extract):
         _eprint('checking whether compiler can build', name, 'code', end="... ")
 
-        testfile = os.path.join(self.build_temp, "have_{}.c".format(name))
-        binfile = os.path.join(self.build_temp, "have_{}.bin".format(name))
+        base = "have_{}".format(name)
+        testfile = os.path.join(self.build_temp, "{}.c".format(base))
+        binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
         objects = []
 
         with open(testfile, "w") as f:
@@ -185,10 +183,9 @@ class build_clib(_build_clib):
                 }}
             """.format(header, vector, set, extract))
         try:
-            with mock.patch.object(self.compiler, "spawn", new=self._silent_spawn):
-                objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=[flag])
-                self.compiler.link_executable(objects, binfile)
-                subprocess.run([binfile], check=True)
+            objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=[flag])
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+            subprocess.run([binfile], check=True)
         except CompileError:
             _eprint("no")
             return False
@@ -208,8 +205,9 @@ class build_clib(_build_clib):
     def _check_function(self, funcname, header, args="()"):
         _eprint('checking whether function', repr(funcname), 'is available', end="... ")
 
-        testfile = os.path.join(self.build_temp, "have_{}.c".format(funcname))
-        binfile = os.path.join(self.build_temp, "have_{}.bin".format(funcname))
+        base = "have_{}".format(funcname)
+        testfile = os.path.join(self.build_temp, "{}.c".format(base))
+        binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
         objects = []
 
         with open(testfile, "w") as f:
@@ -221,9 +219,8 @@ class build_clib(_build_clib):
                 }}
             """.format(header, funcname, args))
         try:
-            with mock.patch.object(self.compiler, "spawn", new=self._silent_spawn):
-                objects = self.compiler.compile([testfile], debug=self.debug)
-                self.compiler.link_executable(objects, binfile)
+            objects = self.compiler.compile([testfile], debug=self.debug)
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
         except CompileError:
             _eprint("no")
             return False
