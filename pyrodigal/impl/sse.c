@@ -29,11 +29,11 @@ void skippable_sse(
   __m128i n2_types   = _mm_set1_epi8(types[i]);
   __m128i n2_frames  = _mm_set1_epi8(frames[i]);
 
-  memset(skip, 0, sizeof(uint8_t));
-  for (j = min; j + 15 < i; j += 16) {
-      n1_strands = _mm_loadu_si128((__m128i*) &strands[j]);
-      n1_types =   _mm_loadu_si128((__m128i*) &types[j]);
-      n1_frames =  _mm_loadu_si128((__m128i*) &frames[j]);
+  memset(&skip[min], 0, sizeof(uint8_t) * (i - min));
+  for (j = (min + 0xF) & (~0xF); j + 15 < i; j += 16) {
+      n1_strands = _mm_load_si128((__m128i*) &strands[j]);
+      n1_types =   _mm_load_si128((__m128i*) &types[j]);
+      n1_frames =  _mm_load_si128((__m128i*) &frames[j]);
       s = _mm_xor_si128(s, s);
       // 5'fwd->5'fwd
       // n1->strand == n2->strand && n2->type != STOP && n1->type != STOP
@@ -78,6 +78,6 @@ void skippable_sse(
       s = _mm_or_si128(                                        s,  x);
 
       // store result mask
-      _mm_storeu_si128((__m128i*) &skip[j], s);
+      _mm_store_si128((__m128i*) &skip[j], s);
   }
 }

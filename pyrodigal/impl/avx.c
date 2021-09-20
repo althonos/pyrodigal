@@ -29,7 +29,7 @@ void skippable_avx(
     __m256i n2_types   = _mm256_set1_epi8(types[i]);
     __m256i n2_frames  = _mm256_set1_epi8(frames[i]);
 
-    memset(skip, 0, sizeof(uint8_t));
+    memset(&skip[min], 0, sizeof(uint8_t) * (i - min));
     for (j = (min + 0x1F) & (~0x1F); j + 31 < i; j += 32) {
         n1_strands = _mm256_load_si256((__m256i*) &strands[j]);
         n1_types =   _mm256_load_si256((__m256i*) &types[j]);
