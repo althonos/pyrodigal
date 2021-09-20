@@ -1,8 +1,10 @@
 import configparser
 import glob
+import mock
 import os
 import platform
 import re
+import subprocess
 import sys
 
 import setuptools
@@ -20,6 +22,7 @@ except ImportError as err:
 
 # --- Constants -----------------------------------------------------------------
 
+SYSTEM  = platform.system()
 MACHINE = platform.machine()
 if re.match("^mips", MACHINE):
     TARGET_CPU = "mips"
@@ -31,6 +34,11 @@ elif re.match("(x86_64)|(AMD64|amd64)|(^i.86$)", MACHINE):
     TARGET_CPU = "x86"
 elif re.match("^(powerpc|ppc)", MACHINE):
     TARGET_CPU = "ppc"
+
+# --- Utils ------------------------------------------------------------------
+
+def _eprint(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
 
 # --- Commands ------------------------------------------------------------------
 
@@ -62,9 +70,7 @@ class build_ext(_build_ext):
 
     def build_extension(self, ext):
         # show the compiler being used
-        log.info("building {} with {} compiler".format(
-            ext.name, self.compiler.compiler_type
-        ))
+        _eprint("building", ext.name, "with", self.compiler.compiler_type, "compiler")
 
         # add debug flags if we are building in debug mode
         if self.debug:
@@ -103,7 +109,9 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
                 "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
-                "TARGET_CPU": TARGET_CPU
+                "TARGET_CPU": TARGET_CPU,
+                "AVX2_BUILD_SUPPORT": False,
+                "SSE_BUILD_SUPPORT": False,
             }
         }
         if self.force:
@@ -122,16 +130,26 @@ class build_ext(_build_ext):
             cython_args["compiler_directives"]["wraparound"] = False
             cython_args["compiler_directives"]["cdivision"] = True
 
+        # compile the C library
+        if not self.distribution.have_run.get("build_clib", False):
+            self._clib_cmd.run()
+
+        # check if we can build platform-specific code
+        if self._clib_cmd._avx2_supported:
+            cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
+            for ext in self.extensions:
+                ext.extra_compile_args.append(self._clib_cmd._avx2_flag())
+        if self._clib_cmd._sse2_supported:
+            cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
+            for ext in self.extensions:
+                ext.extra_compile_args.append(self._clib_cmd._sse2_flag())
+
         # cythonize the extensions
         self.extensions = cythonize(self.extensions, **cython_args)
 
         # patch the extensions (somehow needed for `_build_ext.run` to work)
         for ext in self.extensions:
             ext._needs_stub = False
-
-        # compile the C library
-        if not self.distribution.have_run.get("build_clib", False):
-            self._clib_cmd.run()
 
         # build the extensions as normal
         _build_ext.run(self)
@@ -140,6 +158,81 @@ class build_ext(_build_ext):
 class build_clib(_build_clib):
     """A custom `build_clib` that splits the `training.c` file from Prodigal.
     """
+
+    # --- Autotools-like helpers ---
+
+    def _silent_spawn(self, cmd):
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as err:
+            raise CompileError(err.stderr)
+
+    def _check_simd_generic(self, name, flag, header, vector, set, extract):
+        _eprint('checking whether compiler can build', name, 'code', end="... ")
+
+        testfile = os.path.join(self.build_temp, "have_{}.c".format(name))
+        binfile = os.path.join(self.build_temp, "have_{}.bin".format(name))
+        objects = []
+
+        with open(testfile, "w") as f:
+            f.write("""
+                #include <{}>
+                int main() {{
+                    {}      a = {}(1);
+                    short   x = {}(a, 1);
+                    return (x == 1) ? 0 : 1;
+                }}
+            """.format(header, vector, set, extract))
+        try:
+            with mock.patch.object(self.compiler, "spawn", new=self._silent_spawn):
+                objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=[flag])
+                self.compiler.link_executable(objects, binfile)
+                subprocess.run([binfile], check=True)
+        except CompileError:
+            _eprint("no")
+            return False
+        except subprocess.CalledProcessError:
+            _eprint("yes, but cannot run code")
+            return True  # assume we are cross-compiling, and still build
+        else:
+            _eprint("yes, with {}".format(flag))
+            return True
+        finally:
+            os.remove(testfile)
+            for obj in filter(os.path.isfile, objects):
+                os.remove(obj)
+            if os.path.isfile(binfile):
+                os.remove(binfile)
+
+    def _avx2_flag(self):
+        if self.compiler.compiler_type == "msvc":
+            return "/arch:AVX2"
+        return "-mavx2"
+
+    def _check_avx2(self):
+        return self._check_simd_generic(
+            "AVX2",
+            self._avx2_flag(),
+            header="immintrin.h",
+            vector="__m256i",
+            set="_mm256_set1_epi16",
+            extract="_mm256_extract_epi16",
+        )
+
+    def _sse2_flag(self):
+        if self.compiler.compiler_type == "msvc":
+            return "/arch:SSE2"
+        return "-msse2"
+
+    def _check_sse2(self):
+        return self._check_simd_generic(
+            "SSE2",
+            self._sse2_flag(),
+            header="emmintrin.h",
+            vector="__m128i",
+            set="_mm_set1_epi16",
+            extract="_mm_extract_epi16",
+        )
 
     # --- Compatibility with base `build_clib` command ---
 
@@ -156,6 +249,11 @@ class build_clib(_build_clib):
         return next(lib for lib in self.libraries if lib.name == name)
 
     # --- Compatibility with `setuptools.Command`
+
+    def initialize_options(self):
+        _build_clib.initialize_options(self)
+        self._avx2_supported = False
+        self._sse2_supported = False
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
@@ -200,6 +298,10 @@ class build_clib(_build_clib):
         )
         # build the library as normal
         _build_clib.run(self)
+        # check which CPU features are supported, now that
+        # `_build_clib.run` has properly initialized the C compiler
+        self._avx2_supported = self._check_avx2()
+        self._sse2_supported = self._check_sse2()
 
     def build_libraries(self, libraries):
         self.mkpath(self.build_clib)
@@ -212,6 +314,9 @@ class build_clib(_build_clib):
             )
 
     def build_library(self, library):
+        # show the compiler being used
+        _eprint("building", library.name, "with", self.compiler.compiler_type, "compiler")
+
         # add debug flags if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:

@@ -44,6 +44,8 @@ cdef class Sequence:
 # --- Connection Scorer ------------------------------------------------------
 
 cdef class ConnectionScorer:
+    # which SIMD backend to use
+    cdef uint8_t  backend
     # capacity of bypassing buffers
     cdef size_t   capacity
     # connection skip lookup table
@@ -62,7 +64,6 @@ cdef class ConnectionScorer:
     cdef int _index(self, Nodes nodes) nogil except 1
     cdef int _compute_skippable(self, int min, int i) nogil except 1
     cdef int _score_connections(self, Nodes nodes, int min, int i, TrainingInfo tinf, bint final=*) nogil except 1
-    cdef bint _is_skippable(self, int j) nogil
 
 
 # --- Nodes ------------------------------------------------------------------
@@ -90,6 +91,7 @@ cdef class Nodes:
         const bint edge,
     ) nogil except NULL
 
+    cpdef Nodes copy(self)
     cdef int _clear(self) nogil except 1
     cdef int _sort(self) nogil except 1
 
