@@ -112,7 +112,7 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
                 "TARGET_CPU": TARGET_CPU,
                 "AVX2_BUILD_SUPPORT": False,
-                "SSE_BUILD_SUPPORT": False,
+                "SSE2_BUILD_SUPPORT": False,
             }
         }
         if self.force:
