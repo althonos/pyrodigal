@@ -1,6 +1,8 @@
 import configparser
 import glob
 import os
+import platform
+import re
 import sys
 
 import setuptools
@@ -16,6 +18,21 @@ try:
 except ImportError as err:
     cythonize = err
 
+# --- Constants -----------------------------------------------------------------
+
+MACHINE = platform.machine()
+if re.match("^mips", MACHINE):
+    TARGET_CPU = "mips"
+elif re.match("^arm", MACHINE):
+    TARGET_CPU = "arm"
+elif re.match("^aarch64", MACHINE):
+    TARGET_CPU = "aarch64"
+elif re.match("(x86_64)|(AMD64|amd64)|(^i.86$)", MACHINE):
+    TARGET_CPU = "x86"
+elif re.match("^(powerpc|ppc)", MACHINE):
+    TARGET_CPU = "ppc"
+
+# --- Commands ------------------------------------------------------------------
 
 class sdist(_sdist):
     """A `sdist` that generates a `pyproject.toml` on the fly.
@@ -86,9 +103,7 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
                 "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
-                # check if fast connection scoring bypass should be compiled
-                # (typically, if SSE or another vectorization is in use)
-                "FAST_SCORING_BYPASS": True
+                "TARGET_CPU": TARGET_CPU
             }
         }
         if self.force:
@@ -215,30 +230,47 @@ class build_clib(_build_clib):
         )
 
         # compile Prodigal
-        sources_lib = library.sources.copy()
-        sources_lib.remove(self.training_file)
-        objects_lib = [
-            os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
-            for s in sources_lib
-        ]
-        for source, object in zip(sources_lib, objects_lib):
-            self.make_file(
-                [source],
-                object,
-                self.compiler.compile,
-                ([source], self.build_temp, *compile_args)
-            )
+        if library.name == "prodigal":
+            # compile sources
+            sources_lib = library.sources.copy()
+            sources_lib.remove(self.training_file)
+            objects_lib = [
+                os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
+                for s in sources_lib
+            ]
+            for source, object in zip(sources_lib, objects_lib):
+                self.make_file(
+                    [source],
+                    object,
+                    self.compiler.compile,
+                    ([source], self.build_temp, *compile_args)
+                )
+            # compile `training.c` source files
+            sources_training = sorted(glob.iglob(os.path.join(self.training_temp, "*.c")))
+            objects_training = [s.replace(".c", self.compiler.obj_extension) for s in sources_training]
+            for source, object in zip(sources_training, objects_training):
+                self.make_file(
+                    [source],
+                    object,
+                    self.compiler.compile,
+                    ([source], None, *compile_args)
+                )
 
-        # compile `training.c` source files
-        sources_training = sorted(glob.iglob(os.path.join(self.training_temp, "*.c")))
-        objects_training = [s.replace(".c", self.compiler.obj_extension) for s in sources_training]
-        for source, object in zip(sources_training, objects_training):
-            self.make_file(
-                [source],
-                object,
-                self.compiler.compile,
-                ([source], None, *compile_args)
-            )
+        else:
+            # compile sources
+            sources_lib = library.sources.copy()
+            objects_lib = [
+                os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
+                for s in sources_lib
+            ]
+            objects_training = []
+            for source, object in zip(sources_lib, objects_lib):
+                self.make_file(
+                    [source],
+                    object,
+                    self.compiler.compile,
+                    ([source], self.build_temp, *compile_args)
+                )
 
         # link into a static library
         libfile = self.compiler.library_filename(
@@ -272,26 +304,39 @@ class clean(_clean):
 
         _clean.run(self)
 
+# --- Setup ---------------------------------------------------------------------
 
 setuptools.setup(
     libraries=[
         Library(
             "prodigal",
             sources=[
-                os.path.join("vendor", "Prodigal", base)
+                os.path.join("vendor", "Prodigal", "{}.c".format(base))
                 for base in [
-                    "bitmap.c",
-                    "dprog.c",
-                    "gene.c",
-                    "metagenomic.c",
-                    "node.c",
-                    "sequence.c",
-                    "training.c"
+                    "bitmap",
+                    "dprog",
+                    "gene",
+                    "metagenomic",
+                    "node",
+                    "sequence",
+                    "training"
                 ]
             ],
-            include_dirs=[
-                os.path.join("vendor", "Prodigal")
+            include_dirs=[os.path.join("vendor", "Prodigal")]
+        ),
+        Library(
+            "cpu_features",
+            sources=[
+                os.path.join("vendor", "cpu_features", "src", "{}.c".format(base))
+                for base in [
+                    "cpuinfo_{}".format(TARGET_CPU),
+                    "filesystem",
+                    "stack_line_reader",
+                    "string_view",
+                ]
             ],
+            include_dirs=[os.path.join("vendor", "cpu_features", "include")],
+            define_macros=[("STACK_LINE_READER_BUFFER_SIZE", 1024)]
         )
     ],
     ext_modules=[
@@ -305,8 +350,12 @@ setuptools.setup(
             include_dirs=[
                 "pyrodigal",
                 os.path.join("vendor", "Prodigal"),
+                os.path.join("vendor", "cpu_features", "include"),
             ],
-            libraries=["prodigal"],
+            libraries=[
+                "prodigal",
+                "cpu_features",
+            ],
         ),
     ],
     cmdclass={
