@@ -9,6 +9,7 @@ from unittest import mock
 
 import setuptools
 from distutils import log
+from distutils.errors import CompileError
 from distutils.command.clean import clean as _clean
 from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.build_clib import build_clib as _build_clib
@@ -204,6 +205,38 @@ class build_clib(_build_clib):
             if os.path.isfile(binfile):
                 os.remove(binfile)
 
+    def _check_function(self, funcname, header, args="()"):
+        _eprint('checking whether function', repr(funcname), 'is available', end="... ")
+
+        testfile = os.path.join(self.build_temp, "have_{}.c".format(funcname))
+        binfile = os.path.join(self.build_temp, "have_{}.bin".format(funcname))
+        objects = []
+
+        with open(testfile, "w") as f:
+            f.write("""
+                #include <{}>
+                int main() {{
+                    {}{};
+                    return 0;
+                }}
+            """.format(header, funcname, args))
+        try:
+            with mock.patch.object(self.compiler, "spawn", new=self._silent_spawn):
+                objects = self.compiler.compile([testfile], debug=self.debug)
+                self.compiler.link_executable(objects, binfile)
+        except CompileError:
+            _eprint("no")
+            return False
+        else:
+            _eprint("yes")
+            return True
+        finally:
+            os.remove(testfile)
+            for obj in filter(os.path.isfile, objects):
+                os.remove(obj)
+            if os.path.isfile(binfile):
+                os.remove(binfile)
+
     def _avx2_flag(self):
         if self.compiler.compiler_type == "msvc":
             return "/arch:AVX2"
@@ -324,6 +357,11 @@ class build_clib(_build_clib):
             elif self.compiler.compiler_type == "msvc":
                 library.extra_compile_args.append("/Od")
 
+        # check for functions required for libcpu_features
+        if library.name == "cpu_features" and SYSTEM == "Darwin":
+            if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
+                library.define_macros.append(("HAVE_SYSCTLBYNAME", 1))
+
         # store compile args
         compile_args = (
             library.define_macros,
@@ -333,49 +371,23 @@ class build_clib(_build_clib):
             None,
             library.depends,
         )
-
-        # compile Prodigal
+        # manually prepare sources and get the names of object files
+        sources = library.sources.copy()
         if library.name == "prodigal":
-            # compile sources
-            sources_lib = library.sources.copy()
-            sources_lib.remove(self.training_file)
-            objects_lib = [
-                os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
-                for s in sources_lib
-            ]
-            for source, object in zip(sources_lib, objects_lib):
-                self.make_file(
-                    [source],
-                    object,
-                    self.compiler.compile,
-                    ([source], self.build_temp, *compile_args)
-                )
-            # compile `training.c` source files
-            sources_training = sorted(glob.iglob(os.path.join(self.training_temp, "*.c")))
-            objects_training = [s.replace(".c", self.compiler.obj_extension) for s in sources_training]
-            for source, object in zip(sources_training, objects_training):
-                self.make_file(
-                    [source],
-                    object,
-                    self.compiler.compile,
-                    ([source], None, *compile_args)
-                )
-
-        else:
-            # compile sources
-            sources_lib = library.sources.copy()
-            objects_lib = [
-                os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
-                for s in sources_lib
-            ]
-            objects_training = []
-            for source, object in zip(sources_lib, objects_lib):
-                self.make_file(
-                    [source],
-                    object,
-                    self.compiler.compile,
-                    ([source], self.build_temp, *compile_args)
-                )
+            sources.remove(self.training_file)
+            sources.extend(sorted(glob.iglob(os.path.join(self.training_temp, "*.c"))))
+        objects = [
+            os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
+            for s in sources
+        ]
+        # only compile outdated files
+        for source, object in zip(sources, objects):
+            self.make_file(
+                [source],
+                object,
+                self.compiler.compile,
+                ([source], self.build_temp, *compile_args)
+            )
 
         # link into a static library
         libfile = self.compiler.library_filename(
@@ -383,10 +395,10 @@ class build_clib(_build_clib):
             output_dir=self.build_clib,
         )
         self.make_file(
-            objects_lib + objects_training,
+            objects,
             libfile,
             self.compiler.create_static_lib,
-            (objects_lib + objects_training, library.name, self.build_clib, None, self.debug)
+            (objects, library.name, self.build_clib, None, self.debug)
         )
 
 
