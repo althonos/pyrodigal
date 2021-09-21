@@ -65,6 +65,8 @@ cdef extern from "node.h" nogil:
 
     void determine_sd_usage(_training *tinf)
 
+    double intergenic_mod(_node*, _node*, _training*)
+
     void train_starts_sd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
     void train_starts_nonsd(bitmap_t seq, bitmap_t rseq, int slen, _node *nodes, int nn, _training *tinf)
 
