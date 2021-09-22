@@ -1,10 +1,15 @@
 import configparser
 import glob
 import os
+import platform
+import re
+import subprocess
 import sys
+from unittest import mock
 
 import setuptools
 from distutils import log
+from distutils.errors import CompileError
 from distutils.command.clean import clean as _clean
 from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.build_clib import build_clib as _build_clib
@@ -16,6 +21,27 @@ try:
 except ImportError as err:
     cythonize = err
 
+# --- Constants -----------------------------------------------------------------
+
+SYSTEM  = platform.system()
+MACHINE = platform.machine()
+if re.match("^mips", MACHINE):
+    TARGET_CPU = "mips"
+elif re.match("^arm", MACHINE):
+    TARGET_CPU = "arm"
+elif re.match("^aarch64", MACHINE):
+    TARGET_CPU = "aarch64"
+elif re.match("(x86_64)|(AMD64|amd64)|(^i.86$)", MACHINE):
+    TARGET_CPU = "x86"
+elif re.match("^(powerpc|ppc)", MACHINE):
+    TARGET_CPU = "ppc"
+
+# --- Utils ------------------------------------------------------------------
+
+def _eprint(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
+
+# --- Commands ------------------------------------------------------------------
 
 class sdist(_sdist):
     """A `sdist` that generates a `pyproject.toml` on the fly.
@@ -42,12 +68,11 @@ class build_ext(_build_ext):
         self._clib_cmd = self.get_finalized_command("build_clib")
         self._clib_cmd.debug = self.debug
         self._clib_cmd.force = self.force
+        self._clib_cmd.verbose = self.verbose
 
     def build_extension(self, ext):
         # show the compiler being used
-        log.info("building {} with {} compiler".format(
-            ext.name, self.compiler.compiler_type
-        ))
+        _eprint("building", ext.name, "with", self.compiler.compiler_type, "compiler")
 
         # add debug flags if we are building in debug mode
         if self.debug:
@@ -86,6 +111,9 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
                 "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
+                "TARGET_CPU": TARGET_CPU,
+                "AVX2_BUILD_SUPPORT": False,
+                "SSE2_BUILD_SUPPORT": False,
             }
         }
         if self.force:
@@ -104,16 +132,28 @@ class build_ext(_build_ext):
             cython_args["compiler_directives"]["wraparound"] = False
             cython_args["compiler_directives"]["cdivision"] = True
 
+        # compile the C library
+        if not self.distribution.have_run.get("build_clib", False):
+            self._clib_cmd.run()
+
+        # check if we can build platform-specific code
+        if self._clib_cmd._avx2_supported:
+            cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
+            for ext in self.extensions:
+                ext.extra_compile_args.append(self._clib_cmd._avx2_flag())
+                ext.define_macros.append(("__AVX2__", 1))
+        if self._clib_cmd._sse2_supported:
+            cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
+            for ext in self.extensions:
+                ext.extra_compile_args.append(self._clib_cmd._sse2_flag())
+                ext.define_macros.append(("__SSE2__", 1))
+
         # cythonize the extensions
         self.extensions = cythonize(self.extensions, **cython_args)
 
         # patch the extensions (somehow needed for `_build_ext.run` to work)
         for ext in self.extensions:
             ext._needs_stub = False
-
-        # compile the C library
-        if not self.distribution.have_run.get("build_clib", False):
-            self._clib_cmd.run()
 
         # build the extensions as normal
         _build_ext.run(self)
@@ -122,6 +162,107 @@ class build_ext(_build_ext):
 class build_clib(_build_clib):
     """A custom `build_clib` that splits the `training.c` file from Prodigal.
     """
+
+    # --- Autotools-like helpers ---
+
+    def _check_simd_generic(self, name, flag, header, vector, set, extract):
+        _eprint('checking whether compiler can build', name, 'code', end="... ")
+
+        base = "have_{}".format(name)
+        testfile = os.path.join(self.build_temp, "{}.c".format(base))
+        binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
+        objects = []
+
+        with open(testfile, "w") as f:
+            f.write("""
+                #include <{}>
+                int main() {{
+                    {}      a = {}(1);
+                    short   x = {}(a, 1);
+                    return (x == 1) ? 0 : 1;
+                }}
+            """.format(header, vector, set, extract))
+        try:
+            objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=[flag])
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+            subprocess.run([binfile], check=True)
+        except CompileError:
+            _eprint("no")
+            return False
+        except subprocess.CalledProcessError:
+            _eprint("yes, but cannot run code")
+            return True  # assume we are cross-compiling, and still build
+        else:
+            _eprint("yes, with {}".format(flag))
+            return True
+        finally:
+            os.remove(testfile)
+            for obj in filter(os.path.isfile, objects):
+                os.remove(obj)
+            if os.path.isfile(binfile):
+                os.remove(binfile)
+
+    def _check_function(self, funcname, header, args="()"):
+        _eprint('checking whether function', repr(funcname), 'is available', end="... ")
+
+        base = "have_{}".format(funcname)
+        testfile = os.path.join(self.build_temp, "{}.c".format(base))
+        binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
+        objects = []
+
+        with open(testfile, "w") as f:
+            f.write("""
+                #include <{}>
+                int main() {{
+                    {}{};
+                    return 0;
+                }}
+            """.format(header, funcname, args))
+        try:
+            objects = self.compiler.compile([testfile], debug=self.debug)
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+        except CompileError:
+            _eprint("no")
+            return False
+        else:
+            _eprint("yes")
+            return True
+        finally:
+            os.remove(testfile)
+            for obj in filter(os.path.isfile, objects):
+                os.remove(obj)
+            if os.path.isfile(binfile):
+                os.remove(binfile)
+
+    def _avx2_flag(self):
+        if self.compiler.compiler_type == "msvc":
+            return "/arch:AVX2"
+        return "-mavx2"
+
+    def _check_avx2(self):
+        return self._check_simd_generic(
+            "AVX2",
+            self._avx2_flag(),
+            header="immintrin.h",
+            vector="__m256i",
+            set="_mm256_set1_epi16",
+            extract="_mm256_extract_epi16",
+        )
+
+    def _sse2_flag(self):
+        if self.compiler.compiler_type == "msvc":
+            return "/arch:SSE2"
+        return "-msse2"
+
+    def _check_sse2(self):
+        return self._check_simd_generic(
+            "SSE2",
+            self._sse2_flag(),
+            header="emmintrin.h",
+            vector="__m128i",
+            set="_mm_set1_epi16",
+            extract="_mm_extract_epi16",
+        )
 
     # --- Compatibility with base `build_clib` command ---
 
@@ -138,6 +279,11 @@ class build_clib(_build_clib):
         return next(lib for lib in self.libraries if lib.name == name)
 
     # --- Compatibility with `setuptools.Command`
+
+    def initialize_options(self):
+        _build_clib.initialize_options(self)
+        self._avx2_supported = False
+        self._sse2_supported = False
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
@@ -182,6 +328,10 @@ class build_clib(_build_clib):
         )
         # build the library as normal
         _build_clib.run(self)
+        # check which CPU features are supported, now that
+        # `_build_clib.run` has properly initialized the C compiler
+        self._avx2_supported = self._check_avx2()
+        self._sse2_supported = self._check_sse2()
 
     def build_libraries(self, libraries):
         self.mkpath(self.build_clib)
@@ -194,12 +344,20 @@ class build_clib(_build_clib):
             )
 
     def build_library(self, library):
+        # show the compiler being used
+        _eprint("building", library.name, "with", self.compiler.compiler_type, "compiler")
+
         # add debug flags if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
                 library.extra_compile_args.append("-O0")
             elif self.compiler.compiler_type == "msvc":
                 library.extra_compile_args.append("/Od")
+
+        # check for functions required for libcpu_features
+        if library.name == "cpu_features" and SYSTEM == "Darwin":
+            if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
+                library.define_macros.append(("HAVE_SYSCTLBYNAME", 1))
 
         # store compile args
         compile_args = (
@@ -210,31 +368,22 @@ class build_clib(_build_clib):
             None,
             library.depends,
         )
-
-        # compile Prodigal
-        sources_lib = library.sources.copy()
-        sources_lib.remove(self.training_file)
-        objects_lib = [
+        # manually prepare sources and get the names of object files
+        sources = library.sources.copy()
+        if library.name == "prodigal":
+            sources.remove(self.training_file)
+            sources.extend(sorted(glob.iglob(os.path.join(self.training_temp, "*.c"))))
+        objects = [
             os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
-            for s in sources_lib
+            for s in sources
         ]
-        for source, object in zip(sources_lib, objects_lib):
+        # only compile outdated files
+        for source, object in zip(sources, objects):
             self.make_file(
                 [source],
                 object,
                 self.compiler.compile,
                 ([source], self.build_temp, *compile_args)
-            )
-
-        # compile `training.c` source files
-        sources_training = sorted(glob.iglob(os.path.join(self.training_temp, "*.c")))
-        objects_training = [s.replace(".c", self.compiler.obj_extension) for s in sources_training]
-        for source, object in zip(sources_training, objects_training):
-            self.make_file(
-                [source],
-                object,
-                self.compiler.compile,
-                ([source], None, *compile_args)
             )
 
         # link into a static library
@@ -243,10 +392,10 @@ class build_clib(_build_clib):
             output_dir=self.build_clib,
         )
         self.make_file(
-            objects_lib + objects_training,
+            objects,
             libfile,
             self.compiler.create_static_lib,
-            (objects_lib + objects_training, library.name, self.build_clib, None, self.debug)
+            (objects, library.name, self.build_clib, None, self.debug)
         )
 
 
@@ -269,32 +418,58 @@ class clean(_clean):
 
         _clean.run(self)
 
+# --- Setup ---------------------------------------------------------------------
 
 setuptools.setup(
     libraries=[
         Library(
             "prodigal",
             sources=[
-                os.path.join("Prodigal", base)
+                os.path.join("vendor", "Prodigal", "{}.c".format(base))
                 for base in [
-                    "bitmap.c",
-                    "dprog.c",
-                    "gene.c",
-                    "metagenomic.c",
-                    "node.c",
-                    "sequence.c",
-                    "training.c"
+                    "bitmap",
+                    "dprog",
+                    "gene",
+                    "metagenomic",
+                    "node",
+                    "sequence",
+                    "training"
                 ]
             ],
-            include_dirs=["Prodigal"],
+            include_dirs=[os.path.join("vendor", "Prodigal")]
+        ),
+        Library(
+            "cpu_features",
+            sources=[
+                os.path.join("vendor", "cpu_features", "src", "{}.c".format(base))
+                for base in [
+                    "cpuinfo_{}".format(TARGET_CPU),
+                    "filesystem",
+                    "stack_line_reader",
+                    "string_view",
+                ]
+            ],
+            include_dirs=[os.path.join("vendor", "cpu_features", "include")],
+            define_macros=[("STACK_LINE_READER_BUFFER_SIZE", 1024)]
         )
     ],
     ext_modules=[
         Extension(
             "pyrodigal._pyrodigal",
-            sources=["pyrodigal/_pyrodigal.pyx"],
-            include_dirs=["Prodigal"],
-            libraries=["prodigal"],
+            sources=[
+                "pyrodigal/impl/sse.c",
+                "pyrodigal/impl/avx.c",
+                "pyrodigal/_pyrodigal.pyx"
+            ],
+            include_dirs=[
+                "pyrodigal",
+                os.path.join("vendor", "Prodigal"),
+                os.path.join("vendor", "cpu_features", "include"),
+            ],
+            libraries=[
+                "prodigal",
+                "cpu_features",
+            ],
         ),
     ],
     cmdclass={

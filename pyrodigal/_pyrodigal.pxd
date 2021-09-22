@@ -3,7 +3,7 @@
 
 # ----------------------------------------------------------------------------
 
-from libc.stdint cimport uint8_t
+from libc.stdint cimport int8_t, uint8_t
 
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
@@ -41,6 +41,29 @@ cdef class Sequence:
     cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
     cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
 
+# --- Connection Scorer ------------------------------------------------------
+
+cdef class ConnectionScorer:
+    # which SIMD backend to use
+    cdef uint8_t  backend
+    # capacity of bypassing buffers
+    cdef size_t   capacity
+    # connection skip lookup table
+    cdef uint8_t* skip_connection
+    cdef uint8_t* skip_connection_raw
+    # aligned storage of node types
+    cdef uint8_t* node_types
+    cdef uint8_t* node_types_raw
+    # aligned storage of node strands
+    cdef int8_t*  node_strands
+    cdef int8_t*  node_strands_raw
+    # aligned storage of node frame
+    cdef uint8_t* node_frames
+    cdef uint8_t* node_frames_raw
+
+    cdef int _index(self, Nodes nodes) nogil except 1
+    cdef int _compute_skippable(self, int min, int i) nogil except 1
+    cdef int _score_connections(self, Nodes nodes, int min, int i, TrainingInfo tinf, bint final=*) nogil except 1
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -53,6 +76,7 @@ cdef class Node:
     cdef _node* node
 
 cdef class Nodes:
+    # contiguous array of nodes, with capacity and length
     cdef _node* nodes
     cdef size_t capacity
     cdef size_t length
@@ -66,6 +90,7 @@ cdef class Nodes:
         const bint edge,
     ) nogil except NULL
 
+    cpdef Nodes copy(self)
     cdef int _clear(self) nogil except 1
     cdef int _sort(self) nogil except 1
 
@@ -143,6 +168,7 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
 cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1
+cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer score, bint final=*) nogil
 cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1
 cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
@@ -151,17 +177,15 @@ cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, Trainin
 cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
 cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
 cpdef void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
+cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
 
 # --- Wrappers ---------------------------------------------------------------
 
 cpdef void reset_node_scores(Nodes nodes) nogil
 cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
-cpdef int  dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=*) nogil
 cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
 cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil
-cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
-cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
 cpdef void determine_sd_usage(TrainingInfo tinf) nogil
 
 # --- Main functions ---------------------------------------------------------

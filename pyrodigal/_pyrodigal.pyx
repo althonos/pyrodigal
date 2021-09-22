@@ -50,11 +50,12 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
 from libc.math cimport sqrt, log, pow, fmax, fmin, fabs
-from libc.stdint cimport uint8_t
+from libc.stdint cimport int8_t, uint8_t, uintptr_t
 from libc.stdio cimport printf
-from libc.stdlib cimport malloc, free, qsort
-from libc.string cimport memchr, memset, strstr
+from libc.stdlib cimport malloc, calloc, free, qsort
+from libc.string cimport memcpy, memchr, memset, strstr
 
+from pyrodigal.impl.sse cimport skippable_sse
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
@@ -64,6 +65,13 @@ from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._utils cimport _mini_training
 from pyrodigal._unicode cimport *
+
+IF TARGET_CPU == "x86":
+    from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
+    IF SSE2_BUILD_SUPPORT:
+        from pyrodigal.impl.sse cimport skippable_sse
+    IF AVX2_BUILD_SUPPORT:
+        from pyrodigal.impl.avx cimport skippable_avx
 
 # ----------------------------------------------------------------------------
 
@@ -451,6 +459,148 @@ cdef class Sequence:
 
         return b'X'
 
+# --- Connection Scorer ------------------------------------------------------
+
+_TARGET_CPU = TARGET_CPU
+IF TARGET_CPU == "x86":
+    cdef X86Info cpu_info = GetX86Info()
+    _SSE2_RUNTIME_SUPPORT = cpu_info.features.sse2 != 0
+    _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
+    _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
+    _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
+ELSE:
+    _SSE2_RUNTIME_SUPPORT = False
+    _AVX2_RUNTIME_SUPPORT = False
+    _SSE2_BUILD_SUPPORT   = False
+    _AVX2_BUILD_SUPPORT   = False
+
+cdef enum simd_backend:
+    NONE = 0
+    SSE2 = 1
+    AVX2 = 2
+    NEON = 3
+
+cdef class ConnectionScorer:
+
+    def __cinit__(self):
+        self.capacity = 0
+        self.skip_connection = self.skip_connection_raw = NULL
+        self.node_types      = self.node_types_raw      = NULL
+        self.node_strands    = self.node_strands_raw    = NULL
+        self.node_frames     = self.node_frames_raw     = NULL
+
+    def __init__(self, unicode backend="detect"):
+        IF TARGET_CPU == "x86":
+            if backend =="detect":
+                self.backend = simd_backend.NONE
+                IF SSE2_BUILD_SUPPORT:
+                    if _SSE2_RUNTIME_SUPPORT:
+                        self.backend = simd_backend.SSE2
+                IF AVX2_BUILD_SUPPORT:
+                    if _AVX2_RUNTIME_SUPPORT:
+                        self.backend = simd_backend.AVX2
+            elif backend == "sse":
+                IF not SSE2_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without SSE2 support")
+                ELSE:
+                    if not _SSE2_RUNTIME_SUPPORT:
+                        raise RuntimeError("Cannot run SSE2 instructions on this machine")
+                    self.backend = simd_backend.SSE2
+            elif backend == "avx":
+                IF not AVX2_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without AVX2 support")
+                ELSE:
+                    if not _AVX2_RUNTIME_SUPPORT:
+                        raise RuntimeError("Cannot run AVX2 instructions on this machine")
+                    self.backend = simd_backend.AVX2
+            elif backend is None:
+                self.backend = simd_backend.NONE
+            else:
+                raise ValueError(f"Unsupported backend on this architecture: {backend}")
+        ELSE:
+            self.backend = simd_backend.NONE
+
+    def __dealloc__(self):
+        PyMem_Free(self.node_types_raw)
+        PyMem_Free(self.node_strands_raw)
+        PyMem_Free(self.node_frames_raw)
+        PyMem_Free(self.skip_connection_raw)
+
+    cdef int _index(self, Nodes nodes) nogil except 1:
+        cdef size_t i
+        # reallocate if needed
+        if self.capacity < nodes.length:
+            with gil:
+                # reallocate new memory
+                self.skip_connection_raw = <uint8_t*> PyMem_Realloc(self.skip_connection_raw, nodes.length * sizeof(uint8_t) + 0x1F)
+                self.node_types_raw      = <uint8_t*> PyMem_Realloc(self.node_types_raw, nodes.length      * sizeof(uint8_t) + 0x1F)
+                self.node_strands_raw    = <int8_t*>  PyMem_Realloc(self.node_strands_raw, nodes.length    * sizeof(int8_t)  + 0x1F)
+                self.node_frames_raw     = <uint8_t*> PyMem_Realloc(self.node_frames_raw, nodes.length     * sizeof(uint8_t) + 0x1F)
+                # check that allocations were successful
+                if self.skip_connection_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for scoring bypass index")
+                if self.node_types_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for node type array")
+                if self.node_strands_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for node strand array")
+                if self.node_frames_raw == NULL:
+                    raise MemoryError("Failed to allocate memory for node frame array")
+            # record new capacity
+            self.capacity = nodes.length
+            # compute pointers to aligned memory
+            self.skip_connection = <uint8_t*> ((<uintptr_t> self.skip_connection_raw + 0x1F) & (~0x1F))
+            self.node_types      = <uint8_t*> ((<uintptr_t> self.node_types_raw      + 0x1F) & (~0x1F))
+            self.node_strands    = <int8_t*>  ((<uintptr_t> self.node_strands_raw    + 0x1F) & (~0x1F))
+            self.node_frames     = <uint8_t*> ((<uintptr_t> self.node_frames_raw     + 0x1F) & (~0x1F))
+        # copy data from the array of nodes
+        for i in range(nodes.length):
+            self.node_types[i]      = nodes.nodes[i].type
+            self.node_strands[i]    = nodes.nodes[i].strand
+            self.node_frames[i]     = nodes.nodes[i].ndx % 3
+            self.skip_connection[i] = False
+        # return 0 if no exceptions were raised
+        return 0
+
+    def index(self, Nodes nodes not None):
+        with nogil:
+            self._index(nodes)
+
+    cdef int _compute_skippable(self, int min, int i) nogil except 1:
+        if self.backend != simd_backend.NONE:
+            memset(&self.skip_connection[min], 0, sizeof(uint8_t) * (i - min))
+        IF AVX2_BUILD_SUPPORT:
+            if self.backend == simd_backend.AVX2:
+                skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        IF SSE2_BUILD_SUPPORT:
+            if self.backend == simd_backend.SSE2:
+                skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        return 0
+
+    def compute_skippable(self, int min, int i):
+        assert self.skip_connection != NULL
+        assert i < self.capacity
+        assert min <= i
+        with nogil:
+            self._compute_skippable(min, i)
+
+    cdef int _score_connections(self, Nodes nodes, int min, int i, TrainingInfo tinf, bint final=False) nogil except 1:
+        cdef int j
+        cdef _node*     raw_nodes = nodes.nodes
+        cdef _training* raw_tinf  = tinf.tinf
+
+        for j in range(min, i):
+            if self.skip_connection[j] == 0:
+                dprog.score_connection(raw_nodes, j, i, raw_tinf, final)
+
+        return 0
+
+    def score_connections(self, Nodes nodes not None, int min, int i, TrainingInfo tinf not None, bint final=False):
+        assert self.skip_connection != NULL
+        assert i < nodes.length
+        assert min <= i
+        with nogil:
+            self._score_connections(nodes, min, i, tinf, final)
+
 # --- Nodes ------------------------------------------------------------------
 
 cdef class Node:
@@ -520,6 +670,9 @@ cdef class Nodes:
     def __dealloc__(self):
         PyMem_Free(self.nodes)
 
+    def __copy__(self):
+        return self.copy()
+
     def __len__(self):
         return self.length
 
@@ -580,6 +733,16 @@ cdef class Nodes:
         """
         with nogil:
             self._clear()
+
+    cpdef Nodes copy(self):
+        cdef Nodes new = Nodes.__new__(Nodes)
+        new.capacity = self.capacity
+        new.length = self.length
+        new.nodes = <_node*> PyMem_Malloc(new.capacity * sizeof(_node))
+        if new.nodes == NULL:
+            raise MemoryError("Failed to reallocate node array")
+        memcpy(new.nodes, self.nodes, new.capacity * sizeof(_node))
+        return new
 
     cdef int _sort(self) nogil except 1:
         """Sort all nodes in the vector by their index and strand.
@@ -1744,7 +1907,7 @@ cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, 
                 tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
             i += 1
 
-cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) nogil:
+cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer scorer, bint final=False) nogil:
     cdef int    i
     cdef int    j
     cdef int    min
@@ -1773,8 +1936,10 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, bint final=False) 
             if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
                 min = 0
         min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
-        for j in range(min, i):
-            dprog.score_connection(nodes.nodes, j, i, tinf.tinf, final)
+        # Check which nodes can be skipped
+        scorer._compute_skippable(min, i)
+        # Score connections
+        scorer._score_connections(nodes, min, i, tinf, final)
 
     for i in reversed(range(<int> nodes.length)):
         if nodes.nodes[i].strand == 1 and nodes.nodes[i].type != node_type.STOP:
@@ -2940,7 +3105,6 @@ cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, 
 cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
     node.determine_sd_usage(tinf.tinf)
 
-
 # --- Main functions ---------------------------------------------------------
 
 cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=False, double start_weight=4.35, int translation_table=11):
@@ -2948,11 +3112,13 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
     cdef int*         gc_frame
     cdef Nodes        nodes    = Nodes()
     cdef TrainingInfo tinf     = TrainingInfo(sequence.gc, start_weight, translation_table)
+    cdef ConnectionScorer scorer = ConnectionScorer()
 
     with nogil:
         # find all the potential starts and stops
         add_nodes(nodes, sequence, tinf, closed=closed)
         nodes._sort()
+        scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
         gc_frame = calc_most_gc_frame(sequence)
@@ -2963,7 +3129,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
         record_overlapping_starts(nodes, tinf, is_meta=False)
-        ipath = dynamic_programming(nodes, tinf, final=False)
+        ipath = dynamic_programming(nodes, tinf, scorer, final=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
         raw_coding_score(nodes, sequence, tinf)
@@ -2984,17 +3150,19 @@ cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint c
     cdef int   ipath
     cdef Genes genes = Genes()
     cdef Nodes nodes = Nodes()
+    cdef ConnectionScorer scorer = ConnectionScorer()
 
     with nogil:
         # find all the potential starts and stops, and sort them
         add_nodes(nodes, sequence, tinf, closed=closed)
         nodes._sort()
+        scorer._index(nodes)
         # second dynamic programming, using the dicodon statistics as the
         # scoring function
         reset_node_scores(nodes)
         score_nodes(nodes, sequence, tinf, closed=closed, is_meta=False)
         record_overlapping_starts(nodes, tinf, is_meta=True)
-        ipath = dynamic_programming(nodes, tinf, final=True)
+        ipath = dynamic_programming(nodes, tinf, scorer, final=True)
         # eliminate eventual bad genes in the nodes
         if nodes.length > 0:
             eliminate_bad_genes(nodes, ipath, tinf)
@@ -3016,6 +3184,7 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
     cdef Genes        genes     = Genes()
     cdef Nodes        nodes     = Nodes()
     cdef TrainingInfo tinf      = TrainingInfo.__new__(TrainingInfo)
+    cdef ConnectionScorer scorer = ConnectionScorer()
     cdef int          max_phase = 0
     cdef double       max_score = -100.0
 
@@ -3045,11 +3214,12 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
                 nodes._clear()
                 add_nodes(nodes, sequence, tinf, closed=closed)
                 nodes._sort()
+                scorer._index(nodes)
             # compute the score for the current bin
             reset_node_scores(nodes)
             score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
             record_overlapping_starts(nodes, tinf, is_meta=True)
-            ipath = dynamic_programming(nodes, tinf, final=True)
+            ipath = dynamic_programming(nodes, tinf, scorer, final=True)
             # update genes if the current bin had a better score
             if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
                 # record best phase and score
