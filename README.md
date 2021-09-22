@@ -1,7 +1,7 @@
 # 🔥 Pyrodigal [![Stars](https://img.shields.io/github/stars/althonos/pyrodigal.svg?style=social&maxAge=3600&label=Star)](https://github.com/althonos/pyrodigal/stargazers)
 
 *Cython bindings and Python interface to [Prodigal](https://github.com/hyattpd/Prodigal/), an ORF
-finder for genomes and metagenomes.*
+finder for genomes and metagenomes. **Now with SIMD!***
 
 [![Actions](https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/master?logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/pyrodigal/actions)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
@@ -27,14 +27,17 @@ internals, which has the following advantages:
 - **single dependency**: Pyrodigal is distributed as a Python package, so you
   can add it as a dependency to your project, and stop worrying about the
   Prodigal binary being present on the end-user machine.
-- **no intermediate files**: everything happens in memory, in a Python object
+- **no intermediate files**: Everything happens in memory, in a Python object
   you fully control, so you don't have to invoke the Prodigal CLI using a
-  sub-process and temporary files.
-- **no input formatting**: sequences are manipulated directly as strings, which
-  leverages the issue of formatting your input to FASTA for Prodigal.
+  sub-process and temporary files. Sequences can be passed directly as
+  strings or bytes, which avoids the issue of formatting your input to
+  FASTA for Prodigal.
 - **lower memory usage**: Pyrodigal is slightly more conservative when it comes
   to using memory, which can help process very large sequences. It also lets
   you save some more memory when running several *meta*-mode analyses
+- **better performance**: Pyrodigal uses *SIMD* instructions to compute which
+  dynamic programming nodes can be ignored when scoring connections. This can
+  save up to half the runtime on some sequences.
 
 ### 📋 Features
 
@@ -50,23 +53,28 @@ metagenomic mode. It is still missing some features of the CLI:
 
 ### 🐏 Memory
 
-Contrary to the Prodigal command line, Pyrodigal attempts to be more conservative
-about memory usage. This means that most of the allocations will be lazy, and
-that some functions will reallocate their results to exact-sized arrays when
-it's possible. This leads to Pyrodigal using about 30% less memory, but with
-a little bit more overhead to compute the size of buffers in advance.
+Pyrodigal makes two changes compared to the origina Prodigal command line:
+
+* Sequences are stored as raw bytes instead of compressed bitmaps. This means
+  that the sequence itself takes 3/8th more space, but since the memory used
+  for storing the sequence is often negligible compared to the memory used to
+  store dynamic programming nodes, this is an acceptable trade-off for better
+  performance when finding the start and stop nodes.
+* Node arrays are dynamically allocated and grow exponentially instead of
+  being pre-allocated with a large size. On small sequences, this leads to
+  Pyrodigal using about 30% less memory.
+
 
 ### 🧶 Thread-safety
 
-`pyrodigal.Pyrodigal` instances are thread-safe, and use an internal lock to
-prevent parallel calls to their methods from overwriting the internal buffers.
-However, a better solution to process sequences in parallel is to use a
-consumer/worker pattern, and have one `Pyrodigal` instance in each worker.
-Using a pool spawning `Pyrodigal` instances on the fly is also fine,
-but prevents recycling memory:
+`pyrodigal.Pyrodigal` instances are thread-safe. In addition, the `find_genes`
+method is re-entrant. This means you can train a `Pyrodigal` instance once,
+and then use a pool to process sequences in parallel:
 ```python
+p = Pyrodigal()
+p.train(training_sequence)
 with multiprocessing.pool.ThreadPool() as pool:
-    pool.map(lambda s: Pyrodigal(meta=True).find_genes(s), sequences)
+    predictions = pool.map(p.find_genes, sequences)
 ```
 
 ## 🔧 Installing
@@ -150,9 +158,10 @@ for more details.
 
 ## ⚖️ License
 
-This library is provided under the [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/). The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd)
-and is distributed under the terms of the GPLv3 as well. See `Prodigal/LICENSE`
-for more information.
+This library is provided under the [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/). 
+The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd) and is distributed under the 
+terms of the GPLv3 as well. See `vendor/Prodigal/LICENSE` for more information. The `cpu_features` library is 
+licensed under the terms of the Apache license. See `vendor/cpu_features/LICENSE` for more information.
 
 *This project is in no way not affiliated, sponsored, or otherwise endorsed
 by the [original Prodigal authors](https://github.com/hyattpd). It was developed
