@@ -55,7 +55,6 @@ from libc.stdio cimport printf
 from libc.stdlib cimport malloc, calloc, free, qsort
 from libc.string cimport memcpy, memchr, memset, strstr
 
-from pyrodigal.impl.sse cimport skippable_sse
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
@@ -73,6 +72,8 @@ IF TARGET_CPU == "x86":
     IF AVX2_BUILD_SUPPORT:
         from pyrodigal.impl.avx cimport skippable_avx
 ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+    IF TARGET_CPU == "arm":
+        from pyrodigal.cpu_features.arm cimport GetArmInfo, ArmInfo
     IF NEON_BUILD_SUPPORT:
         from pyrodigal.impl.neon cimport skippable_neon
 
@@ -478,8 +479,12 @@ IF TARGET_CPU == "x86":
     _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
     _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
     _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
-ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
-    _NEON_RUNTIME_SUPPORT = True   # FIXME?
+ELIF TARGET_CPU == "arm":
+    cdef ArmInfo cpu_info = GetArmInfo()
+    _NEON_RUNTIME_SUPPORT = cpu_info.features.neon != 0
+    _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
+ELIF TARGET_CPU == "aarch64":
+    _NEON_RUNTIME_SUPPORT = True
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
 
 cdef enum simd_backend:
