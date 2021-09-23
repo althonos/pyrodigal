@@ -70,6 +70,18 @@ class build_ext(_build_ext):
     """A `build_ext` that disables optimizations if compiled in debug mode.
     """
 
+    user_options = _build_ext.user_options + [
+        ("disable-avx2", None, "Force compiling the extension without AVX2 instructions"),
+        ("disable-sse2", None, "Force compiling the extension without SSE2 instructions"),
+        ("disable-neon", None, "Force compiling the extension without NEON instructions"),
+    ]
+
+    def initialize_options(self):
+        _build_ext.initialize_options(self)
+        self.disable_avx2 = False
+        self.disable_sse2 = False
+        self.disable_neon = False
+
     def finalize_options(self):
         _build_ext.finalize_options(self)
         self._clib_cmd = self.get_finalized_command("build_clib")
@@ -145,21 +157,21 @@ class build_ext(_build_ext):
             self._clib_cmd.run()
 
         # check if we can build platform-specific code
-        if self._clib_cmd._avx2_supported:
+        if self._clib_cmd._avx2_supported and not self.disable_avx2:
             cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
             flag = self._clib_cmd._avx2_flag()
             for ext in self.extensions:
                 if flag is not None:
                     ext.extra_compile_args.append(flag)
                 ext.define_macros.append(("__AVX2__", 1))
-        if self._clib_cmd._sse2_supported:
+        if self._clib_cmd._sse2_supported and not self.disable_sse2:
             cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
             flag = self._clib_cmd._sse2_flag()
             for ext in self.extensions:
                 if flag is not None:
                     ext.extra_compile_args.append(flag)
                 ext.define_macros.append(("__SSE2__", 1))
-        if self._clib_cmd._neon_supported:
+        if self._clib_cmd._neon_supported and not self.disable_neon:
             cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
             flag = self._clib_cmd._neon_flag()
             for ext in self.extensions:

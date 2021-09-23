@@ -85,6 +85,86 @@ jobs:
     - name: Run tests without coverage
       run: python -m unittest pyrodigal.tests -vv
 
+  wheel-linux-aarch64:
+    runs-on: ubuntu-latest
+    name: Build Linux Aarch64 wheels
+    strategy:
+      matrix:
+        include:
+        - python-version: 3.6
+          pyo3-python: /opt/python/cp36-cp36m/bin/python
+          image-tag: latest
+        - python-version: 3.7
+          pyo3-python: /opt/python/cp37-cp37m/bin/python
+          image-tag: latest
+        - python-version: 3.8
+          pyo3-python: /opt/python/cp38-cp38/bin/python
+          image-tag: latest
+        - python-version: 3.9
+          pyo3-python: /opt/python/cp39-cp39/bin/python
+          image-tag: latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+    - name: Build manylinux wheels
+      uses: addnab/docker-run-action@v2
+      with:
+        image: quay.io/pypa/manylinux2014_aarch64:${{ matrix.image-tag }}
+        options: -v ${{ github.workspace }}:/io -e TERM=$TERM
+        shell: bash
+        run: |
+          ${{ matrix.pyo3-python }} -m pip install -U -r /io/.github/workflows/requirements.txt
+          ${{ matrix.pyo3-python }} -m pip wheel -vv /io -w /tmp
+          for whl in /tmp/*.whl; do ${{ matrix.pyo3-python }} -m auditwheel repair $whl -w /io/dist; done
+    - name: Store built wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/*
+
+  test-linux-aarch64:
+    runs-on: ubuntu-latest
+    name: Test Linux Aarch64 wheels
+    needs:
+    - wheel-linux-aarch64
+    strategy:
+      matrix:
+        include:
+        - python-version: 3.6
+          pyo3-python: /opt/python/cp36-cp36m/bin/python
+          image-tag: latest
+        - python-version: 3.7
+          pyo3-python: /opt/python/cp37-cp37m/bin/python
+          image-tag: latest
+        - python-version: 3.8
+          pyo3-python: /opt/python/cp38-cp38/bin/python
+          image-tag: latest
+        - python-version: 3.9
+          pyo3-python: /opt/python/cp39-cp39/bin/python
+          image-tag: latest
+    steps:
+    - name: Download built wheels
+      uses: actions/download-artifact@v2
+      with:
+          name: dist
+          path: dist
+    - name: Set up QEMU
+      id: qemu
+      uses: docker/setup-qemu-action@v1
+    - name: Test built wheels
+      uses: addnab/docker-run-action@v2
+      with:
+        image: quay.io/pypa/manylinux2014_aarch64:${{ matrix.image-tag }}
+        options: -v ${{ github.workspace }}:/io -e TERM=$TERM
+        shell: bash
+        run: |
+          ${{ matrix.pyo3-python }} -m pip install pyrodigal --no-index --find-links=/io/dist
+          ${{ matrix.pyo3-python }} -m unittest pyrodigal.tests -vv
+
   wheel-osx:
     runs-on: macos-latest
     name: Build OSX wheels
@@ -109,6 +189,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install Python requirements
       run: python -m pip install -r .github/workflows/requirements.txt
+    - name: Build Cython extension
+      run: python setup.py build_ext --disable-avx2
     - name: Build wheel distribution
       run: python setup.py bdist_wheel
     - name: Store built wheels
@@ -224,9 +306,9 @@ jobs:
         python-version: 3.9
     - name: Install build requirements
       run: python -m pip install -r .github/workflows/requirements.txt
-    - name: Build wheel distribution
+    - name: Build source distribution
       run: python setup.py sdist
-    - name: Store built wheels
+    - name: Store built source distribution
       uses: actions/upload-artifact@v2
       with:
         name: dist
@@ -240,6 +322,8 @@ jobs:
     - sdist
     - wheel-linux
     - test-linux
+    - wheel-linux-aarch64
+    - test-linux-aarch64
     - wheel-osx
     - test-osx
     - wheel-windows
