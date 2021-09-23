@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.5.4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.0...HEAD
+
+
+## [v0.6.0] - 2021-09-23
+[v0.6.0]: https://github.com/althonos/pyrodigal/compare/v0.5.4...v0.6.0
+
+### Added
+- SIMD code to build an index of which connections can be skipped when scoring node connections in the dynamic programming routine ([#6](https://github.com/althonos/pyrodigal/pull/6)).
 
 
 ## [v0.5.4] - 2021-09-18

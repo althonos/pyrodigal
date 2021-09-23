@@ -30,14 +30,14 @@ internals, which has the following advantages:
 - **no intermediate files**: Everything happens in memory, in a Python object
   you fully control, so you don't have to invoke the Prodigal CLI using a
   sub-process and temporary files. Sequences can be passed directly as
-  strings or bytes, which avoids the issue of formatting your input to
+  strings or bytes, which avoids the overhead of formatting your input to
   FASTA for Prodigal.
 - **lower memory usage**: Pyrodigal is slightly more conservative when it comes
   to using memory, which can help process very large sequences. It also lets
   you save some more memory when running several *meta*-mode analyses
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
-  save up to half the runtime on some sequences.
+  save from a third to half the runtime depending on the sequence.
 
 ### 📋 Features
 
@@ -53,7 +53,7 @@ metagenomic mode. It is still missing some features of the CLI:
 
 ### 🐏 Memory
 
-Pyrodigal makes two changes compared to the origina Prodigal command line:
+Pyrodigal makes two changes compared to the original Prodigal command line:
 
 * Sequences are stored as raw bytes instead of compressed bitmaps. This means
   that the sequence itself takes 3/8th more space, but since the memory used
@@ -80,8 +80,9 @@ with multiprocessing.pool.ThreadPool() as pool:
 ## 🔧 Installing
 
 Pyrodigal can be installed directly from [PyPI](https://pypi.org/project/pyrodigal/),
-which hosts some pre-built CPython wheels for x86-64 Unix and Windows platforms,
-as well as the code required to compile from source with Cython:
+which hosts some pre-built wheels for the x86-64 architecture (Linux/OSX/Windows)
+and the Aarch64 architecture (Linux only), as well as the code required to compile
+from source with Cython:
 ```console
 $ pip install pyrodigal
 ```
@@ -95,7 +96,7 @@ $ conda install -c bioconda pyrodigal
 ## 💡 Example
 
 Lets load a sequence from a
-[GenBank](http://www.insdc.org/files/feature_table.html) file, use Pyrodigal
+[GenBank](http://www.insdc.org/files/feature_table.html) file, use `Pyrodigal`
 to find all the genes it contains, and print the proteins in two-line FASTA
 format.
 
@@ -158,9 +159,9 @@ for more details.
 
 ## ⚖️ License
 
-This library is provided under the [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/). 
-The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd) and is distributed under the 
-terms of the GPLv3 as well. See `vendor/Prodigal/LICENSE` for more information. The `cpu_features` library is 
+This library is provided under the [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/).
+The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd) and is distributed under the
+terms of the GPLv3 as well. See `vendor/Prodigal/LICENSE` for more information. The `cpu_features` library is
 licensed under the terms of the Apache license. See `vendor/cpu_features/LICENSE` for more information.
 
 *This project is in no way not affiliated, sponsored, or otherwise endorsed
