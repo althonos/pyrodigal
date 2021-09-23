@@ -1,8 +1,5 @@
 import argparse
 
-import coloredlogs
-coloredlogs.install(level='DEBUG')
-
 from . import __name__, __author__, __version__, Pyrodigal
 from .tests.fasta import parse
 
@@ -29,7 +26,7 @@ pyrodigal = Pyrodigal(meta=args.p == "meta", closed=args.c)
 for i, seq in enumerate(parse(args.i)):
     if args.p == "single" and i == 0:
         pyrodigal.train(seq.seq)
-    for pred in predictions:
+    for pred in pyrodigal.find_genes(seq.seq):
         print(
             seq.id,
             "{}_v{}".format(__name__, __version__),
