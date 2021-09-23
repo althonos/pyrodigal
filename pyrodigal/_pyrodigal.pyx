@@ -72,6 +72,9 @@ IF TARGET_CPU == "x86":
         from pyrodigal.impl.sse cimport skippable_sse
     IF AVX2_BUILD_SUPPORT:
         from pyrodigal.impl.avx cimport skippable_avx
+ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+    IF NEON_BUILD_SUPPORT:
+        from pyrodigal.impl.neon cimport skippable_neon
 
 # ----------------------------------------------------------------------------
 
@@ -461,18 +464,23 @@ cdef class Sequence:
 
 # --- Connection Scorer ------------------------------------------------------
 
-_TARGET_CPU = TARGET_CPU
+_TARGET_CPU           = TARGET_CPU
+_AVX2_RUNTIME_SUPPORT = False
+_NEON_RUNTIME_SUPPORT = False
+_SSE2_RUNTIME_SUPPORT = False
+_AVX2_BUILD_SUPPORT   = False
+_NEON_BUILD_SUPPORT   = False
+_SSE2_BUILD_SUPPORT   = False
+
 IF TARGET_CPU == "x86":
     cdef X86Info cpu_info = GetX86Info()
     _SSE2_RUNTIME_SUPPORT = cpu_info.features.sse2 != 0
     _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
     _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
     _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
-ELSE:
-    _SSE2_RUNTIME_SUPPORT = False
-    _AVX2_RUNTIME_SUPPORT = False
-    _SSE2_BUILD_SUPPORT   = False
-    _AVX2_BUILD_SUPPORT   = False
+ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+    _NEON_RUNTIME_SUPPORT = True   # FIXME?
+    _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
 
 cdef enum simd_backend:
     NONE = 0
@@ -513,6 +521,23 @@ cdef class ConnectionScorer:
                     if not _AVX2_RUNTIME_SUPPORT:
                         raise RuntimeError("Cannot run AVX2 instructions on this machine")
                     self.backend = simd_backend.AVX2
+            elif backend is None:
+                self.backend = simd_backend.NONE
+            else:
+                raise ValueError(f"Unsupported backend on this architecture: {backend}")
+        ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+            if backend =="detect":
+                self.backend = simd_backend.NONE
+                IF NEON_BUILD_SUPPORT:
+                    if _NEON_RUNTIME_SUPPORT:
+                        self.backend = simd_backend.NEON
+            elif backend == "neon":
+                IF not NEON_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without NEON support")
+                ELSE:
+                    if not _NEON_RUNTIME_SUPPORT:
+                        raise RuntimeError("Cannot run NEON instructions on this machine")
+                    self.backend = simd_backend.NEON
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
@@ -574,6 +599,9 @@ cdef class ConnectionScorer:
         IF SSE2_BUILD_SUPPORT:
             if self.backend == simd_backend.SSE2:
                 skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        IF NEON_BUILD_SUPPORT:
+            if self.backend == simd_backend.NEON:
+                skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
         return 0
 
     def compute_skippable(self, int min, int i):

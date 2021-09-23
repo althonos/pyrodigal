@@ -1,11 +1,12 @@
-#include <emmintrin.h>
-
 #include "training.h"
 #include "node.h"
 #include "dprog.h"
 #include "sse.h"
 
 #ifdef __SSE2__
+
+#include <emmintrin.h>
+
 void skippable_sse(
     const int8_t* strands,
     const uint8_t* types,

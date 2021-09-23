@@ -40,6 +40,13 @@ elif re.match("^(powerpc|ppc)", MACHINE):
 
 def _eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
+    sys.stderr.flush()
+
+def _silent_spawn(cmd):
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as err:
+        raise CompileError(err.stderr)
 
 # --- Commands ------------------------------------------------------------------
 
@@ -139,14 +146,25 @@ class build_ext(_build_ext):
         # check if we can build platform-specific code
         if self._clib_cmd._avx2_supported:
             cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
+            flag = self._clib_cmd._avx2_flag()
             for ext in self.extensions:
-                ext.extra_compile_args.append(self._clib_cmd._avx2_flag())
+                if flag is not None:
+                    ext.extra_compile_args.append(flag)
                 ext.define_macros.append(("__AVX2__", 1))
         if self._clib_cmd._sse2_supported:
             cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
+            flag = self._clib_cmd._sse2_flag()
             for ext in self.extensions:
-                ext.extra_compile_args.append(self._clib_cmd._sse2_flag())
+                if flag is not None:
+                    ext.extra_compile_args.append(flag)
                 ext.define_macros.append(("__SSE2__", 1))
+        if self._clib_cmd._neon_supported:
+            cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
+            flag = self._clib_cmd._neon_flag()
+            for ext in self.extensions:
+                if flag is not None:
+                    ext.extra_compile_args.append(flag)
+                ext.define_macros.append(("__ARM_NEON__", 1))
 
         # cythonize the extensions
         self.extensions = cythonize(self.extensions, **cython_args)
@@ -171,6 +189,7 @@ class build_clib(_build_clib):
         base = "have_{}".format(name)
         testfile = os.path.join(self.build_temp, "{}.c".format(base))
         binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
+        preargs = [flag] if flag is not None else []
         objects = []
 
         with open(testfile, "w") as f:
@@ -183,9 +202,10 @@ class build_clib(_build_clib):
                 }}
             """.format(header, vector, set, extract))
         try:
-            objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=[flag])
-            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
-            subprocess.run([binfile], check=True)
+            with mock.patch.object(self.compiler, "spawn", new=_silent_spawn):
+                objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=preargs)
+                self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+                subprocess.run([binfile], check=True)
         except CompileError:
             _eprint("no")
             return False
@@ -193,7 +213,10 @@ class build_clib(_build_clib):
             _eprint("yes, but cannot run code")
             return True  # assume we are cross-compiling, and still build
         else:
-            _eprint("yes, with {}".format(flag))
+            if flag is None:
+                _eprint("yes")
+            else:
+                _eprint("yes, with {}".format(flag))
             return True
         finally:
             os.remove(testfile)
@@ -219,8 +242,9 @@ class build_clib(_build_clib):
                 }}
             """.format(header, funcname, args))
         try:
-            objects = self.compiler.compile([testfile], debug=self.debug)
-            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+            with mock.patch.object(self.compiler, "spawn", new=_silent_spawn):
+                objects = self.compiler.compile([testfile], debug=self.debug)
+                self.compiler.link_executable(objects, base, output_dir=self.build_temp)
         except CompileError:
             _eprint("no")
             return False
@@ -264,6 +288,19 @@ class build_clib(_build_clib):
             extract="_mm_extract_epi16",
         )
 
+    def _neon_flag(self):
+        return "-mfpu=neon" if TARGET_CPU == "arm" else None
+
+    def _check_neon(self):
+        return self._check_simd_generic(
+            "NEON",
+            self._neon_flag(),
+            header="arm_neon.h",
+            vector="int16x8_t",
+            set="vdupq_n_s16",
+            extract="vgetq_lane_s16"
+        )
+
     # --- Compatibility with base `build_clib` command ---
 
     def check_library_list(self, libraries):
@@ -284,6 +321,7 @@ class build_clib(_build_clib):
         _build_clib.initialize_options(self)
         self._avx2_supported = False
         self._sse2_supported = False
+        self._neon_supported = False
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
@@ -330,8 +368,11 @@ class build_clib(_build_clib):
         _build_clib.run(self)
         # check which CPU features are supported, now that
         # `_build_clib.run` has properly initialized the C compiler
-        self._avx2_supported = self._check_avx2()
-        self._sse2_supported = self._check_sse2()
+        if TARGET_CPU == "x86":
+            self._avx2_supported = self._check_avx2()
+            self._sse2_supported = self._check_sse2()
+        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+            self._neon_supported = self._check_neon()
 
     def build_libraries(self, libraries):
         self.mkpath(self.build_clib)
@@ -457,8 +498,9 @@ setuptools.setup(
         Extension(
             "pyrodigal._pyrodigal",
             sources=[
-                "pyrodigal/impl/sse.c",
                 "pyrodigal/impl/avx.c",
+                "pyrodigal/impl/neon.c",
+                "pyrodigal/impl/sse.c",
                 "pyrodigal/_pyrodigal.pyx"
             ],
             include_dirs=[

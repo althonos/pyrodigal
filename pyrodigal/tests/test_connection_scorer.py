@@ -42,8 +42,8 @@ class TestConnectionScorer(unittest.TestCase):
             # compute boundary
             j = 0 if i < 500 else i - 500
             # score connections without fast-indexing skippable nodes
-            scorer_generic.score_connections(nodes_generic, j, i, tinf, final=True)
             scorer_generic.compute_skippable(j, i)
+            scorer_generic.score_connections(nodes_generic, j, i, tinf, final=True)
             # compute skippable nodes with SSE and score connections with
             scorer_sse.compute_skippable(j, i)
             scorer_sse.score_connections(nodes_sse, j, i, tinf, final=True)
@@ -74,8 +74,40 @@ class TestConnectionScorer(unittest.TestCase):
             # compute boundary
             j = 0 if i < 500 else i - 500
             # score connections without fast-indexing skippable nodes
-            scorer_generic.score_connections(nodes_generic, j, i, tinf, final=True)
             scorer_generic.compute_skippable(j, i)
+            scorer_generic.score_connections(nodes_generic, j, i, tinf, final=True)
+            # compute skippable nodes with SSE and score connections with
+            scorer_avx.compute_skippable(j, i)
+            scorer_avx.score_connections(nodes_avx, j, i, tinf, final=True)
+        # check that both methods scored the same
+        for n_avx, n_generic in zip(nodes_avx, nodes_generic):
+            self.assertEqual(n_avx.score, n_generic.score)
+
+    @unittest.skipUnless(_pyrodigal._TARGET_CPU in ("arm", "aarch64"), "requires ARM CPU")
+    @unittest.skipUnless(_pyrodigal._NEON_BUILD_SUPPORT, "requires extension compiled with NEON support")
+    @unittest.skipUnless(_pyrodigal._NEON_RUNTIME_SUPPORT, "requires machine with NEON support")
+    def test_score_connections_neon(self):
+        # setup
+        seq = Sequence.from_string(self.record.seq)
+        tinf = METAGENOMIC_BINS[0].training_info
+        scorer_avx = ConnectionScorer(backend="neon")
+        scorer_generic = ConnectionScorer(backend=None)
+        # add nodes from the sequence
+        nodes = Nodes()
+        add_nodes(nodes, seq, tinf)
+        nodes.sort()
+        # index nodes for the scorers
+        scorer_avx.index(nodes)
+        scorer_generic.index(nodes)
+        # use copies to compute both scores
+        nodes_avx = nodes.copy()
+        nodes_generic = nodes.copy()
+        for i in range(500, len(nodes)):
+            # compute boundary
+            j = 0 if i < 500 else i - 500
+            # score connections without fast-indexing skippable nodes
+            scorer_generic.compute_skippable(j, i)
+            scorer_generic.score_connections(nodes_generic, j, i, tinf, final=True)
             # compute skippable nodes with SSE and score connections with
             scorer_avx.compute_skippable(j, i)
             scorer_avx.score_connections(nodes_avx, j, i, tinf, final=True)

@@ -1,11 +1,12 @@
-#include <immintrin.h>
-
 #include "training.h"
 #include "node.h"
 #include "dprog.h"
 #include "avx.h"
 
 #ifdef __AVX2__
+
+#include <immintrin.h>
+
 void skippable_avx(
     const int8_t* strands,
     const uint8_t* types,
