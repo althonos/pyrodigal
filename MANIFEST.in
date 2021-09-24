@@ -6,7 +6,9 @@ include README.md
 recursive-include pyrodigal/tests      *.py *.txt
 recursive-include pyrodigal/tests/data *
 
-recursive-include vendor/Prodigal *.c *.h *.md VERSION LICENSE CHANGES Makefile
+recursive-include vendor/Prodigal      *.c *.h *.md VERSION LICENSE CHANGES Makefile
+recursive-include vendor/cpu_features  *.c *.h *.md LICENSE
 
-recursive-include pyrodigal *.py *.pyi *.pyx *.pxd *.h py.typed
-recursive-exclude pyrodigal *.c *.html
+recursive-include pyrodigal            *.py *.pyi *.pyx *.pxd *.h py.typed
+recursive-exclude pyrodigal            *.c *.html
+recursive-include pyrodigal/impl       *.c *.h *.pxd
