@@ -159,24 +159,21 @@ class build_ext(_build_ext):
         # check if we can build platform-specific code
         if self._clib_cmd._avx2_supported and not self.disable_avx2:
             cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
-            flag = self._clib_cmd._avx2_flag()
+            flags = self._clib_cmd._avx2_flags()
             for ext in self.extensions:
-                if flag is not None:
-                    ext.extra_compile_args.append(flag)
+                ext.extra_compile_args.extend(flags)
                 ext.define_macros.append(("__AVX2__", 1))
         if self._clib_cmd._sse2_supported and not self.disable_sse2:
             cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
-            flag = self._clib_cmd._sse2_flag()
+            flags = self._clib_cmd._sse2_flags()
             for ext in self.extensions:
-                if flag is not None:
-                    ext.extra_compile_args.append(flag)
+                ext.extra_compile_args.extend(flags)
                 ext.define_macros.append(("__SSE2__", 1))
         if self._clib_cmd._neon_supported and not self.disable_neon:
             cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
-            flag = self._clib_cmd._neon_flag()
+            flags = self._clib_cmd._neon_flags()
             for ext in self.extensions:
-                if flag is not None:
-                    ext.extra_compile_args.append(flag)
+                ext.extra_compile_args.extend(flags)
                 ext.define_macros.append(("__ARM_NEON__", 1))
 
         # cythonize the extensions
@@ -196,13 +193,12 @@ class build_clib(_build_clib):
 
     # --- Autotools-like helpers ---
 
-    def _check_simd_generic(self, name, flag, header, vector, set, extract):
+    def _check_simd_generic(self, name, flags, header, vector, set, extract):
         _eprint('checking whether compiler can build', name, 'code', end="... ")
 
         base = "have_{}".format(name)
         testfile = os.path.join(self.build_temp, "{}.c".format(base))
         binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
-        preargs = [flag] if flag is not None else []
         objects = []
 
         with open(testfile, "w") as f:
@@ -216,7 +212,7 @@ class build_clib(_build_clib):
             """.format(header, vector, set, extract))
         try:
             with mock.patch.object(self.compiler, "spawn", new=_silent_spawn):
-                objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=preargs)
+                objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=flags)
                 self.compiler.link_executable(objects, base, output_dir=self.build_temp)
                 subprocess.run([binfile], check=True)
         except CompileError:
@@ -226,10 +222,10 @@ class build_clib(_build_clib):
             _eprint("yes, but cannot run code")
             return True  # assume we are cross-compiling, and still build
         else:
-            if flag is None:
+            if not flags:
                 _eprint("yes")
             else:
-                _eprint("yes, with {}".format(flag))
+                _eprint("yes, with {}".format(" ".join(flags)))
             return True
         finally:
             os.remove(testfile)
@@ -271,43 +267,43 @@ class build_clib(_build_clib):
             if os.path.isfile(binfile):
                 os.remove(binfile)
 
-    def _avx2_flag(self):
+    def _avx2_flags(self):
         if self.compiler.compiler_type == "msvc":
-            return "/arch:AVX2"
-        return "-mavx2"
+            return ["/arch:AVX2"]
+        return ["-mavx", "-mavx2"]
 
     def _check_avx2(self):
         return self._check_simd_generic(
             "AVX2",
-            self._avx2_flag(),
+            self._avx2_flags(),
             header="immintrin.h",
             vector="__m256i",
             set="_mm256_set1_epi16",
             extract="_mm256_extract_epi16",
         )
 
-    def _sse2_flag(self):
+    def _sse2_flags(self):
         if self.compiler.compiler_type == "msvc":
-            return "/arch:SSE2"
-        return "-msse2"
+            return ["/arch:SSE2"]
+        return ["-msse", "-msse2"]
 
     def _check_sse2(self):
         return self._check_simd_generic(
             "SSE2",
-            self._sse2_flag(),
+            self._sse2_flags(),
             header="emmintrin.h",
             vector="__m128i",
             set="_mm_set1_epi16",
             extract="_mm_extract_epi16",
         )
 
-    def _neon_flag(self):
-        return "-mfpu=neon" if TARGET_CPU == "arm" else None
+    def _neon_flags(self):
+        return ["-mfpu=neon"] if TARGET_CPU == "arm" else []
 
     def _check_neon(self):
         return self._check_simd_generic(
             "NEON",
-            self._neon_flag(),
+            self._neon_flags(),
             header="arm_neon.h",
             vector="int16x8_t",
             set="vdupq_n_s16",
