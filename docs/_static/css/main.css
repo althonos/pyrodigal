@@ -1,0 +1,27 @@
+p {
+    text-align: justify;
+}
+
+/* a.reference strong {
+    font-weight: bold;
+    font-size: 90%;
+    color: #c7254e;
+    box-sizing: border-box;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+} */
+
+.field-list a.reference {
+    font-weight: bold;
+    font-size: 90%;
+    color: #c7254e;
+    box-sizing: border-box;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+}
+
+.class dd {
+    margin-left: 2%
+}
+
+.exception dd {
+    margin-left: 2%
+}
