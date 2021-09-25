@@ -1,7 +1,7 @@
 # coding: utf-8
 # cython: language_level=3, linetrace=True
 
-"""Bindings to Prodigal, an ORF finder for genomes, progenomes and metagenomes.
+"""Bindings to Prodigal, an ORF finder for genomes and metagenomes.
 
 Example:
     Pyrodigal can work on any DNA sequence stored in either a text or a byte

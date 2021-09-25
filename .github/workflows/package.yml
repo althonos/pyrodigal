@@ -190,7 +190,7 @@ jobs:
     - name: Install Python requirements
       run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build Cython extension
-      run: python setup.py build_ext --disable-avx2
+      run: python setup.py build_ext
     - name: Build wheel distribution
       run: python setup.py bdist_wheel
     - name: Store built wheels
