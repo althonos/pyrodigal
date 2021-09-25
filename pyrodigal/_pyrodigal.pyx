@@ -49,10 +49,10 @@ from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
-from libc.math cimport sqrt, log, pow, fmax, fmin, fabs
+from libc.math cimport sqrt, log, pow, fmax, fmin
 from libc.stdint cimport int8_t, uint8_t, uintptr_t
 from libc.stdio cimport printf
-from libc.stdlib cimport malloc, calloc, free, qsort
+from libc.stdlib cimport abs, malloc, calloc, free, qsort
 from libc.string cimport memcpy, memchr, memset, strstr
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
@@ -628,7 +628,7 @@ cdef class ConnectionScorer:
 
     def compute_skippable(self, int min, int i):
         assert self.skip_connection != NULL
-        assert i < self.capacity
+        assert i < <int> self.capacity
         assert min <= i
         with nogil:
             self._compute_skippable(min, i)
@@ -646,7 +646,7 @@ cdef class ConnectionScorer:
 
     def score_connections(self, Nodes nodes not None, int min, int i, TrainingInfo tinf not None, bint final=False):
         assert self.skip_connection != NULL
-        assert i < nodes.length
+        assert i < <int> nodes.length
         assert min <= i
         with nogil:
             self._score_connections(nodes, min, i, tinf, final)
@@ -1915,7 +1915,7 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
             else:
                 for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
                     gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-                gsize = fabs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
+                gsize = abs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
                 nodes.nodes[i].gc_cont = gc[phase] / gsize
                 last[phase] = nodes.nodes[i].ndx
 
@@ -1930,7 +1930,7 @@ cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except
             else:
                 for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
                     gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-                gsize = fabs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
+                gsize = abs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
                 nodes.nodes[i].gc_cont = gc[phase] / gsize
                 last[phase] = nodes.nodes[i].ndx
 
