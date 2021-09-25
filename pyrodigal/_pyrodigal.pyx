@@ -118,7 +118,7 @@ _letters[G] = "G"
 
 
 cdef class Sequence:
-    """A compressed input sequence.
+    """A digitized input sequence.
     """
 
     def __cinit__(self):
@@ -146,6 +146,15 @@ cdef class Sequence:
 
     @classmethod
     def from_bytes(cls, const unsigned char[:] sequence):
+        """from_bytes(cls, sequence)\n--
+
+        Create a new `Sequence` object from an ASCII-encoded sequence.
+
+        Arguments:
+            sequence (`bytes`): The ASCII-encoded sequence to use. Any object
+                implementing the *buffer protocol* is supported.
+
+        """
         cdef int           i
         cdef int           j
         cdef unsigned char letter
@@ -177,6 +186,14 @@ cdef class Sequence:
 
     @classmethod
     def from_string(cls, str sequence):
+        """from_string(cls, sequence)\n--
+
+        Create a new `Sequence` object from a Unicode sequence.
+
+        Arguments:
+            sequence (`str`): The Unicode sequence to use.
+
+        """
         cdef int      i
         cdef int      j
         cdef Py_UCS4  letter
@@ -893,7 +910,7 @@ cdef class Genes:
         memset(self.genes, 0, old_length * sizeof(_gene))
 
     def clear(self):
-        """Remove all nodes from the vector.
+        """Remove all genes from the vector.
         """
         with nogil:
             self._clear()
@@ -1110,7 +1127,7 @@ cdef class Prediction:
 
         Possible non-`None` values are ``GGA/GAG/AGG``, ``3Base/5BMM``,
         ``4Base/6BMM``, ``AGxAG``, ``GGxGG``, ``AGGAG(G)/GGAGG``, ``AGGA``,
-        ``AGGA/GGAG/GAGG``, ``GGAG/GAGG``, ``AGGAG/GGAGG``, ``AGGAG``
+        ``AGGA/GGAG/GAGG``, ``GGAG/GAGG``, ``AGGAG/GGAGG``, ``AGGAG``,
         ``GGAGG`` or ``AGGAGG``.
 
         """
@@ -1304,7 +1321,8 @@ cdef class Prediction:
             table and the standard single letter alphabet for proteins.
 
         Raises:
-            `ValueError`: when ``translation_table`` is not a valid number.
+            `ValueError`: when ``translation_table`` is not a valid
+                genetic code number.
 
         """
 
@@ -1414,12 +1432,11 @@ cdef class Pyrodigal:
         meta (`bool`): Whether or not this object is configured to
            find genes using the metagenomic bins or manually created
            training infos.
-       closed (`bool`): Whether or not proteins can run off edges when
+        closed (`bool`): Whether or not proteins can run off edges when
            finding genes in a sequence.
-       training_info (`~pyrodigal.TrainingInfo`): The object storing the
+        training_info (`~pyrodigal.TrainingInfo`): The object storing the
            training information, or `None` if the object is in metagenomic
            mode or hasn't been trained yet.
-
 
     """
 
@@ -1497,9 +1514,11 @@ cdef class Pyrodigal:
                 algorithm that tries to determine if the organism the training
                 sequence belongs to uses a Shine-Dalgarno motif or not.
             st_wt (`float`, optional): The start score weight to use. The default
-                value has been manually selected by the PRODIGAL authors as an
+                value has been manually selected by the Prodigal authors as an
                 appropriate value for 99% of genomes.
             translation_table (`int`, optional): The translation table to use.
+                Check the `list of genetic codes <https://w.wiki/47wo>`_ for
+                the available values.
 
         Raises:
             `MemoryError`: When allocation of an internal buffers fails.
