@@ -5,7 +5,6 @@ import platform
 import re
 import subprocess
 import sys
-from unittest import mock
 
 import setuptools
 from distutils import log
@@ -40,13 +39,6 @@ elif re.match("^(powerpc|ppc)", MACHINE):
 
 def _eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
-    sys.stderr.flush()
-
-def _silent_spawn(cmd):
-    try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as err:
-        raise CompileError(err.stderr)
 
 # --- Commands ------------------------------------------------------------------
 
@@ -212,10 +204,9 @@ class build_clib(_build_clib):
                 }}
             """.format(header, vector, set, op, extract))
         try:
-            with mock.patch.object(self.compiler, "spawn", new=_silent_spawn):
-                objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=flags)
-                self.compiler.link_executable(objects, base, output_dir=self.build_temp)
-                subprocess.run([binfile], check=True)
+            objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=flags)
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+            subprocess.run([binfile], check=True)
         except CompileError:
             _eprint("no")
             return False
@@ -252,9 +243,8 @@ class build_clib(_build_clib):
                 }}
             """.format(header, funcname, args))
         try:
-            with mock.patch.object(self.compiler, "spawn", new=_silent_spawn):
-                objects = self.compiler.compile([testfile], debug=self.debug)
-                self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+            objects = self.compiler.compile([testfile], debug=self.debug)
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
         except CompileError:
             _eprint("no")
             return False
