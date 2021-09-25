@@ -62,7 +62,6 @@ from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initiali
 from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, cross_mask
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
-from pyrodigal._utils cimport _mini_training
 from pyrodigal._unicode cimport *
 
 IF TARGET_CPU == "x86":
@@ -1330,8 +1329,7 @@ cdef class Prediction:
         cdef size_t         prot_length
         cdef size_t         i
         cdef size_t         j
-        cdef _mini_training mini_tinf
-        cdef _training*     tinf
+        cdef int            tt
         cdef object         protein
         cdef int            kind
         cdef void*          data
@@ -1349,14 +1347,11 @@ cdef class Prediction:
         #       new a training info structure) by manipulating where the
         #       table would be read from in the fields of the struct
         if translation_table is None:
-            tinf = self.owner.training_info.tinf
+            tt = self.owner.training_info.tinf.trans_table
+        elif translation_table not in TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
         else:
-            if translation_table not in TRANSLATION_TABLES:
-                raise ValueError(f"{translation_table} is not a valid translation table index")
-            mini_tinf.trans_table = translation_table
-            tinf = <_training*> &mini_tinf
-            if tinf.trans_table != translation_table:
-                raise RuntimeError("failed to dynamically change the translation table")
+            tt = translation_table
 
         # compute the right length to hold the protein
         nucl_length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
@@ -1379,7 +1374,7 @@ cdef class Prediction:
 
         with nogil:
             for i, j in enumerate(range(begin, end, 3)):
-                aa = self.owner.sequence._amino(j, tinf.trans_table, strand=strand, is_init=i==0 and not edge)
+                aa = self.owner.sequence._amino(j, tt, strand=strand, is_init=i==0 and not edge)
                 PyUnicode_WRITE(kind, data, i, aa)
 
         # return the string containing the protein sequence
