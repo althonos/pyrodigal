@@ -6,7 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.2...HEAD
+
+
+## [v0.6.2] - 2021-09-25
+[v0.6.2]: https://github.com/althonos/pyrodigal/compare/v0.6.1...v0.6.2
+
+### Added
+- Sphinx documentation with small install guide and API reference.
+
+### Fixed
+- `setup.py` not detecting SSE2 and AVX2 build support because of a linker error.
+
+### Changed
+- Build OSX extension without AVX2 support since runtime detection of AVX2 to avoid the `Illegal Instruction: 4` bug on older CPUs.
 
 
 ## [v0.6.1] - 2021-09-24
