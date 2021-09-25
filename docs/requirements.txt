@@ -1,5 +1,6 @@
-# use ziglang to build the extension in the ReadTheDocs environment
-ziglang ~=0.8
+# build dependencies
+setuptools >=46.4
+cython ~=0.29.16
 
 # sphinx documentation dependencies
 semantic_version ~=2.8

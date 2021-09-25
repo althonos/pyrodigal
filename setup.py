@@ -384,6 +384,7 @@ class build_clib(_build_clib):
             self._neon_supported = self._check_neon()
 
     def build_libraries(self, libraries):
+        # build each library only if the sources are outdated
         self.mkpath(self.build_clib)
         for library in libraries:
             self.make_file(
