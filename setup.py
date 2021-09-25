@@ -193,7 +193,7 @@ class build_clib(_build_clib):
 
     # --- Autotools-like helpers ---
 
-    def _check_simd_generic(self, name, flags, header, vector, set, extract):
+    def _check_simd_generic(self, name, flags, header, vector, set, op, extract):
         _eprint('checking whether compiler can build', name, 'code', end="... ")
 
         base = "have_{}".format(name)
@@ -206,10 +206,11 @@ class build_clib(_build_clib):
                 #include <{}>
                 int main() {{
                     {}      a = {}(1);
+                            a = {}(a);
                     short   x = {}(a, 1);
                     return (x == 1) ? 0 : 1;
                 }}
-            """.format(header, vector, set, extract))
+            """.format(header, vector, set, op, extract))
         try:
             with mock.patch.object(self.compiler, "spawn", new=_silent_spawn):
                 objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=flags)
@@ -279,6 +280,7 @@ class build_clib(_build_clib):
             header="immintrin.h",
             vector="__m256i",
             set="_mm256_set1_epi16",
+            op="_mm256_abs_epi32",
             extract="_mm256_extract_epi16",
         )
 
@@ -294,6 +296,7 @@ class build_clib(_build_clib):
             header="emmintrin.h",
             vector="__m128i",
             set="_mm_set1_epi16",
+            op="_mm_move_epi64",
             extract="_mm_extract_epi16",
         )
 
@@ -307,6 +310,7 @@ class build_clib(_build_clib):
             header="arm_neon.h",
             vector="int16x8_t",
             set="vdupq_n_s16",
+            op="vabsq_s16",
             extract="vgetq_lane_s16"
         )
 
