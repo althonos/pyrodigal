@@ -382,8 +382,9 @@ class build_clib(_build_clib):
         # check which CPU features are supported, now that
         # `_build_clib.run` has properly initialized the C compiler
         if TARGET_CPU == "x86":
-            self._avx2_supported = self._check_avx2()
             self._sse2_supported = self._check_sse2()
+            if SYSTEM != "Darwin": # don't build AVX2 on OSX for compatibility
+                self._avx2_supported = self._check_avx2()
         elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             self._neon_supported = self._check_neon()
 
