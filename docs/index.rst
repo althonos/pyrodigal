@@ -1,8 +1,3 @@
-.. pyrodigal documentation master file, created by
-   sphinx-quickstart on Sat Sep 25 14:00:17 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Pyrodigal |Stars|
 =================
 
@@ -14,10 +9,10 @@ Pyrodigal |Stars|
 
 |Actions| |Coverage| |PyPI| |Bioconda| |Wheel| |Versions| |Implementations| |License| |Source| |Mirror| |Issues| |Docs| |Changelog| |Downloads| |DOI|
 
-.. |Actions| image:: https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/master?logo=github&style=flat-square&maxAge=300
+.. |Actions| image:: https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/main?logo=github&style=flat-square&maxAge=300
    :target: https://github.com/althonos/pyrodigal/actions
 
-.. |GitLabCI| image:: https://img.shields.io/gitlab/pipeline/larralde/pyrodigal/master?gitlab_url=https%3A%2F%2Fgit.embl.de&logo=gitlab&style=flat-square&maxAge=600
+.. |GitLabCI| image:: https://img.shields.io/gitlab/pipeline/larralde/pyrodigal/main?gitlab_url=https%3A%2F%2Fgit.embl.de&logo=gitlab&style=flat-square&maxAge=600
    :target: https://git.embl.de/larralde/pyrodigal/-/pipelines
 
 .. |Coverage| image:: https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=600
@@ -54,7 +49,7 @@ Pyrodigal |Stars|
    :target: http://pyrodigal.readthedocs.io/en/stable/?badge=stable
 
 .. |Changelog| image:: https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square
-   :target: https://github.com/althonos/pyrodigal/blob/master/CHANGELOG.md
+   :target: https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md
 
 .. |Downloads| image:: https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal
    :target: https://pepy.tech/project/pyrodigal

@@ -3,7 +3,7 @@
 *Cython bindings and Python interface to [Prodigal](https://github.com/hyattpd/Prodigal/), an ORF
 finder for genomes and metagenomes. **Now with SIMD!***
 
-[![Actions](https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/master?logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/pyrodigal/actions)
+[![Actions](https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/main?logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/pyrodigal/actions)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyrodigal/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
 [![PyPI](https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyrodigal)
@@ -14,7 +14,7 @@ finder for genomes and metagenomes. **Now with SIMD!***
 [![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/)
 [![GitHub issues](https://img.shields.io/github/issues/althonos/pyrodigal.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyrodigal/issues)
 [![Docs](https://img.shields.io/readthedocs/pyrodigal/latest?style=flat-square&maxAge=600)](https://pyrodigal.readthedocs.io)
-[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal.py/blob/master/CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md)
 [![Downloads](https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal)](https://pepy.tech/project/pyrodigal)
 [![DOI](https://img.shields.io/badge/doi-10.5281%2Fzenodo.4015169-purple?style=flat-square&maxAge=86400)](https://doi.org/10.5281/zenodo.4015169)
 
@@ -154,7 +154,7 @@ in a simple, easily reproducible situation.
 ### 🏗️ Contributing
 
 Contributions are more than welcome! See
-[`CONTRIBUTING.md`](https://github.com/althonos/pyrodigal/blob/master/CONTRIBUTING.md)
+[`CONTRIBUTING.md`](https://github.com/althonos/pyrodigal/blob/main/CONTRIBUTING.md)
 for more details.
 
 
