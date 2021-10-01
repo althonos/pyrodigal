@@ -1,6 +1,10 @@
 import threading
 import typing
-from typing import Iterable, Iterator, Optional, Tuple, Union
+from typing import Iterable, Iterator, Optional, Set, TextIO, Tuple, Union
+
+# --- Globals ----------------------------------------------------------------
+
+_TRANSLATION_TABLES: Set[int]
 
 
 # --- Input sequence ---------------------------------------------------------
@@ -147,7 +151,9 @@ class Predictions(typing.Sequence[Prediction]):
     def __getitem__(self, index: int) -> Prediction: ...
     def __iter__(self) -> Iterator[Prediction]: ...
     def __reversed__(self) -> Iterator[Prediction]: ...
-
+    def write_gff(self, file: TextIO, prefix: str = "gene_", tool: str = "pyrodigal") -> int: ...
+    def write_genes(self, file: TextIO, prefix: str ="gene_", width: typing.Optional[int] = 70) -> int: ...
+    def write_translations(self, file: TextIO, prefix: str = "gene_", width: typing.Optional[int] = 60, translation_table: typing.Optional[int] = None) -> int: ...
 
 # --- Pyrodigal --------------------------------------------------------------
 

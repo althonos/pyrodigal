@@ -36,9 +36,11 @@ Caution:
     treated as an unknown nucleotide. Be careful to remove the gap characters
     if loading sequences from a multiple alignment file.
 
-See Also:
-    The `academic paper for Prodigal <https://doi.org/10.1186/1471-2105-11-119>_`
-    which describes the algorithm in use.
+References:
+    - Hyatt D, Chen GL, Locascio PF, Land ML, Larimer FW, Hauser LJ.
+      *Prodigal: prokaryotic gene recognition and translation initiation site
+      identification.* BMC Bioinformatics. 2010 Mar 8;11:119.
+      doi:10.1186/1471-2105-11-119. PMID:20211023. PMCID:PMC2848648.
 
 """
 
@@ -79,6 +81,7 @@ ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
 # ----------------------------------------------------------------------------
 
 import warnings
+import textwrap
 import threading
 
 # --- Module-level constants -------------------------------------------------
@@ -89,6 +92,8 @@ cdef int    WINDOW              = 120
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
 cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
+
+_TRANSLATION_TABLES = TRANSLATION_TABLES
 
 # --- Input sequence ---------------------------------------------------------
 
@@ -1417,6 +1422,139 @@ cdef class Predictions:
         pred.owner = self
         pred.gene = self.genes[index]
         return pred
+
+    cpdef ssize_t write_gff(self, object file, str prefix="gene_", str tool="pyrodigal") except -1:
+        """write_gff(self, file, prefix="gene_", width=60)\n--
+
+        Write the predictions to the given file in General Feature Format.
+
+        Arguments:
+           file (`io.TextIOBase`): A file open in text mode where to write
+               the features.
+           prefix (`str`): The prefix to use to make identifiers for each
+               predicted gene.
+           tool (`str`): The name of the gene detection tool, typically
+              ``pyrodigal``, but you can change to a different name if
+              you are building a larger pipeline.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        """
+        cdef Prediction pred
+        cdef int        i
+        cdef ssize_t    n    = 0
+
+        for i, pred in enumerate(self):
+            n += file.write(prefix)
+            n += file.write(str(i+1))
+            n += file.write("\t")
+            n += file.write(tool)
+            n += file.write("\t")
+            n += file.write("CDS")
+            n += file.write("\t")
+            n += file.write(str(pred.begin))
+            n += file.write("\t")
+            n += file.write(str(pred.end))
+            n += file.write("\t")
+            n += file.write("{:.1f}".format(pred.sscore + pred.cscore))
+            n += file.write("\t")
+            n += file.write("+" if pred.strand > 0 else "-")
+            n += file.write("\t")
+            n += file.write("0")
+            n += file.write("\t")
+            n += file.write(pred._gene_data)
+            n += file.write(";")
+            n += file.write(pred._score_data)
+            n += file.write("\n")
+
+        return n
+
+    cpdef ssize_t write_genes(self, object file, str prefix="gene_", object width=70) except -1:
+        """write_genes(self, file, prefix="gene_", width=70)\n--
+
+         Write nucleotide sequences of genes to the given file in FASTA format.
+
+         Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the nucleotide sequences.
+            prefix (`str`): The prefix to use to make identifiers for each
+                predicted gene.
+            width (`int`): The width to use to wrap sequence lines. Prodigal
+                uses 70 for nucleotide sequences.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        """
+        cdef Prediction pred
+        cdef int        i
+        cdef ssize_t    n    = 0
+
+        for i, pred in enumerate(self):
+            n += file.write(">")
+            n += file.write(prefix)
+            n += file.write(str(i+1))
+            n += file.write(" # ")
+            n += file.write(str(pred.begin))
+            n += file.write(" # ")
+            n += file.write(str(pred.end))
+            n += file.write(" # ")
+            n += file.write(str(pred.strand))
+            n += file.write(" # ")
+            n += file.write(pred._gene_data)
+            n += file.write("\n")
+            for line in textwrap.wrap(pred.sequence(), width=width):
+                n += file.write(line)
+                n += file.write("\n")
+
+        return n
+
+    cpdef ssize_t write_translations(self, object file, str prefix="gene_", object width=60, object translation_table=None) except -1:
+        """write_translations(self, file, prefix="gene_", width=60)\n--
+
+         Write protein sequences of genes to the given file in FASTA format.
+
+         Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the protein sequences.
+            prefix (`str`): The prefix to use to make identifiers for each
+                predicted gene.
+            width (`int`): The width to use to wrap sequence lines. Prodigal
+                uses 60 for protein sequences.
+            translation_table (`int`, optional): A different translation to
+                use to translation the genes. If `None` given, use the one
+                from the training info.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        """
+        cdef Prediction pred
+        cdef int        i
+        cdef ssize_t    n    = 0
+
+        if translation_table is not None and translation_table not in TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
+
+        for i, pred in enumerate(self):
+            n += file.write(">")
+            n += file.write(prefix)
+            n += file.write(str(i+1))
+            n += file.write(" # ")
+            n += file.write(str(pred.begin))
+            n += file.write(" # ")
+            n += file.write(str(pred.end))
+            n += file.write(" # ")
+            n += file.write(str(pred.strand))
+            n += file.write(" # ")
+            n += file.write(pred._gene_data)
+            n += file.write("\n")
+            for line in textwrap.wrap(pred.translate(translation_table), width=width):
+                n += file.write(line)
+                n += file.write("\n")
+
+        return n
 
 # --- Pyrodigal --------------------------------------------------------------
 
