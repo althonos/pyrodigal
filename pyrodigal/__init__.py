@@ -45,7 +45,8 @@ _Sequence.register(Predictions)
 # is running with docstrings enabled
 if __doc__ is not None:
     __doc__ += """See Also:
-    An online rendered version of the documentation for this version of the
-    library on `Read The Docs <https://pyrodigal.readthedocs.io/en/v{}/>`_.
+    An online rendered version of the documentation for this version
+    of the library on
+    `Read The Docs <https://pyrodigal.readthedocs.io/en/v{}/>`_.
 
     """.format(__version__)

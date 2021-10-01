@@ -4,9 +4,10 @@
 """Bindings to Prodigal, an ORF finder for genomes and metagenomes.
 
 Example:
-    Pyrodigal can work on any DNA sequence stored in either a text or a byte
-    array. To load a sequence from one of the common sequence formats, you can
-    for instance use `Biopython <https://github.com/biopython/biopython>`_::
+    Pyrodigal can work on any DNA sequence stored in either a text or a
+    byte array. To load a sequence from one of the common sequence formats,
+    you can use an external dedicated library such as
+    `Biopython <https://github.com/biopython/biopython>`_::
 
         >>> import gzip
         >>> import Bio.SeqIO
@@ -31,15 +32,15 @@ Example:
         ...     }
 
 Caution:
-    In Pyrodigal, sequences are assumed to contain only the usual nucleotides
-    (A/T/G/C) as lowercase or uppercase letters; any other symbol will be
-    treated as an unknown nucleotide. Be careful to remove the gap characters
-    if loading sequences from a multiple alignment file.
+    In Pyrodigal, sequences are assumed to contain only the usual
+    nucleotides (A/T/G/C) as lowercase or uppercase letters; any other
+    symbol will be treated as an unknown nucleotide. Be careful to remove
+    the gap characters if loading sequences from a multiple alignment file.
 
 References:
     - Hyatt D, Chen GL, Locascio PF, Land ML, Larimer FW, Hauser LJ.
-      *Prodigal: prokaryotic gene recognition and translation initiation site
-      identification.* BMC Bioinformatics. 2010 Mar 8;11:119.
+      *Prodigal: prokaryotic gene recognition and translation initiation
+      site identification.* BMC Bioinformatics. 2010 Mar 8;11:119.
       doi:10.1186/1471-2105-11-119. PMID:20211023. PMCID:PMC2848648.
 
 """
@@ -123,6 +124,10 @@ _letters[G] = "G"
 
 cdef class Sequence:
     """A digitized input sequence.
+
+    Attributes:
+        gc (`float`): The GC content of the sequence, as a fraction.
+
     """
 
     def __cinit__(self):
@@ -155,8 +160,8 @@ cdef class Sequence:
         Create a new `Sequence` object from an ASCII-encoded sequence.
 
         Arguments:
-            sequence (`bytes`): The ASCII-encoded sequence to use. Any object
-                implementing the *buffer protocol* is supported.
+            sequence (`bytes`): The ASCII-encoded sequence to use. Any
+                object implementing the *buffer protocol* is supported.
 
         """
         cdef int           i
@@ -1117,9 +1122,10 @@ cdef class Prediction:
     def start_type(self):
         """`str`: The start codon of this gene.
 
-        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if `Pyrodigal`
-        has been initialized in open ends mode and the gene starts right at the
-        beginning of the input sequence.
+        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if
+        `Pyrodigal` has been initialized in open ends mode and the gene
+        starts right at the beginning of the input sequence.
+
         """
         node = self.owner.nodes.nodes[self.gene.gene.start_ndx]
         start_type = 3 if node.edge else node.type
@@ -1145,7 +1151,7 @@ cdef class Prediction:
 
     @property
     def rbs_spacer(self):
-        """`str`, optional: The number of base pair between the RBS and the CDS.
+        """`str`, optional: The number of bases between the RBS and the CDS.
 
         Possible non-`None` values are ``3-4bp``, ``5-10bp``, ``11-12bp`` or
         ``13-15bp``.
@@ -1314,15 +1320,17 @@ cdef class Prediction:
         Translate the predicted gene into a protein sequence.
 
         Arguments:
-            translation_table (`int`, optional): An alternative translation table
-                to use to translate the gene. Use ``None`` (the default) to
-                translate using the translation table this gene was found with.
+            translation_table (`int`, optional): An alternative translation
+                table to use to translate the gene. Use ``None`` (the
+                default) to translate using the translation table this gene
+                was found with.
             unknown_residue (`str`): A single character to use for residues
                 translated from codons with unknown nucleotides.
 
         Returns:
-            `str`: The proteins sequence as a string using the right translation
-            table and the standard single letter alphabet for proteins.
+            `str`: The proteins sequence as a string using the right
+            translation table and the standard single letter alphabet for
+            proteins.
 
         Raises:
             `ValueError`: when ``translation_table`` is not a valid
@@ -1391,8 +1399,8 @@ cdef class Predictions:
     Attributes:
         sequence (`pyrodigal.Sequence`): The compressed input sequence for
             which the predictions were obtained.
-        training_info (`pyrodigal.TrainingInfo`): A reference to the training
-            info these predictions were obtained with.
+        training_info (`pyrodigal.TrainingInfo`): A reference to the
+            training info these predictions were obtained with.
         genes (`pyrodigal.Genes`): A list to the predicted genes in the
             input sequence.
         nodes (`pyrodigal.Nodes`): A list to the raw nodes found in the
@@ -1426,7 +1434,7 @@ cdef class Predictions:
     cpdef ssize_t write_gff(self, object file, str prefix="gene_", str tool="pyrodigal") except -1:
         """write_gff(self, file, prefix="gene_", width=60)\n--
 
-        Write the predictions to the given file in General Feature Format.
+        Write the predictions to ``file`` in General Feature Format.
 
         Arguments:
            file (`io.TextIOBase`): A file open in text mode where to write
@@ -1473,7 +1481,7 @@ cdef class Predictions:
     cpdef ssize_t write_genes(self, object file, str prefix="gene_", object width=70) except -1:
         """write_genes(self, file, prefix="gene_", width=70)\n--
 
-         Write nucleotide sequences of genes to the given file in FASTA format.
+         Write nucleotide sequences of genes to ``file`` in FASTA format.
 
          Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
@@ -1513,7 +1521,7 @@ cdef class Predictions:
     cpdef ssize_t write_translations(self, object file, str prefix="gene_", object width=60, object translation_table=None) except -1:
         """write_translations(self, file, prefix="gene_", width=60)\n--
 
-         Write protein sequences of genes to the given file in FASTA format.
+         Write protein sequences of genes to ``file`` in FASTA format.
 
          Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
@@ -1582,12 +1590,12 @@ cdef class Pyrodigal:
         Instantiate and configure a new ORF finder.
 
         Arguments:
-            meta (`bool`): Set to `True` to run in metagenomic mode, using a
-                pre-trained profiles for better results with metagenomic or
-                progenomic inputs. Defaults to `False`.
-            closed (`bool`): Set to `True` to consider sequences ends 'closed',
-                which prevents proteins from running off edges. Defaults to
-                `False`.
+            meta (`bool`): Set to `True` to run in metagenomic mode, using
+                a pre-trained profiles for better results with metagenomic
+                or progenomic inputs. Defaults to `False`.
+            closed (`bool`): Set to `True` to consider sequences ends
+                *closed*, which prevents proteins from running off edges.
+                Defaults to `False`.
 
         """
         self.meta = meta
@@ -1601,17 +1609,19 @@ cdef class Pyrodigal:
 
         Arguments:
             sequence (`str` or buffer): The nucleotide sequence to use,
-                either as a string of nucleotides, or as an object implementing
-                the buffer protocol. Letters not corresponding to an usual
-                nucleotide (not any of "ATGC") will be ignored.
+                either as a string of nucleotides, or as an object
+                implementing the buffer protocol. Letters not corresponding
+                to an usual nucleotide (not any of "ATGC") will be ignored.
 
         Returns:
             `Predictions`: A collection of all the genes found in the input.
 
         Raises:
             `MemoryError`: When allocation of an internal buffers fails.
-            `RuntimeError`: On calling this method without `train` in *single* mode.
-            `TypeError`: When ``sequence`` does not implement the buffer protocol.
+            `RuntimeError`: On calling this method without having called
+                `~Pyrodigal.train` before while in *single* mode.
+            `TypeError`: When ``sequence`` does not implement the buffer
+                protocol.
 
         """
         cdef int         n
@@ -1637,27 +1647,31 @@ cdef class Pyrodigal:
     cpdef TrainingInfo train(self, object sequence, bint force_nonsd=False, double st_wt=4.35, int translation_table=11):
         """train(self, sequence, force_nonsd=False, st_wt=4.35, translation_table=11)\n--
 
-        Search optimal parameters for the ORF finder using a training sequence.
+        Search parameters for the ORF finder using a training sequence.
 
         Arguments:
-            sequence (`str` or buffer): The nucleotide sequence to use, either
-                as a string of nucleotides, or as an object implementing the
-                buffer protocol.
-            force_nonsd (`bool`, optional): Set to ``True`` to bypass the heuristic
-                algorithm that tries to determine if the organism the training
-                sequence belongs to uses a Shine-Dalgarno motif or not.
-            st_wt (`float`, optional): The start score weight to use. The default
-                value has been manually selected by the Prodigal authors as an
-                appropriate value for 99% of genomes.
-            translation_table (`int`, optional): The translation table to use.
-                Check the `list of genetic codes <https://w.wiki/47wo>`_ for
-                the available values.
+            sequence (`str` or buffer): The nucleotide sequence to use,
+                either as a string of nucleotides, or as an object
+                implementing the buffer protocol.
+            force_nonsd (`bool`, optional): Set to ``True`` to bypass the
+                heuristic algorithm that tries to determine if the organism
+                the training sequence belongs to uses a Shine-Dalgarno motif
+                or not.
+            st_wt (`float`, optional): The start score weight to use. The
+                default value has been manually selected by the Prodigal
+                authors as an appropriate value for 99% of genomes.
+            translation_table (`int`, optional): The translation table to
+                use. Check the `Wikipedia <https://w.wiki/47wo>`_ page
+                listing all genetic codes for the available values.
 
         Raises:
             `MemoryError`: When allocation of an internal buffers fails.
-            `RuntimeError`: When calling this method while in *metagenomic* mode.
-            `TypeError`: When ``sequence`` does not implement the buffer protocol.
-            `ValueError`: When ``translation_table`` is not a valid number.
+            `RuntimeError`: When calling this method while in *metagenomic*
+                mode.
+            `TypeError`: When ``sequence`` does not implement the buffer
+                protocol.
+            `ValueError`: When ``translation_table`` is not a valid
+                genetic code number.
 
         """
         cdef Sequence     seq
