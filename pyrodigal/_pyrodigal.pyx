@@ -1032,15 +1032,24 @@ cdef class TrainingInfo:
 
 cdef class MetagenomicBin:
     """A pre-trained collection used to find genes in metagenomic mode.
+
+    Attributes:
+        training_info (`~pyrodigal.TrainingInfo`): The training info for
+            this metagenomic bin.
+
     """
 
     @property
     def index(self):
+        """`int`: The index of this metagenomic bin.
+        """
         assert self.bin != NULL
         return self.bin.index
 
     @property
     def description(self):
+        """`str`: A condensed text description for this metagenomic bin.
+        """
         assert self.bin != NULL
         return self.bin.desc.decode('ascii')
 

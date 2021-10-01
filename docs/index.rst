@@ -92,7 +92,7 @@ Library
 -------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    Installation <install>
    Contributing <contributing>

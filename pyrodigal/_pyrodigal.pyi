@@ -5,7 +5,7 @@ from typing import Iterable, Iterator, Optional, Set, TextIO, Tuple, Union
 # --- Globals ----------------------------------------------------------------
 
 _TRANSLATION_TABLES: Set[int]
-
+METAGENOMIC_BINS: Tuple[MetagenomicBin]
 
 # --- Input sequence ---------------------------------------------------------
 
@@ -93,10 +93,10 @@ class TrainingInfo:
     @start_weight.setter
     def start_weight(self, st_wt: float) -> None: ...
 
-
 # --- Metagenomic Bins -------------------------------------------------------
 
 class MetagenomicBin:
+    training_info: TrainingInfo
     @property
     def index(self) -> int: ...
     @property
