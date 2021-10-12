@@ -7,13 +7,14 @@ import subprocess
 import sys
 
 import setuptools
+import setuptools.extension
 from distutils import log
 from distutils.errors import CompileError
 from distutils.command.clean import clean as _clean
 from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.build_clib import build_clib as _build_clib
 from setuptools.command.sdist import sdist as _sdist
-from setuptools.extension import Extension, Library
+from setuptools.extension import Library
 
 try:
     from Cython.Build import cythonize
@@ -42,6 +43,16 @@ def _eprint(*args, **kwargs):
 
 # --- Commands ------------------------------------------------------------------
 
+class Extension(setuptools.extension.Extension):
+
+    def __init__(self, *args, **kwargs):
+        self._needs_stub = False
+        self.platform_sources = kwargs.pop("platform_sources", {})
+        super().__init__(*args, **kwargs)
+
+
+# --- Commands ------------------------------------------------------------------
+
 class sdist(_sdist):
     """A `sdist` that generates a `pyproject.toml` on the fly.
     """
@@ -62,6 +73,8 @@ class build_ext(_build_ext):
     """A `build_ext` that disables optimizations if compiled in debug mode.
     """
 
+    # --- Compatibility with `setuptools.Command`
+
     user_options = _build_ext.user_options + [
         ("disable-avx2", None, "Force compiling the extension without AVX2 instructions"),
         ("disable-sse2", None, "Force compiling the extension without SSE2 instructions"),
@@ -76,112 +89,23 @@ class build_ext(_build_ext):
 
     def finalize_options(self):
         _build_ext.finalize_options(self)
+        # record SIMD-specific options
+        self._simd_supported = dict(AVX2=False, SSE2=False, NEON=False)
+        self._simd_defines = dict(AVX2=[], SSE2=[], NEON=[])
+        self._simd_flags = dict(AVX2=[], SSE2=[], NEON=[])
+        self._simd_disabled = {
+            "AVX2": self.disable_avx2,
+            "SSE2": self.disable_sse2,
+            "NEON": self.disable_neon,
+        }
+        # transfer arguments to the build_clib method
         self._clib_cmd = self.get_finalized_command("build_clib")
         self._clib_cmd.debug = self.debug
         self._clib_cmd.force = self.force
         self._clib_cmd.verbose = self.verbose
-
-    def build_extension(self, ext):
-        # show the compiler being used
-        _eprint("building", ext.name, "with", self.compiler.compiler_type, "compiler")
-
-        # add debug flags if we are building in debug mode
-        if self.debug:
-            if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
-                ext.extra_compile_args.append("-O0")
-            elif self.compiler.compiler_type == "msvc":
-                ext.extra_compile_args.append("/Od")
-            if sys.implementation.name == "cpython":
-                ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
-        else:
-            ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
-
-        # update link and include directories
-        for name in ext.libraries:
-            lib = self._clib_cmd.get_library(name)
-            libfile = self.compiler.library_filename(
-                lib.name, output_dir=self._clib_cmd.build_clib
-            )
-            ext.depends.append(libfile)
-            ext.extra_objects.append(libfile)
-
-        # build the rest of the extension as normal
-        _build_ext.build_extension(self, ext)
-
-    def run(self):
-        # check `cythonize` is available
-        if isinstance(cythonize, ImportError):
-            raise RuntimeError("Cython is required to run `build_ext` command") from cythonize
-
-        # use debug directives with Cython if building in debug mode
-        cython_args = {
-            "include_path": ["include"],
-            "compiler_directives": {},
-            "compile_time_env": {
-                "SYS_IMPLEMENTATION_NAME": sys.implementation.name,
-                "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
-                "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
-                "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
-                "TARGET_CPU": TARGET_CPU,
-                "AVX2_BUILD_SUPPORT": False,
-                "NEON_BUILD_SUPPORT": False,
-                "SSE2_BUILD_SUPPORT": False,
-            }
-        }
-        if self.force:
-            cython_args["force"] = True
-        if self.debug:
-            cython_args["annotate"] = True
-            cython_args["compiler_directives"]["warn.undeclared"] = True
-            cython_args["compiler_directives"]["warn.unreachable"] = True
-            cython_args["compiler_directives"]["warn.maybe_uninitialized"] = True
-            cython_args["compiler_directives"]["warn.unused"] = True
-            cython_args["compiler_directives"]["warn.unused_arg"] = True
-            cython_args["compiler_directives"]["warn.unused_result"] = True
-            cython_args["compiler_directives"]["warn.multiple_declarators"] = True
-        else:
-            cython_args["compiler_directives"]["boundscheck"] = False
-            cython_args["compiler_directives"]["wraparound"] = False
-            cython_args["compiler_directives"]["cdivision"] = True
-
-        # compile the C library
-        if not self.distribution.have_run.get("build_clib", False):
-            self._clib_cmd.run()
-
-        # check if we can build platform-specific code
-        if self._clib_cmd._avx2_supported and not self.disable_avx2:
-            cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
-            flags = self._clib_cmd._avx2_flags()
-            for ext in self.extensions:
-                ext.extra_compile_args.extend(flags)
-                ext.define_macros.append(("__AVX2__", 1))
-        if self._clib_cmd._sse2_supported and not self.disable_sse2:
-            cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
-            flags = self._clib_cmd._sse2_flags()
-            for ext in self.extensions:
-                ext.extra_compile_args.extend(flags)
-                ext.define_macros.append(("__SSE2__", 1))
-        if self._clib_cmd._neon_supported and not self.disable_neon:
-            cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
-            flags = self._clib_cmd._neon_flags()
-            for ext in self.extensions:
-                ext.extra_compile_args.extend(flags)
-                ext.define_macros.append(("__ARM_NEON__", 1))
-
-        # cythonize the extensions
-        self.extensions = cythonize(self.extensions, **cython_args)
-
-        # patch the extensions (somehow needed for `_build_ext.run` to work)
-        for ext in self.extensions:
-            ext._needs_stub = False
-
-        # build the extensions as normal
-        _build_ext.run(self)
-
-
-class build_clib(_build_clib):
-    """A custom `build_clib` that splits the `training.c` file from Prodigal.
-    """
+        self._clib_cmd.define = self.define
+        self._clib_cmd.include_dirs = self.include_dirs
+        self._clib_cmd.compiler = self.compiler
 
     # --- Autotools-like helpers ---
 
@@ -193,6 +117,7 @@ class build_clib(_build_clib):
         binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
         objects = []
 
+        self.mkpath(self.build_temp)
         with open(testfile, "w") as f:
             f.write("""
                 #include <{}>
@@ -203,8 +128,10 @@ class build_clib(_build_clib):
                     return (x == 1) ? 0 : 1;
                 }}
             """.format(header, vector, set, op, extract))
+            
         try:
-            objects = self.compiler.compile([testfile], debug=self.debug, extra_preargs=flags)
+            self.mkpath(self.build_temp)
+            objects = self.compiler.compile([testfile], extra_preargs=flags)
             self.compiler.link_executable(objects, base, output_dir=self.build_temp)
             subprocess.run([binfile], check=True)
         except CompileError:
@@ -218,38 +145,6 @@ class build_clib(_build_clib):
                 _eprint("yes")
             else:
                 _eprint("yes, with {}".format(" ".join(flags)))
-            return True
-        finally:
-            os.remove(testfile)
-            for obj in filter(os.path.isfile, objects):
-                os.remove(obj)
-            if os.path.isfile(binfile):
-                os.remove(binfile)
-
-    def _check_function(self, funcname, header, args="()"):
-        _eprint('checking whether function', repr(funcname), 'is available', end="... ")
-
-        base = "have_{}".format(funcname)
-        testfile = os.path.join(self.build_temp, "{}.c".format(base))
-        binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
-        objects = []
-
-        with open(testfile, "w") as f:
-            f.write("""
-                #include <{}>
-                int main() {{
-                    {}{};
-                    return 0;
-                }}
-            """.format(header, funcname, args))
-        try:
-            objects = self.compiler.compile([testfile], debug=self.debug)
-            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
-        except CompileError:
-            _eprint("no")
-            return False
-        else:
-            _eprint("yes")
             return True
         finally:
             os.remove(testfile)
@@ -304,6 +199,167 @@ class build_clib(_build_clib):
             extract="vgetq_lane_s16"
         )
 
+    # --- Build code ---
+
+    def build_simd_code(self, ext):
+        # build platform-specific code
+        for simd, sources in ext.platform_sources.items():
+            if self._simd_supported[simd] and not self._simd_disabled[simd]:
+                objects = [
+                    os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
+                    for s in sources
+                ]
+                for source, object in zip(sources, objects):
+                    self.make_file(
+                        [source],
+                        object,
+                        self.compiler.compile,
+                        (
+                            [source],
+                            self.build_temp,
+                            ext.define_macros + self._simd_defines[simd],
+                            ext.include_dirs,
+                            self.debug,
+                            ext.extra_compile_args + self._simd_flags[simd],
+                            None,
+                            ext.depends
+                        )
+                    )
+                ext.extra_objects.extend(objects)
+
+    def build_extension(self, ext):
+        # show the compiler being used
+        _eprint("building", ext.name, "with", self.compiler.compiler_type, "compiler")
+        # add debug flags if we are building in debug mode
+        if self.debug:
+            if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
+                ext.extra_compile_args.append("-O0")
+            elif self.compiler.compiler_type == "msvc":
+                ext.extra_compile_args.append("/Od")
+            if sys.implementation.name == "cpython":
+                ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
+        else:
+            ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
+        # update link and include directories
+        for name in ext.libraries:
+            lib = self._clib_cmd.get_library(name)
+            libfile = self.compiler.library_filename(
+                lib.name, output_dir=self._clib_cmd.build_clib
+            )
+            ext.depends.append(libfile)
+            ext.extra_objects.append(libfile)
+        # build platform-specific code
+        self.build_simd_code(ext)
+        # build the rest of the extension as normal
+        _build_ext.build_extension(self, ext)
+
+    def build_extensions(self):
+        # check `cythonize` is available
+        if isinstance(cythonize, ImportError):
+            raise RuntimeError("Cython is required to run `build_ext` command") from cythonize
+
+        # use debug directives with Cython if building in debug mode
+        cython_args = {
+            "include_path": ["include"],
+            "compiler_directives": {},
+            "compile_time_env": {
+                "SYS_IMPLEMENTATION_NAME": sys.implementation.name,
+                "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
+                "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
+                "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
+                "TARGET_CPU": TARGET_CPU,
+                "AVX2_BUILD_SUPPORT": False,
+                "NEON_BUILD_SUPPORT": False,
+                "SSE2_BUILD_SUPPORT": False,
+            }
+        }
+        if self.force:
+            cython_args["force"] = True
+        if self.debug:
+            cython_args["annotate"] = True
+            cython_args["compiler_directives"]["warn.undeclared"] = True
+            cython_args["compiler_directives"]["warn.unreachable"] = True
+            cython_args["compiler_directives"]["warn.maybe_uninitialized"] = True
+            cython_args["compiler_directives"]["warn.unused"] = True
+            cython_args["compiler_directives"]["warn.unused_arg"] = True
+            cython_args["compiler_directives"]["warn.unused_result"] = True
+            cython_args["compiler_directives"]["warn.multiple_declarators"] = True
+        else:
+            cython_args["compiler_directives"]["boundscheck"] = False
+            cython_args["compiler_directives"]["wraparound"] = False
+            cython_args["compiler_directives"]["cdivision"] = True
+
+        # compile the C library
+        if not self.distribution.have_run.get("build_clib", False):
+            self._clib_cmd.run()
+
+        # check if we can build platform-specific code
+        if TARGET_CPU == "x86":
+            if not self._simd_disabled["AVX2"] and self._check_avx2():
+                cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
+                self._simd_supported["AVX2"] = True
+                self._simd_flags["AVX2"].extend(self._avx2_flags())
+                self._simd_defines["AVX2"].append(("__AVX2__", 1))
+            if not self._simd_disabled["SSE2"] and self._check_sse2():
+                cython_args["compile_time_env"]["SSE2_BUILD_SUPPORT"] = True
+                self._simd_supported["SSE2"] = True
+                self._simd_flags["SSE2"].extend(self._sse2_flags())
+                self._simd_defines["SSE2"].append(("__SSE2__", 1))
+        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+            if not self._simd_disabled["NEON"] and self._check_neon():
+                cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
+                self._simd_supported["NEON"] = True
+                self._simd_flags["NEON"].extend(self._neon_flags())
+                self._simd_defines["NEON"].append(("__ARM_NEON__", 1))
+
+        # cythonize the extensions (retaining platform-specific sources)
+        platform_sources = [ext.platform_sources for ext in self.extensions]
+        self.extensions = cythonize(self.extensions, **cython_args)
+        for ext, plat_src in zip(self.extensions, platform_sources):
+            ext.platform_sources = plat_src
+
+        # build the extensions as normal
+        _build_ext.build_extensions(self)
+
+
+class build_clib(_build_clib):
+    """A custom `build_clib` that splits the `training.c` file from Prodigal.
+    """
+
+    # --- Autotools-like helpers ---
+
+    def _check_function(self, funcname, header, args="()"):
+        _eprint('checking whether function', repr(funcname), 'is available', end="... ")
+
+        base = "have_{}".format(funcname)
+        testfile = os.path.join(self.build_temp, "{}.c".format(base))
+        binfile = self.compiler.executable_filename(base, output_dir=self.build_temp)
+        objects = []
+
+        with open(testfile, "w") as f:
+            f.write("""
+                #include <{}>
+                int main() {{
+                    {}{};
+                    return 0;
+                }}
+            """.format(header, funcname, args))
+        try:
+            objects = self.compiler.compile([testfile], debug=self.debug)
+            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+        except CompileError:
+            _eprint("no")
+            return False
+        else:
+            _eprint("yes")
+            return True
+        finally:
+            os.remove(testfile)
+            for obj in filter(os.path.isfile, objects):
+                os.remove(obj)
+            if os.path.isfile(binfile):
+                os.remove(binfile)
+
     # --- Compatibility with base `build_clib` command ---
 
     def check_library_list(self, libraries):
@@ -319,12 +375,6 @@ class build_clib(_build_clib):
         return next(lib for lib in self.libraries if lib.name == name)
 
     # --- Compatibility with `setuptools.Command`
-
-    def initialize_options(self):
-        _build_clib.initialize_options(self)
-        self._avx2_supported = False
-        self._sse2_supported = False
-        self._neon_supported = False
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
@@ -344,7 +394,7 @@ class build_clib(_build_clib):
             dst.writelines(lines)
         lines.clear()
 
-    def split_training_source(self, training_file, training_temp):
+    def _split_training_source(self, training_file, training_temp):
         self.mkpath(training_temp)
         with open(training_file, "rb") as src:
             lines = []
@@ -358,36 +408,26 @@ class build_clib(_build_clib):
                 lines.append(line)
             self._write_source_split(training_temp, index, lines)
 
-    def run(self):
+    def build_libraries(self, libraries):
         # split the huge `training.c` file in small chunks with individual
         # functions so that it can compile even on low-memory machines
         self.make_file(
             [self.training_file],
             self.training_temp,
-            self.split_training_source,
+            self._split_training_source,
             (self.training_file, self.training_temp)
         )
-        # build the library as normal
-        _build_clib.run(self)
-        # check which CPU features are supported, now that
-        # `_build_clib.run` has properly initialized the C compiler
-        if TARGET_CPU == "x86":
-            self._sse2_supported = self._check_sse2()
-            if SYSTEM != "Darwin": # don't build AVX2 on OSX for compatibility
-                self._avx2_supported = self._check_avx2()
-        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
-            self._neon_supported = self._check_neon()
 
-    def build_libraries(self, libraries):
+        # check for functions required for libcpu_features on OSX
+        if SYSTEM == "Darwin":
+            if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
+                self.compiler.define_macro("HAVE_SYSCTLBYNAME", 1)
+
         # build each library only if the sources are outdated
         self.mkpath(self.build_clib)
         for library in libraries:
-            self.make_file(
-                library.sources,
-                self.compiler.library_filename(library.name, output_dir=self.build_clib),
-                self.build_library,
-                (library,)
-            )
+            libname = self.compiler.library_filename(library.name, output_dir=self.build_clib)
+            self.make_file(library.sources, libname, self.build_library, (library,))
 
     def build_library(self, library):
         # show the compiler being used
@@ -399,11 +439,6 @@ class build_clib(_build_clib):
                 library.extra_compile_args.append("-O0")
             elif self.compiler.compiler_type == "msvc":
                 library.extra_compile_args.append("/Od")
-
-        # check for functions required for libcpu_features
-        if library.name == "cpu_features" and SYSTEM == "Darwin":
-            if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
-                library.define_macros.append(("HAVE_SYSCTLBYNAME", 1))
 
         # store compile args
         compile_args = (
@@ -503,11 +538,13 @@ setuptools.setup(
         Extension(
             "pyrodigal._pyrodigal",
             sources=[
-                "pyrodigal/impl/avx.c",
-                "pyrodigal/impl/neon.c",
-                "pyrodigal/impl/sse.c",
                 "pyrodigal/_pyrodigal.pyx"
             ],
+            platform_sources={
+                "AVX2": ["pyrodigal/impl/avx.c"],
+                "NEON": ["pyrodigal/impl/neon.c"],
+                "SSE2": ["pyrodigal/impl/sse.c"],
+            },
             include_dirs=[
                 "pyrodigal",
                 os.path.join("vendor", "Prodigal"),
