@@ -226,6 +226,8 @@ cdef class Sequence:
 
     Attributes:
         gc (`float`): The GC content of the sequence, as a fraction.
+        masks (`~pyrodigal.Masks`): A list of masked regions within the
+            sequence.
 
     """
 
