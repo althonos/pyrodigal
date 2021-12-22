@@ -5,7 +5,7 @@ import textwrap
 import unittest
 import warnings
 
-from .. import Pyrodigal
+from .. import OrfFinder
 from .fasta import parse
 
 
@@ -13,7 +13,7 @@ class TestGene(unittest.TestCase):
 
     @classmethod
     def find_genes(cls, seq):
-        p = Pyrodigal(meta=True)
+        p = OrfFinder(meta=True)
         return p.find_genes(seq)
 
     @classmethod

@@ -5,7 +5,7 @@ import textwrap
 import unittest
 import warnings
 
-from .. import Pyrodigal
+from .. import OrfFinder
 from .fasta import parse
 
 
@@ -28,7 +28,7 @@ def _load_genes(name, mode):
         return list(parse(f))
 
 
-class _PyrodigalTestCase(object):
+class _OrfFinderTestCase(object):
 
     def assertTranslationsEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
@@ -85,7 +85,7 @@ class _PyrodigalTestCase(object):
             self.assertSequenceEqual(pred.sequence(), str(gene.seq))
 
 
-class _TestMode(_PyrodigalTestCase):
+class _TestMode(_OrfFinderTestCase):
 
     def test_find_genes_KK037166(self):
         record = _load_record("KK037166")
@@ -146,7 +146,7 @@ class _TestSingle(object):
     mode = "single"
     @classmethod
     def find_genes(cls, seq):
-        p = Pyrodigal(meta=False)
+        p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(seq)
@@ -157,7 +157,7 @@ class _TestMeta(object):
     mode = "meta"
     @classmethod
     def find_genes(cls, seq):
-        p = Pyrodigal(meta=True)
+        p = OrfFinder(meta=True)
         return p.find_genes(seq)
 
 
@@ -177,11 +177,11 @@ class TestSingleBin(_TestSingle, _TestBin, _TestMode, unittest.TestCase):
     pass
 
 
-class TestMeta(_PyrodigalTestCase, unittest.TestCase):
+class TestMeta(_OrfFinderTestCase, unittest.TestCase):
 
     def test_train(self):
         record = _load_record("SRR492066")
-        p = Pyrodigal(meta=True)
+        p = OrfFinder(meta=True)
         self.assertRaises(RuntimeError, p.train, str(record.seq))
 
     def test_overflow(self):
@@ -201,7 +201,7 @@ class TestMeta(_PyrodigalTestCase, unittest.TestCase):
         GTGGGCAACCAGGGCAATATCAGTACCGCGGGCAATGCAACCCTGACTGCCGGCGGTAAC
         CTGAGC
         """
-        p = Pyrodigal(meta=True, closed=False)
+        p = OrfFinder(meta=True, closed=False)
         genes = p.find_genes(textwrap.dedent(seq).replace("\n", ""))
         self.assertEqual(len(genes), 1)
         self.assertEqual(genes[0].start_type, "Edge")
@@ -210,14 +210,14 @@ class TestMeta(_PyrodigalTestCase, unittest.TestCase):
 
     def test_short_sequences(self):
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
-        p = Pyrodigal(meta=True)
+        p = OrfFinder(meta=True)
         for i in range(1, len(seq)):
             genes = p.find_genes(seq[:i])
             self.assertEqual(len(genes), 0)
             self.assertRaises(StopIteration, next, iter(genes))
 
     def test_empty_sequence(self):
-        p = Pyrodigal(meta=True)
+        p = OrfFinder(meta=True)
         genes = p.find_genes("")
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
@@ -227,7 +227,7 @@ class TestMeta(_PyrodigalTestCase, unittest.TestCase):
         proteins = _load_proteins("MIIJ01000039", "meta+mask")
         genes = _load_genes("MIIJ01000039", "meta+mask")
 
-        orf_finder = Pyrodigal(meta=True, mask=True)
+        orf_finder = OrfFinder(meta=True, mask=True)
         preds = orf_finder.find_genes(record.seq)
         self.assertEqual(len(preds.sequence.masks), 1)
         self.assertCoordinatesEqual(preds, proteins)
@@ -239,11 +239,11 @@ class TestMeta(_PyrodigalTestCase, unittest.TestCase):
         self.assertGCContentEqual(preds, proteins)
 
 
-class TestSingle(_PyrodigalTestCase, unittest.TestCase):
+class TestSingle(_OrfFinderTestCase, unittest.TestCase):
 
     def test_train_info(self):
         record = _load_record("SRR492066")
-        p = Pyrodigal(meta=False)
+        p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             info = p.train(record.seq)
@@ -261,13 +261,13 @@ class TestSingle(_PyrodigalTestCase, unittest.TestCase):
 
     def test_train_not_called(self):
         record = _load_record("SRR492066")
-        p = Pyrodigal(meta=False)
+        p = OrfFinder(meta=False)
         self.assertRaises(RuntimeError, p.find_genes, str(record.seq))
 
     def test_training_info_deallocation(self):
         record = _load_record("SRR492066")
         proteins = _load_proteins("SRR492066", "single")
-        p = Pyrodigal(meta=False)
+        p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(str(record.seq))
@@ -278,7 +278,7 @@ class TestSingle(_PyrodigalTestCase, unittest.TestCase):
     def test_short_sequences(self):
         record = _load_record("SRR492066")
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
-        p = Pyrodigal(meta=False)
+        p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(str(record.seq[:20000]))
@@ -289,7 +289,7 @@ class TestSingle(_PyrodigalTestCase, unittest.TestCase):
 
     def test_empty_sequence(self):
         record = _load_record("SRR492066")
-        p = Pyrodigal(meta=False)
+        p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(str(record.seq[:20000]))

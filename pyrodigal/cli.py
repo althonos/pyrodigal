@@ -7,8 +7,8 @@ import argparse
 import contextlib
 import sys
 
-from . import __name__, __author__, __version__, Pyrodigal
-from ._pyrodigal import _TRANSLATION_TABLES
+from . import __name__, __author__, __version__
+from ._pyrodigal import _TRANSLATION_TABLES, OrfFinder
 from .tests.fasta import parse
 
 def argument_parser():
@@ -35,7 +35,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
         prot_file = None if args.a is None else ctx.enter_context(open(args.a, "w"))
         out_file = stdout if args.o is None else ctx.enter_context(open(args.o, "w"))
         # initialize the ORF finder
-        pyrodigal = Pyrodigal(meta=args.p == "meta", closed=args.c)
+        pyrodigal = OrfFinder(meta=args.p == "meta", closed=args.c)
         # find genes
         for i, seq in enumerate(parse(args.i)):
             # train if not in meta mode and encountering the first sequence

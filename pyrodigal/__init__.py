@@ -7,8 +7,11 @@ from . import _pyrodigal
 from ._pyrodigal import (
     Gene,
     Genes,
+    Mask,
+    Masks,
     Node,
     Nodes,
+    OrfFinder,
     Prediction,
     Predictions,
     Pyrodigal,
@@ -21,8 +24,11 @@ __doc__ = _pyrodigal.__doc__
 __all__ = [
     "Gene",
     "Genes",
+    "Mask",
+    "Masks",
     "Node",
     "Nodes",
+    "OrfFinder",
     "Prediction",
     "Predictions",
     "Pyrodigal",
@@ -37,6 +43,7 @@ __version__ = "0.6.2"
 
 _Sized.register(Sequence)
 _Sequence.register(Genes)
+_Sequence.register(Masks)
 _Sequence.register(Nodes)
 _Sequence.register(Predictions)
 

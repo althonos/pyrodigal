@@ -175,9 +175,9 @@ cdef class Predictions:
     cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
 
-# --- Pyrodigal --------------------------------------------------------------
+# --- OrfFinder --------------------------------------------------------------
 
-cdef class Pyrodigal:
+cdef class OrfFinder:
     cdef readonly size_t       _num_seq
     cdef readonly bint         closed
     cdef readonly object       lock

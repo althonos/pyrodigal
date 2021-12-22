@@ -20,7 +20,7 @@ Example:
 
         >>> from collections import Counter
         >>> import pyrodigal
-        >>> p = pyrodigal.Pyrodigal(meta=True)
+        >>> p = pyrodigal.OrfFinder(meta=True)
         >>> for prediction in p.find_genes(record.seq.encode()):
         ...     gene_seq = prediction.sequence()
         ...     codon_counter = Counter()
@@ -1263,8 +1263,8 @@ cdef class Prediction:
     def start_type(self):
         """`str`: The start codon of this gene.
 
-        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if
-        `Pyrodigal` has been initialized in open ends mode and the gene
+        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if the
+        `OrfFinder` has been initialized in open ends mode and the gene
         starts right at the beginning of the input sequence.
 
         """
@@ -1705,10 +1705,10 @@ cdef class Predictions:
 
         return n
 
-# --- Pyrodigal --------------------------------------------------------------
+# --- OrfFinder --------------------------------------------------------------
 
-cdef class Pyrodigal:
-    """An efficient ORF finder for genomes, progenomes and metagenomes.
+cdef class OrfFinder:
+    """A configurable ORF finder for genomes and metagenomes.
 
     Attributes:
         meta (`bool`): Whether or not this object is configured to
@@ -1848,6 +1848,15 @@ cdef class Pyrodigal:
             self.training_info = tinf
 
         return tinf
+
+class Pyrodigal(OrfFinder):
+    def __init__(self, meta=False, closed=False, mask=False):
+        warnings.warn(
+            "`pyrodigal.Pyrodigal` is deprecated and will be removed in"
+            " v0.7.0, use `pyrodigal.OrfFinder` instead",
+            DeprecationWarning
+        )
+        super(Pyrodigal, self).__init__(meta=meta, closed=closed, mask=mask)
 
 # --- C-level API reimplementation -------------------------------------------
 

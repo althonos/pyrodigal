@@ -49,8 +49,8 @@ metagenomic mode. It is still missing some features of the CLI:
 
 - ✔️ Metagenomic mode
 - ✔️ Single mode
+- ✔️ Region masking (`-m` flag)
 - ❌ External training file support (`-t` flag)
-- ❌ Region masking (`-m` flag)
 
 ### 🐏 Memory
 
@@ -68,14 +68,17 @@ Pyrodigal makes two changes compared to the original Prodigal command line:
 
 ### 🧶 Thread-safety
 
-`pyrodigal.Pyrodigal` instances are thread-safe. In addition, the `find_genes`
-method is re-entrant. This means you can train a `Pyrodigal` instance once,
+`pyrodigal.OrfFinder` instances are thread-safe. In addition, the `find_genes`
+method is re-entrant. This means you can train an `OrfFinder` instance once,
 and then use a pool to process sequences in parallel:
 ```python
-p = Pyrodigal()
-p.train(training_sequence)
+import pyrodigal
+
+orf_finder = pyrodigal.OrfFinder()
+orf_finder.train(training_sequence)
+
 with multiprocessing.pool.ThreadPool() as pool:
-    predictions = pool.map(p.find_genes, sequences)
+    predictions = pool.map(orf_finder.find_genes, sequences)
 ```
 
 ## 🔧 Installing
@@ -96,30 +99,30 @@ $ conda install -c bioconda pyrodigal
 
 ## 💡 Example
 
-Lets load a sequence from a
-[GenBank](http://www.insdc.org/files/feature_table.html) file, use `Pyrodigal`
+Let's load a sequence from a
+[GenBank](http://www.insdc.org/files/feature_table.html) file, use an `OrfFinder`
 to find all the genes it contains, and print the proteins in two-line FASTA
 format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use `Pyrodigal` in single mode, you must explicitly call `Pyrodigal.train`
+To use the `OrfFinder` in single mode, you must explicitly call the `train` method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
-p = pyrodigal.Pyrodigal()
-p.train(bytes(record.seq))
-genes = p.find_genes(bytes(record.seq))
+orf_finder = pyrodigal.OrfFinder()
+orf_finder.train(bytes(record.seq))
+genes = orf_finder.find_genes(bytes(record.seq))
 ```
 
 However, in `meta` mode, you can find genes directly:
 ```python
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
-p = pyrodigal.Pyrodigal(meta=True)
+orf_finder = pyrodigal.OrfFinder(meta=True)
 
-for i, gene in enumerate(p.find_genes(bytes(record.seq))):
+for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
     print(f">{record.id}_{i+1}")
-    print(record.translate())
+    print(pred.translate())
 ```
 
 *On older versions of Biopython (before 1.79) you will need to use
@@ -130,11 +133,11 @@ for i, gene in enumerate(p.find_genes(bytes(record.seq))):
 
 ```python
 seq = next(skbio.io.read("sequence.gbk", "genbank"))
-p = pyrodigal.Pyrodigal(meta=True)
+orf_finder = pyrodigal.OrfFinder(meta=True)
 
-for i, gene in enumerate(p.find_genes(seq.values.view('B'))):
+for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
     print(f">{record.id}_{i+1}")
-    print(record.translate())
+    print(pred.translate())
 ```
 
 *We need to use the [`view`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.view.html)

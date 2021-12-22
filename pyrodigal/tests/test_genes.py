@@ -4,7 +4,7 @@ import os
 import sys
 import unittest
 
-from .. import Pyrodigal
+from .. import OrfFinder
 from .fasta import parse
 
 
@@ -19,7 +19,7 @@ class TestGenes(unittest.TestCase):
         with gzip.open(fna, "rt") as f:
             cls.record = next(parse(f))
 
-        cls.p = Pyrodigal(meta=True)
+        cls.p = OrfFinder(meta=True)
         cls.genes = cls.p.find_genes(str(cls.record.seq))
 
     def test_indexing(self):

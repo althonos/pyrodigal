@@ -174,7 +174,7 @@ class Predictions(typing.Sequence[Prediction]):
 
 # --- Pyrodigal --------------------------------------------------------------
 
-class Pyrodigal:
+class OrfFinder:
     closed: bool
     meta: bool
     lock: threading.Lock
