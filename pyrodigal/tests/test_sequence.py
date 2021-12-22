@@ -5,6 +5,10 @@ from .. import Sequence
 
 class TestSequence(unittest.TestCase):
 
+    def test_no_region_masking(self):
+        seq = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=False)
+        self.assertEqual(len(seq.masks), 0)
+
     def test_region_masking(self):
         seq = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
         self.assertEqual(len(seq.masks), 2)

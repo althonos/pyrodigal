@@ -213,6 +213,33 @@ class TestPyrodigalMeta(_TestPyrodigalMode, unittest.TestCase):
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
 
+    def test_find_genes_masked_MIIJ01000039(self):
+        record = _load_record("MIIJ01000039")
+        proteins = _load_proteins("MIIJ01000039", "meta+mask")
+        genes = _load_genes("MIIJ01000039", "meta+mask")
+
+        orf_finder = Pyrodigal(meta=True, mask=True)
+
+        preds = orf_finder.find_genes(record.seq)
+        self.assertEqual(len(preds.sequence.mask), 1)
+        self.assertCoordinatesEqual(preds, proteins)
+        self.assertGenesEqual(preds, genes)
+        self.assertRbsMotifsEqual(preds, proteins)
+        self.assertStartTypesEqual(preds, proteins)
+        self.assertRbsSpacersEqual(preds, proteins)
+        self.assertTranslationsEqual(preds, proteins)
+        self.assertGCContentEqual(preds, proteins)
+
+        preds_bin = orf_finder.find_genes(record.seq.encode("ascii"))
+        self.assertEqual(len(preds.sequence.mask), 1)
+        self.assertCoordinatesEqual(preds_bin, proteins)
+        self.assertGenesEqual(preds_bin, genes)
+        self.assertRbsMotifsEqual(preds_bin, proteins)
+        self.assertStartTypesEqual(preds_bin, proteins)
+        self.assertRbsSpacersEqual(preds_bin, proteins)
+        self.assertTranslationsEqual(preds_bin, proteins)
+        self.assertGCContentEqual(preds_bin, proteins)
+
 
 class TestPyrodigalSingle(_TestPyrodigalMode, unittest.TestCase):
     mode = "single"
