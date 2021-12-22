@@ -90,11 +90,110 @@ import threading
 cdef int    IDEAL_SINGLE_GENOME = 100000
 cdef int    MIN_SINGLE_GENOME   = 20000
 cdef int    WINDOW              = 120
+cdef size_t MIN_MASKS_ALLOC     = 8
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
 cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 
 _TRANSLATION_TABLES = TRANSLATION_TABLES
+
+
+# --- Sequence mask ----------------------------------------------------------
+
+cdef class Mask:
+    """The coordinates of a masked region.
+    """
+
+    @property
+    def begin(self):
+        return self.mask.begin
+
+    @property
+    def end(self):
+        return self.mask.end
+
+cdef class Masks:
+    """A list of masked regions within a `~pyrodigal.Sequence`.
+    """
+
+    def __cinit__(self):
+        self.masks = NULL
+        self.capacity = 0
+        self.length = 0
+
+    def __init__(self):
+        self._clear()
+
+    def __dealloc__(self):
+        PyMem_Free(self.masks)
+
+    def __copy__(self):
+        return self.copy()
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, ssize_t index):
+        cdef Mask mask
+        if index < 0:
+            index += <ssize_t> self.length
+        if index >= <ssize_t> self.length or index < 0:
+            raise IndexError("list index out of range")
+        mask = Mask.__new__(Mask)
+        mask.owner = self
+        mask.mask = &self.masks[index]
+        return mask
+
+    def __sizeof__(self):
+        return self.capacity * sizeof(_mask) + sizeof(self)
+
+    cdef inline _mask* _add_mask(
+        self,
+        const int  begin,
+        const int  end,
+    ) nogil except NULL:
+        """Add a single node to the vector, and return a pointer to that node.
+        """
+
+        cdef size_t old_capacity = self.capacity
+        cdef _mask* mask
+
+        if self.length >= self.capacity:
+            self.capacity = MIN_MASKS_ALLOC if self.capacity == 0 else self.capacity*2
+            with gil:
+                self.masks = <_mask*> PyMem_Realloc(self.masks, self.capacity * sizeof(_mask))
+                if self.masks == NULL:
+                    raise MemoryError("Failed to reallocate mask array")
+            memset(&self.masks[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_mask))
+
+        self.length += 1
+        mask = &self.masks[self.length - 1]
+        mask.begin = begin
+        mask.end = end
+        return mask
+
+    cdef int _clear(self) nogil except 1:
+        """Remove all masks from the vector.
+        """
+        cdef size_t old_length
+        old_length, self.length = self.length, 0
+        memset(self.masks, 0, old_length * sizeof(_mask))
+
+    def clear(self):
+        """Remove all masks from the vector.
+        """
+        with nogil:
+            self._clear()
+
+    cpdef Masks copy(self):
+        cdef Masks new = Masks.__new__(Masks)
+        new.capacity = self.capacity
+        new.length = self.length
+        new.masks = <_mask*> PyMem_Malloc(new.capacity * sizeof(_mask))
+        if new.masks == NULL:
+            raise MemoryError("Failed to allocate masks array")
+        memcpy(new.masks, self.masks, new.capacity * sizeof(_mask))
+        return new
 
 # --- Input sequence ---------------------------------------------------------
 
@@ -134,6 +233,7 @@ cdef class Sequence:
         self.slen = 0
         self.gc = 0.0
         self.digits = NULL
+        self.masks = None
 
     def __dealloc__(self):
         PyMem_Free(self.digits)
@@ -154,7 +254,7 @@ cdef class Sequence:
         return 0
 
     @classmethod
-    def from_bytes(cls, const unsigned char[:] sequence):
+    def from_bytes(cls, const unsigned char[:] sequence, bint mask = False):
         """from_bytes(cls, sequence)\n--
 
         Create a new `Sequence` object from an ASCII-encoded sequence.
@@ -162,19 +262,23 @@ cdef class Sequence:
         Arguments:
             sequence (`bytes`): The ASCII-encoded sequence to use. Any
                 object implementing the *buffer protocol* is supported.
+            mask (`bool`): Enable region-masking for spans of unknown
+                characters, preventing genes from being built across them.
 
         """
         cdef int           i
         cdef int           j
         cdef unsigned char letter
         cdef Sequence      seq
-        cdef int           gc_count = 0
+        cdef int           gc_count   = 0
+        cdef int           mask_begin = -1
 
         seq = Sequence.__new__(Sequence)
         seq._allocate(sequence.shape[0])
+        seq.masks = Masks.__new__(Masks)
 
         with nogil:
-            for i, j in enumerate(range(0, seq.slen * 2, 2)):
+            for i in range(seq.slen):
                 letter = sequence[i]
                 if letter == b'A' or letter == b'a':
                     seq.digits[i] = A
@@ -188,19 +292,32 @@ cdef class Sequence:
                     gc_count += 1
                 else:
                     seq.digits[i] = N
+
             if seq.slen > 0:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
+
+            if mask:
+                for i in range(seq.slen):
+                    if seq.digits[i] == N:
+                        if mask_begin == -1:
+                            mask_begin = i
+                    else:
+                        if mask_begin != -1:
+                            seq.masks._add_mask(mask_begin, i-1)
+                            mask_begin = -1
 
         return seq
 
     @classmethod
-    def from_string(cls, str sequence):
+    def from_string(cls, str sequence, bint mask = False):
         """from_string(cls, sequence)\n--
 
         Create a new `Sequence` object from a Unicode sequence.
 
         Arguments:
             sequence (`str`): The Unicode sequence to use.
+            mask (`bool`): Enable region-masking for spans of unknown
+                characters, preventing genes from being built across them.
 
         """
         cdef int      i
@@ -209,7 +326,8 @@ cdef class Sequence:
         cdef Sequence seq
         cdef int      kind
         cdef void*    data
-        cdef int      gc_count = 0
+        cdef int      gc_count   = 0
+        cdef int      mask_begin = -1
 
         # make sure the unicode string is in canonical form,
         # --> won't be needed anymore in Python 3.12
@@ -218,6 +336,7 @@ cdef class Sequence:
 
         seq = Sequence.__new__(Sequence)
         seq._allocate(PyUnicode_GET_LENGTH(sequence))
+        seq.masks = Masks.__new__(Masks)
 
         kind = PyUnicode_KIND(sequence)
         data = PyUnicode_DATA(sequence)
@@ -237,8 +356,19 @@ cdef class Sequence:
                     gc_count += 1
                 else:
                     seq.digits[i] = N
+
             if seq.slen > 0:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
+
+            if mask:
+                for i in range(seq.slen):
+                    if seq.digits[i] == N:
+                        if mask_begin == -1:
+                            mask_begin = i
+                    else:
+                        if mask_begin != -1:
+                            seq.masks._add_mask(mask_begin, i-1)
+                            mask_begin = -1
 
         return seq
 
@@ -1728,9 +1858,8 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
     cdef int    slmod        = seq.slen % 3
     cdef int    nn           = 0
     cdef int    tt           = tinf.tinf.trans_table
-    # TODO(@althonos): handle region masking
-    cdef _mask* mlist = NULL
-    cdef int    nm    = 0
+    cdef _mask* mlist        = seq.masks.masks
+    cdef int    nm           = seq.masks.length
 
     # If sequence is smaller than a codon, there are no nodes to add
     if seq.slen < 3:

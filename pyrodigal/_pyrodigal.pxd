@@ -20,12 +20,34 @@ cdef        size_t MIN_GENES_ALLOC
 cdef        size_t MIN_NODES_ALLOC
 cdef public set    TRANSLATION_TABLES
 
+
+# --- Sequence mask ----------------------------------------------------------
+
+cdef class Mask:
+    cdef Masks  owner
+    cdef _mask* mask
+
+cdef class Masks:
+    cdef _mask* masks
+    cdef size_t capacity
+    cdef size_t length
+
+    cdef inline _mask* _add_mask(
+        self,
+        const int  begin,
+        const int  end,
+    ) nogil except NULL
+
+    cpdef Masks copy(self)
+    cdef int _clear(self) nogil except 1
+
 # --- Input sequence ---------------------------------------------------------
 
 cdef class Sequence:
     cdef          int      slen
     cdef          uint8_t* digits
     cdef readonly double   gc
+    cdef readonly Masks    masks
 
     cdef int _allocate(self, int slen) except 1
 
