@@ -182,6 +182,7 @@ cdef class Pyrodigal:
     cdef readonly bint         closed
     cdef readonly object       lock
     cdef readonly bint         meta
+    cdef readonly bint         mask
     cdef readonly TrainingInfo training_info
 
     cpdef Predictions  find_genes(self, object sequence)

@@ -1710,20 +1710,22 @@ cdef class Pyrodigal:
 
     Attributes:
         meta (`bool`): Whether or not this object is configured to
-           find genes using the metagenomic bins or manually created
-           training infos.
+            find genes using the metagenomic bins or manually created
+            training infos.
         closed (`bool`): Whether or not proteins can run off edges when
-           finding genes in a sequence.
+            finding genes in a sequence.
+        mask (`bool`): Prevent genes from running across regions containing
+            unknown nucleotides.
         training_info (`~pyrodigal.TrainingInfo`): The object storing the
-           training information, or `None` if the object is in metagenomic
-           mode or hasn't been trained yet.
+            training information, or `None` if the object is in metagenomic
+            mode or hasn't been trained yet.
 
     """
 
     def __cinit__(self):
         self._num_seq = 1
 
-    def __init__(self, meta=False, closed=False):
+    def __init__(self, meta=False, closed=False, mask=False):
         """__init__(self, meta=False, closed=False)\n--
 
         Instantiate and configure a new ORF finder.
@@ -1735,11 +1737,14 @@ cdef class Pyrodigal:
             closed (`bool`): Set to `True` to consider sequences ends
                 *closed*, which prevents proteins from running off edges.
                 Defaults to `False`.
+            mask (`bool`): Prevent genes from running across regions
+                containing unknown nucleotides. Defaults to `False`.
 
         """
         self.meta = meta
         self.closed = closed
         self.lock = threading.Lock()
+        self.mask = mask
 
     cpdef Predictions find_genes(self, object sequence):
         """find_genes(self, sequence)\n--
@@ -1771,9 +1776,9 @@ cdef class Pyrodigal:
             raise RuntimeError("cannot find genes without having trained in single mode")
 
         if isinstance(sequence, str):
-            seq = Sequence.from_string(sequence)
+            seq = Sequence.from_string(sequence, mask=self.mask)
         else:
-            seq = Sequence.from_bytes(sequence)
+            seq = Sequence.from_bytes(sequence, mask=self.mask)
 
         with self.lock:
             n = self._num_seq
@@ -1823,9 +1828,9 @@ cdef class Pyrodigal:
             raise ValueError(f"{translation_table} is not a valid translation table index")
 
         if isinstance(sequence, str):
-            seq = Sequence.from_string(sequence)
+            seq = Sequence.from_string(sequence, mask=self.mask)
         else:
-            seq = Sequence.from_bytes(sequence)
+            seq = Sequence.from_bytes(sequence, mask=self.mask)
 
         if seq.slen < MIN_SINGLE_GENOME:
             raise ValueError(
@@ -1967,7 +1972,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
             continue
         if last[i%3] >= seq.slen:
             continue
-        if not cross_mask(i, last[i%3], mlist, nm):
+        if not cross_mask(seq.slen-last[i%3]-1, seq.slen-i-1, mlist, nm):
             if last[i%3] - i + 3 >= min_dist[i%3] and seq._is_start(i, tt, strand=-1):
                 if seq._is_atg(i, strand=-1):
                     saw_start[i%3] = True
@@ -1999,16 +2004,16 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False,
                     )
                     nn += 1
-        if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
-            saw_start[i%3] = 1
-            node = nodes._add_node(
-                ndx = seq.slen - i - 1,
-                type = node_type.ATG,
-                strand = -1,
-                stop_val = seq.slen - last[i%3] - 1,
-                edge = True,
-            )
-            nn += 1
+            if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
+                saw_start[i%3] = 1
+                node = nodes._add_node(
+                    ndx = seq.slen - i - 1,
+                    type = node_type.ATG,
+                    strand = -1,
+                    stop_val = seq.slen - last[i%3] - 1,
+                    edge = True,
+                )
+                nn += 1
     for i in range(3):
         if saw_start[i%3]:
             node = nodes._add_node(
