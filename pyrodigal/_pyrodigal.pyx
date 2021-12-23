@@ -81,6 +81,13 @@ ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
     IF NEON_BUILD_SUPPORT:
         from pyrodigal.impl.neon cimport skippable_neon
 
+IF SYS_IMPLEMENTATION_NAME == "pypy":
+    MVIEW_READ = PyBUF_READ | PyBUF_WRITE
+    MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
+ELSE:
+    MVIEW_READ = PyBUF_READ
+    MVIEW_WRITE = PyBUF_WRITE
+
 # ----------------------------------------------------------------------------
 
 import warnings
@@ -1109,7 +1116,7 @@ cdef class TrainingInfo:
             raise MemoryError("Failed to allocate training info")
 
         if hasattr(fp, "readinto"):
-            mem = PyMemoryView_FromMemory(<char*> tinf.tinf, sizeof(_training), PyBUF_WRITE)
+            mem = PyMemoryView_FromMemory(<char*> tinf.tinf, sizeof(_training), MVIEW_WRITE)
             n = fp.readinto(mem)
             if n != sizeof(_training):
                 raise EOFError(f"Expected {sizeof(_training)} bytes, only read {n}")
@@ -1243,7 +1250,7 @@ cdef class TrainingInfo:
         .. versionadded:: 0.6.4
 
         """
-        cdef object mem = PyMemoryView_FromMemory(<char*> self.tinf, sizeof(_training), PyBUF_READ)
+        cdef object mem = PyMemoryView_FromMemory(<char*> self.tinf, sizeof(_training), MVIEW_READ)
         fp.write(mem)
 
 # --- Metagenomic Bins -------------------------------------------------------
