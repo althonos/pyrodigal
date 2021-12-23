@@ -50,7 +50,8 @@ metagenomic mode. It is still missing some features of the CLI:
 - ✔️ Metagenomic mode
 - ✔️ Single mode
 - ✔️ Region masking (`-m` flag)
-- ❌ External training file support (`-t` flag)
+- ✔️ External training file support (`-t` flag)
+- ❌ Writing scores of all potential genes (`-s` flag)
 
 ### 🐏 Memory
 

@@ -6,9 +6,10 @@
 import argparse
 import contextlib
 import sys
+import os
 
 from . import __name__, __author__, __version__
-from ._pyrodigal import _TRANSLATION_TABLES, OrfFinder
+from ._pyrodigal import _TRANSLATION_TABLES, OrfFinder, TrainingInfo
 from .tests.fasta import parse
 
 def argument_parser():
@@ -21,6 +22,7 @@ def argument_parser():
     parser.add_argument("-i", metavar="input_file", required=True, help="Specify FASTA input file.")
     parser.add_argument("-m", action="store_true", help="Treat runs of N as masked sequence; don't build genes across them.", default=False)
     parser.add_argument("-p", required=False, metavar="mode", help="Select procedure.", choices={"single", "meta"}, default="single")
+    parser.add_argument("-t", required=False, metavar="training_file", help="Write a training file (if none exists); otherwise, read and use the specified training file.")
     parser.add_argument("-V", "--version", help="Show version number and exit.", action="version", version="{} v{}".format(__name__, __version__))
     parser.add_argument("-o", metavar="output_file", required=False, help="Specify output file.")
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit.")
@@ -35,13 +37,36 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
         nuc_file = None if args.d is None else ctx.enter_context(open(args.d, "w"))
         prot_file = None if args.a is None else ctx.enter_context(open(args.a, "w"))
         out_file = stdout if args.o is None else ctx.enter_context(open(args.o, "w"))
+
+        # load training info
+        if args.t is not None:
+            if args.p == "meta":
+                print("Error: cannot specify metagenomic sequence with a training file.", file=stderr)
+                return 1
+            elif os.path.exists(args.t):
+                with open(args.t, "rb") as f:
+                    training_info = TrainingInfo.load(f)
+            else:
+                training_info = None
+        else:
+            training_info = None
+
         # initialize the ORF finder
-        pyrodigal = OrfFinder(meta=args.p == "meta", closed=args.c, mask=args.m)
+        pyrodigal = OrfFinder(
+            meta=args.p == "meta",
+            closed=args.c,
+            mask=args.m,
+            training_info=training_info,
+        )
+
         # find genes
         for i, seq in enumerate(parse(args.i)):
             # train if not in meta mode and encountering the first sequence
             if args.p == "single" and i == 0:
-                pyrodigal.train(seq.seq, translation_table=args.g)
+                training_info = pyrodigal.train(seq.seq, translation_table=args.g)
+                if args.t is not None and not os.path.exists(args.t):
+                    with open(args.t, "wb") as f:
+                        training_info.dump(f)
             # find genes with Pyrodigal
             preds = pyrodigal.find_genes(seq.seq)
             # write output in GFF format
