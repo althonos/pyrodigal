@@ -11,7 +11,7 @@ Example:
 
         >>> import gzip
         >>> import Bio.SeqIO
-        >>> with gzip.open("pyrodigal/tests/data/KK037166.fna.gz") as f:
+        >>> with gzip.open("pyrodigal/tests/data/KK037166.fna.gz", "rt") as f:
         ...     record = Bio.SeqIO.read(f, "fasta")
 
     Then use Pyrodigal to find the genes in *metagenomic* mode (without
@@ -21,8 +21,8 @@ Example:
         >>> from collections import Counter
         >>> import pyrodigal
         >>> p = pyrodigal.OrfFinder(meta=True)
-        >>> for prediction in p.find_genes(record.seq.encode()):
-        ...     gene_seq = prediction.sequence()
+        >>> for gene in p.find_genes(record.seq.encode()):
+        ...     gene_seq = gene.sequence()
         ...     codon_counter = Counter()
         ...     for i in range(len(gene_seq), 3):
         ...         codon_counter[gene_seq[i:i+3]] += 1

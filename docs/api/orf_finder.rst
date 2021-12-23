@@ -1,4 +1,4 @@
-Pyrodigal
+OrfFinder
 =========
 
 .. currentmodule:: pyrodigal

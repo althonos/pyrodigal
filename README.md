@@ -70,9 +70,12 @@ Pyrodigal makes two changes compared to the original Prodigal command line:
 
 ### 🧶 Thread-safety
 
-`pyrodigal.OrfFinder` instances are thread-safe. In addition, the `find_genes`
-method is re-entrant. This means you can train an `OrfFinder` instance once,
-and then use a pool to process sequences in parallel:
+[`pyrodigal.OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+instances are thread-safe. In addition, the
+[`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.find_genes)
+method is re-entrant. This means you can train an
+[`OrfFinder`]((https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+instance once, and then use a pool to process sequences in parallel:
 ```python
 import pyrodigal
 
@@ -108,7 +111,8 @@ format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the `OrfFinder` in single mode, you must explicitly call the `train` method
+To use the [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder) in single mode, you must explicitly call the
+[`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.train) method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
