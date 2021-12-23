@@ -21,6 +21,7 @@ def argument_parser():
     parser.add_argument("-g", required=False, metavar="tr_table", type=int, choices=_TRANSLATION_TABLES, help="Specify a translation table to use.", default=11)
     parser.add_argument("-i", metavar="input_file", required=True, help="Specify FASTA input file.")
     parser.add_argument("-m", action="store_true", help="Treat runs of N as masked sequence; don't build genes across them.", default=False)
+    parser.add_argument("-n", action="store_true", help="Bypass Shine-Dalgarno trainer and force a full motif scan.", default=False)
     parser.add_argument("-p", required=False, metavar="mode", help="Select procedure.", choices={"single", "meta"}, default="single")
     parser.add_argument("-t", required=False, metavar="training_file", help="Write a training file (if none exists); otherwise, read and use the specified training file.")
     parser.add_argument("-V", "--version", help="Show version number and exit.", action="version", version="{} v{}".format(__name__, __version__))
@@ -63,7 +64,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
         for i, seq in enumerate(parse(args.i)):
             # train if not in meta mode and encountering the first sequence
             if args.p == "single" and i == 0:
-                training_info = pyrodigal.train(seq.seq, translation_table=args.g)
+                training_info = pyrodigal.train(seq.seq, force_nonsd=args.n, translation_table=args.g)
                 if args.t is not None and not os.path.exists(args.t):
                     with open(args.t, "wb") as f:
                         training_info.dump(f)
