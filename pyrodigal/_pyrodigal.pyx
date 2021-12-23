@@ -1727,8 +1727,8 @@ cdef class OrfFinder:
     def __cinit__(self):
         self._num_seq = 1
 
-    def __init__(self, meta=False, closed=False, mask=False):
-        """__init__(self, meta=False, closed=False)\n--
+    def __init__(self, bint meta=False, bint closed=False, bint mask=False):
+        """__init__(self, meta=False, closed=False, mask=False)\n--
 
         Instantiate and configure a new ORF finder.
 
@@ -1819,14 +1819,19 @@ cdef class OrfFinder:
                 use. Check the `Wikipedia <https://w.wiki/47wo>`_ page
                 listing all genetic codes for the available values.
 
+        Returns:
+            `~pyrodigal.TrainingInfo`: The resulting training info, which
+            can be saved to disk and used later on to create a new
+            `~pyrodigal.OrfFinder` instance.
+
         Raises:
             `MemoryError`: When allocation of an internal buffers fails.
             `RuntimeError`: When calling this method while in *metagenomic*
                 mode.
             `TypeError`: When ``sequence`` does not implement the buffer
                 protocol.
-            `ValueError`: When ``translation_table`` is not a valid
-                genetic code number.
+            `ValueError`: When ``translation_table`` is not a valid genetic
+                code number, or when ``sequence`` is too short to train.
 
         """
         cdef Sequence     seq
