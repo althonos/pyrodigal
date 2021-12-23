@@ -19,6 +19,7 @@ def argument_parser():
     parser.add_argument("-f", required=False, metavar="output_type", help="Select output format.", choices={"gff"}, default="gff")
     parser.add_argument("-g", required=False, metavar="tr_table", type=int, choices=_TRANSLATION_TABLES, help="Specify a translation table to use.", default=11)
     parser.add_argument("-i", metavar="input_file", required=True, help="Specify FASTA input file.")
+    parser.add_argument("-m", action="store_true", help="Treat runs of N as masked sequence; don't build genes across them.", default=False)
     parser.add_argument("-p", required=False, metavar="mode", help="Select procedure.", choices={"single", "meta"}, default="single")
     parser.add_argument("-V", "--version", help="Show version number and exit.", action="version", version="{} v{}".format(__name__, __version__))
     parser.add_argument("-o", metavar="output_file", required=False, help="Specify output file.")
@@ -35,7 +36,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
         prot_file = None if args.a is None else ctx.enter_context(open(args.a, "w"))
         out_file = stdout if args.o is None else ctx.enter_context(open(args.o, "w"))
         # initialize the ORF finder
-        pyrodigal = OrfFinder(meta=args.p == "meta", closed=args.c)
+        pyrodigal = OrfFinder(meta=args.p == "meta", closed=args.c, mask=args.m)
         # find genes
         for i, seq in enumerate(parse(args.i)):
             # train if not in meta mode and encountering the first sequence
