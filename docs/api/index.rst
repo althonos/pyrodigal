@@ -4,7 +4,7 @@ API Reference
 .. toctree::
    :hidden:
 
-   pyrodigal <pyrodigal>
+   orf_finder <orf_finder>
    training_info <training_info>
    predictions <predictions>
    genes <genes>
@@ -17,13 +17,13 @@ API Reference
 
 .. only:: html
 
-    Pyrodigal
+    OrfFinder
     ---------
 
     .. autosummary::
         :nosignatures:
 
-        pyrodigal.Pyrodigal
+        pyrodigal.OrfFinder
 
 
     TrainingInfo
