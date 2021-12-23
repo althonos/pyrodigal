@@ -6,11 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.4...HEAD
 
 
-## [v0.6.3] - 2021
-[v0.6.2]: https://github.com/althonos/pyrodigal/compare/v0.6.2...v0.6.3
+## [v0.6.4] - 2021-12-23
+[v0.6.4]: https://github.com/althonos/pyrodigal/compare/v0.6.3...v0.6.4
+
+### Added
+- `load` and `dump` methods to `TrainingInfo` for storing and loading a raw training info structure.
+- Support for creating an `OrfFinder` pre-configured with a training info.
+- `-t` and `-n` flags to the CLI.
+
+
+## [v0.6.3] - 2021-12-23
+[v0.6.3]: https://github.com/althonos/pyrodigal/compare/v0.6.2...v0.6.3
 
 ### Added
 - `pyrodigal` command line script exposing a CLI mimicking the original `prodigal` binary.

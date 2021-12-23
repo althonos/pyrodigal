@@ -74,7 +74,7 @@ Pyrodigal makes two changes compared to the original Prodigal command line:
 instances are thread-safe. In addition, the
 [`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.find_genes)
 method is re-entrant. This means you can train an
-[`OrfFinder`]((https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+[`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
 instance once, and then use a pool to process sequences in parallel:
 ```python
 import pyrodigal
