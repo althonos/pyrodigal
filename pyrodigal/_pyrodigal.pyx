@@ -1813,7 +1813,13 @@ cdef class OrfFinder:
     def __cinit__(self):
         self._num_seq = 1
 
-    def __init__(self, bint meta=False, bint closed=False, bint mask=False):
+    def __init__(
+        self,
+        bint meta=False,
+        bint closed=False,
+        bint mask=False,
+        TrainingInfo training_info=None,
+    ):
         """__init__(self, meta=False, closed=False, mask=False)\n--
 
         Instantiate and configure a new ORF finder.
@@ -1827,21 +1833,40 @@ cdef class OrfFinder:
                 Defaults to `False`.
             mask (`bool`): Prevent genes from running across regions
                 containing unknown nucleotides. Defaults to `False`.
+            training_info (`~pyrodigal.TrainingInfo`, optional): A training
+                info instance to use in single mode without having to
+                train first.
+
+        .. versionchanged:: 0.6.4
+           Added the ``training_info`` argument.
 
         """
+        if meta and training_info is not None:
+            raise ValueError("cannot use a training info in meta mode.")
+
         self.meta = meta
         self.closed = closed
         self.lock = threading.Lock()
         self.mask = mask
+        self.training_info = training_info
 
     def __repr__(self):
         ty = type(self).__name__
-        return "{}(meta={}, closed={}, mask={})".format(
-            ty,
-            self.meta,
-            self.closed,
-            self.mask
-        )
+        if self.training_info is None:
+            return "{}(meta={}, closed={}, mask={})".format(
+                ty,
+                self.meta,
+                self.closed,
+                self.mask
+            )
+        else:
+            return "{}(meta={}, closed={}, mask={}, training_info={})".format(
+                ty,
+                self.meta,
+                self.closed,
+                self.mask,
+                self.training_info
+            )
 
     cpdef Predictions find_genes(self, object sequence):
         """find_genes(self, sequence)\n--
@@ -1950,13 +1975,13 @@ cdef class OrfFinder:
         return tinf
 
 class Pyrodigal(OrfFinder):
-    def __init__(self, meta=False, closed=False, mask=False):
+    def __init__(self, meta=False, closed=False, mask=False, training_info=None):
         warnings.warn(
             "`pyrodigal.Pyrodigal` is deprecated and will be removed in"
             " v0.7.0, use `pyrodigal.OrfFinder` instead",
             DeprecationWarning
         )
-        super(Pyrodigal, self).__init__(meta=meta, closed=closed, mask=mask)
+        super(Pyrodigal, self).__init__(meta=meta, closed=closed, mask=mask, training_info=training_info)
 
 # --- C-level API reimplementation -------------------------------------------
 

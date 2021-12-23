@@ -15,8 +15,10 @@ class TestTrainingInfo(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.record = load_record("SRR492066")
-        cls.training_info = OrfFinder().train(cls.record.seq)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cls.record = load_record("SRR492066")
+            cls.training_info = OrfFinder().train(cls.record.seq)
 
     def test_roundtrip(self):
         try:
