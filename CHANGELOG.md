@@ -6,7 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.3...HEAD
+
+
+## [v0.6.3] - 2021
+[v0.6.2]: https://github.com/althonos/pyrodigal/compare/v0.6.2...v0.6.3
+
+### Added
+- `pyrodigal` command line script exposing a CLI mimicking the original `prodigal` binary.
+- `write_gff`, `write_genes` and `write_translations` methods to `pyrodigal.Predictions` to write the predictions results to a file in different formats.
+- Implementation for masking regions of unknown nucleotides in input sequences.
+
+### Changed
+- Renamed `pyrodigal.Pyrodigal` class to `pyrodigal.OrfFinder`.
+
+### Fixed
+- `setup.py` build different SIMD implementations with the same set of feature flags, causing compilers to re-optimize the SIMD implementations.
 
 
 ## [v0.6.2] - 2021-09-25
