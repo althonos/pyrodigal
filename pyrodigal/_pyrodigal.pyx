@@ -1748,6 +1748,15 @@ cdef class OrfFinder:
         self.lock = threading.Lock()
         self.mask = mask
 
+    def __repr__(self):
+        ty = type(self).__name__
+        return "{}(meta={}, closed={}, mask={})".format(
+            ty,
+            self.meta,
+            self.closed,
+            self.mask
+        )
+
     cpdef Predictions find_genes(self, object sequence):
         """find_genes(self, sequence)\n--
 
