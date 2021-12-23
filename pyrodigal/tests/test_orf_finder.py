@@ -6,26 +6,7 @@ import unittest
 import warnings
 
 from .. import OrfFinder
-from .fasta import parse
-
-
-def _load_record(name):
-    data = os.path.realpath(os.path.join(__file__, "..", "data"))
-    fna = os.path.join(data, "{name}.fna.gz".format(name=name))
-    with gzip.open(fna, "rt") as f:
-        return next(parse(f))
-
-def _load_proteins(name, mode):
-    data = os.path.realpath(os.path.join(__file__, "..", "data"))
-    faa = os.path.join(data, "{name}.{mode}.faa.gz".format(name=name, mode=mode))
-    with gzip.open(faa, "rt") as f:
-        return list(parse(f))
-
-def _load_genes(name, mode):
-    data = os.path.realpath(os.path.join(__file__, "..", "data"))
-    fna = os.path.join(data, "{name}.{mode}.fna.gz".format(name=name, mode=mode))
-    with gzip.open(fna, "rt") as f:
-        return list(parse(f))
+from .utils import load_record, load_proteins, load_genes
 
 
 class _OrfFinderTestCase(object):
@@ -88,9 +69,9 @@ class _OrfFinderTestCase(object):
 class _TestMode(_OrfFinderTestCase):
 
     def test_find_genes_KK037166(self):
-        record = _load_record("KK037166")
-        proteins = _load_proteins("KK037166", self.mode)
-        genes = _load_genes("KK037166", self.mode)
+        record = load_record("KK037166")
+        proteins = load_proteins("KK037166", self.mode)
+        genes = load_genes("KK037166", self.mode)
 
         preds = self.find_genes(self.get_sequence(record))
         self.assertTranslationsEqual(preds, proteins)
@@ -102,9 +83,9 @@ class _TestMode(_OrfFinderTestCase):
         self.assertGCContentEqual(preds, proteins)
 
     def test_find_genes_SRR492066(self):
-        record = _load_record("SRR492066")
-        proteins = _load_proteins("SRR492066", self.mode)
-        genes = _load_genes("SRR492066", self.mode)
+        record = load_record("SRR492066")
+        proteins = load_proteins("SRR492066", self.mode)
+        genes = load_genes("SRR492066", self.mode)
 
         preds = self.find_genes(self.get_sequence(record))
         self.assertCoordinatesEqual(preds, proteins)
@@ -116,9 +97,9 @@ class _TestMode(_OrfFinderTestCase):
         self.assertGCContentEqual(preds, proteins)
 
     def test_find_genes_MIIJ01000039(self):
-        record = _load_record("MIIJ01000039")
-        proteins = _load_proteins("MIIJ01000039", self.mode)
-        genes = _load_genes("MIIJ01000039", self.mode)
+        record = load_record("MIIJ01000039")
+        proteins = load_proteins("MIIJ01000039", self.mode)
+        genes = load_genes("MIIJ01000039", self.mode)
 
         preds = self.find_genes(self.get_sequence(record))
         self.assertCoordinatesEqual(preds, proteins)
@@ -180,7 +161,7 @@ class TestSingleBin(_TestSingle, _TestBin, _TestMode, unittest.TestCase):
 class TestMeta(_OrfFinderTestCase, unittest.TestCase):
 
     def test_train(self):
-        record = _load_record("SRR492066")
+        record = load_record("SRR492066")
         p = OrfFinder(meta=True)
         self.assertRaises(RuntimeError, p.train, str(record.seq))
 
@@ -223,9 +204,9 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         self.assertRaises(StopIteration, next, iter(genes))
 
     def test_find_genes_masked_MIIJ01000039(self):
-        record = _load_record("MIIJ01000039")
-        proteins = _load_proteins("MIIJ01000039", "meta+mask")
-        genes = _load_genes("MIIJ01000039", "meta+mask")
+        record = load_record("MIIJ01000039")
+        proteins = load_proteins("MIIJ01000039", "meta+mask")
+        genes = load_genes("MIIJ01000039", "meta+mask")
 
         orf_finder = OrfFinder(meta=True, mask=True)
         preds = orf_finder.find_genes(record.seq)
@@ -242,7 +223,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
 
     def test_train_info(self):
-        record = _load_record("SRR492066")
+        record = load_record("SRR492066")
         p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -260,13 +241,13 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         self.assertTrue(info.uses_sd)
 
     def test_train_not_called(self):
-        record = _load_record("SRR492066")
+        record = load_record("SRR492066")
         p = OrfFinder(meta=False)
         self.assertRaises(RuntimeError, p.find_genes, str(record.seq))
 
     def test_training_info_deallocation(self):
-        record = _load_record("SRR492066")
-        proteins = _load_proteins("SRR492066", "single")
+        record = load_record("SRR492066")
+        proteins = load_proteins("SRR492066", "single")
         p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -276,7 +257,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         self.assertEqual(genes[0].translate(), str(proteins[0].seq))
 
     def test_short_sequences(self):
-        record = _load_record("SRR492066")
+        record = load_record("SRR492066")
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
         p = OrfFinder(meta=False)
         with warnings.catch_warnings():
@@ -288,7 +269,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
             self.assertRaises(StopIteration, next, iter(genes))
 
     def test_empty_sequence(self):
-        record = _load_record("SRR492066")
+        record = load_record("SRR492066")
         p = OrfFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

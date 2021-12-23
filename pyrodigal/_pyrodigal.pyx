@@ -47,9 +47,11 @@ References:
 
 # ----------------------------------------------------------------------------
 
+from cpython.buffer cimport PyBUF_READ, PyBUF_WRITE
 from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
 from cpython.exc cimport PyErr_CheckSignals
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+from cpython.memoryview cimport PyMemoryView_FromMemory
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
 from libc.math cimport sqrt, log, pow, fmax, fmin
@@ -1065,6 +1067,62 @@ cdef class TrainingInfo:
 
     """
 
+    # --- Class methods ----------------------------------------------------
+
+    @classmethod
+    def load(cls, fp):
+        """load(cls, fp)\n--
+
+        Load a training info from a file-like handle.
+
+        Arguments:
+            fp (file-like object): An file-like handle opened in *binary*
+                mode, from which to read the training info.
+
+        Returns:
+            `~pyrodigal.TrainingInfo`: The deserialized training info.
+
+        Danger:
+            This method is not safe to use across different machines. The
+            internal binary structure will be dumped as-is, and because the
+            C types can change in size and representation between CPUs and
+            OS, the file will not portable. This method is only provided
+            to offer the same kind of features as the Prodigal binary. For
+            a safe way of storing and sharing a `TrainingInfo`, use the
+            `pickle` module.
+
+        Raises:
+            `EOFError`: When less bytes than expected could be read from
+                the source file handle.
+
+        .. versionadded:: 0.6.4
+
+        """
+        cdef char[:]  contents
+        cdef object   mem
+        cdef ssize_t  n
+
+        cdef TrainingInfo tinf = TrainingInfo.__new__(TrainingInfo)
+        tinf.owned = True
+        tinf.tinf = <_training*> PyMem_Malloc(sizeof(_training))
+        if tinf.tinf == NULL:
+            raise MemoryError("Failed to allocate training info")
+
+        if hasattr(fp, "readinto"):
+            mem = PyMemoryView_FromMemory(<char*> tinf.tinf, sizeof(_training), PyBUF_WRITE)
+            n = fp.readinto(mem)
+            if n != sizeof(_training):
+                raise EOFError(f"Expected {sizeof(_training)} bytes, only read {n}")
+        else:
+            contents = fp.read(sizeof(_training))
+            if contents.shape[0] != sizeof(_training):
+                raise EOFError(f"Expected {sizeof(_training)} bytes, only read {len(contents)}")
+            memcpy(&tinf.tinf, &contents[0], sizeof(_training))
+
+        return tinf
+
+    # --- Magic methods ----------------------------------------------------
+
     def __cinit__(self):
         self.owned = False
         self.tinf = NULL
@@ -1087,6 +1145,8 @@ cdef class TrainingInfo:
     def __dealloc__(self):
         if self.owned:
             PyMem_Free(self.tinf)
+
+    # --- Properties -------------------------------------------------------
 
     @property
     def translation_table(self):
@@ -1159,6 +1219,32 @@ cdef class TrainingInfo:
     @start_weight.setter
     def start_weight(self, double st_wt):
         self.tinf.st_wt = st_wt
+
+    # --- Methods ----------------------------------------------------------
+
+    cpdef object dump(self, fp):
+        """dump(self, fp)\n--
+
+        Write a training info to a file-like handle.
+
+        Arguments:
+            fp (file-like object): An file-like handle opened in *binary*
+                mode, into which the training info should be written.
+
+        Danger:
+            This method is not safe to use across different machines. The
+            internal binary structure will be dumped as-is, and because the
+            C types can change in size and representation between CPUs and
+            OS, the file will not portable. This method is only provided
+            to offer the same kind of features as the Prodigal binary. For
+            a safe way of storing and sharing a `TrainingInfo`, use the
+            `pickle` module.
+
+        .. versionadded:: 0.6.4
+
+        """
+        cdef object mem = PyMemoryView_FromMemory(<char*> self.tinf, sizeof(_training), PyBUF_READ)
+        fp.write(mem)
 
 # --- Metagenomic Bins -------------------------------------------------------
 

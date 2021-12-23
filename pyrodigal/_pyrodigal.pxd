@@ -143,6 +143,8 @@ cdef class TrainingInfo:
     cdef bint       owned
     cdef _training* tinf
 
+    cpdef object dump(self, object fp)
+
 # --- Metagenomic Bins -------------------------------------------------------
 
 cdef class MetagenomicBin:
