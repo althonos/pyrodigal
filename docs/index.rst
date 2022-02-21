@@ -96,6 +96,7 @@ Library
 
    Installation <install>
    Contributing <contributing>
+   Publications <publications>
    API Reference <api/index>
    Changelog <changes>
 
