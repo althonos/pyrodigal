@@ -375,6 +375,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v1
+      with:
+        submodules: true
     - name: Release a Changelog
       uses: rasmus-saks/release-a-changelog-action@v1.0.1
       with:
