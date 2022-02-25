@@ -153,7 +153,7 @@ filter SIMD backends (SSE2 or AVX2) or without enabling the filter (None).
 
 Pyrodigal is distributed on PyPI under the
 [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl-3.0).
-Pre-compiled distributions are available for MacOS, Linux and Windows x86-64,
+Pre-compiled distributions are provided for MacOS, Linux and Windows x86-64,
 as well as Linux Aarch64 machines. A [Conda](https://conda.io/) package is
 also available in the Bioconda channel [@Bioconda:2018].
 
