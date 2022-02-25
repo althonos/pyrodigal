@@ -1,0 +1,5 @@
+scipy
+matplotlib
+numpy
+tqdm
+palettable

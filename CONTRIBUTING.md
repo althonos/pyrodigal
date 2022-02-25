@@ -24,6 +24,32 @@ $ python setup.py build_ext --debug --inplace
 $ python -m unittest discover -vv
 ```
 
+## Running benchmarks
+
+### Connection scoring
+
+The `benches` folder contains benchmarks for evaluating the performance of
+the node connection scoring step, essentially to make sure that the SIMD
+code makes it faster. To run the benchmark you need a CPU that supports
+SSE2 and AVX2.
+
+Start by building `pyrodigal` locally:
+```console
+$ python setup.py build_ext --debug --inplace
+```
+
+Then make sure you have the required packages and data:
+```console
+$ pip install --user -r benches/connection_scoring/requirements.txt
+$ python benches/connection_scoring/data/download.py
+```
+
+Finally, run the benchmarks and plot the results:
+```console
+$ python benches/connection_scoring/bench.py -d benches/connection_scoring/data/ -o times.json
+$ python benches/connection_scoring/plot.py -i times.json --show
+```
+
 ## Coding guidelines
 
 This project targets Python 3.5 or later.
