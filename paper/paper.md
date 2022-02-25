@@ -114,9 +114,8 @@ There are pairs of codons between which a gene can never span, such as two
 stop codons, or a forward start codon and a reverse stop codon, as shown in
 \autoref{fig:method}. Upon inspection, we realized the `score_connections`
 was still called in invalid cases that could be labelled as such beforehand.
-
-Identifying these invalid connections is done by checking the strand, type and
-reading frame of the pair of nodes. Considering two nodes $i$ and $j$, the
+Identifying these invalid connections is feasible by checking the strand, type
+and reading frame of a node pair. Considering two nodes $i$ and $j$, the
 connection between them is invalid if any of these boolean equations is true:
 
 - $(T_i = STOP) \land (T_j \ne STOP) \land (S_i = S_j)$
@@ -136,8 +135,8 @@ Since all these attributes have a small number of possible values
 $-1$, $-2$, $-3$, $+1$, $+2$, $+3$ for the frame), they can all be stored in
 a single byte. Using the SIMD features of modern CPUs allows processing several
 nodes at once (8 nodes with NEON and SSE2 features, 16 nodes with AVX2). This
-first pass produces a look-up table that allows bypassing the scoring of invalid
-connection.
+first pass produces a look-up table used to bypass the scoring of invalid
+connections.
 
 The performance of the connection scoring was evaluated on 50 bacterial
 sequences of various length, as shown in \autoref{fig:benchmark}. It suggests
