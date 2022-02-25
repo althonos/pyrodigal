@@ -43,11 +43,14 @@ similar performance through a friendly object-oriented interface. The
 predicted genes are returned as Python objects, with properties for retrieving
 confidence scores or coordinates, and methods for translating the gene sequence.
 
-`pyrodigal` has already been used in several works in preparation [@hafeZ:2021, @GECCO:2021]
-and scientific publications [@PhageBoost:2021].
+Pyrodigal has already been used as the initial ORF finding method in several
+domains, including biosynthetic gene cluster prediction [@GECCO:2021],
+prophage identification [@PhageBoost:2021, @hafeZ:2021], and pangenome
+analysis [@AlphaMine:2021].
 
 
-# Improvements
+
+<!-- # Improvements
 
 Although using the same data structures and scoring method as Prodigal,
 Pyrodigal improves on several aspects of the original software by
@@ -65,14 +68,16 @@ re-implementing peripheral parts of the original software:
 - Use of local buffers allows for thread-locality in the `OrfFinder.find_genes`
   method. In addition, `pyrodigal` makes use of the Cython feature for
   releasing the Python Global Interpreter Lock (GIL), which makes the ORF
-  finder class usable in multi-threaded code.
+  finder class usable in multi-threaded code. -->
 
 
 # Optimization
 
-In addition to the changes to the data storage, Pyrodigal implements a
-SIMD-accelerated heuristic filter for skipping the scoring of connections
-between dynamic programming nodes.
+Prodigal was profiled with Valgrind [@Valgrind:2007] to identify critical
+parts of the original code. Using bacterial genomes from the proGenomes2
+database [@proGenomes2:2020], we found that for long enough sequences,
+a large fraction of the CPU cycles was spent in the `score_connections`
+function.
 
 Prodigal works internally with a dynamic programming approach to score all the
 connections nodes, which represent start and stop codon throughout the sequence.
@@ -83,41 +88,57 @@ never span, such as two stop codons, or a forward start codon and a reverse
 stop codon.
 
 Identifying these invalid connections is done by checking the strand, type and
-frame of the pair of nodes. Considering two nodes $i$ and $j$, the connection
-between them is invalid if any of these boolean equations evaluates to true:
+reading frame of the pair of nodes. Considering two nodes $i$ and $j$, the
+connection between them is invalid if any of these boolean equations evaluates to true:
 
-- $(type_i = STOP) \and (type_j \ne STOP) \and (strand_i = strand_j)$
-- $(strand_i = 1) \and (type_i \ne STOP) \and (strand_j = -1)$
-- $(strand_i = -1) \and (type_i = STOP) \and (strand_j = 1)$
-- $(strand_i = -1) \and (type_i \ne STOP) \and (strand_j = 1) \and (type_j = STOP)$
-- $(strand_i = strand_j) \and (strand_i = 1) \and (type_i \ne STOP) \and (type_j = STOP) \and (frame_i \ne frame_j)$
-- $(strand_i = strand_j) \and (strand_i = -1) \and (type_i = STOP) \and (type_j \ne STOP) \and (frame_i \ne frame_j)$
+- $(T_i = STOP) \and (T_j \ne STOP) \and (S_i = S_j)$
+- $(S_i = 1) \and (T_i \ne STOP) \and (S_j = -1)$
+- $(S_i = -1) \and (T_i = STOP) \and (S_j = 1)$
+- $(S_i = -1) \and (T_i \ne STOP) \and (S_j = 1) \and (T_j = STOP)$
+- $(S_i = S_j) \and (S_i = 1) \and (T_i \ne STOP) \and (T_j = STOP) \and (F_i \ne F_j)$
+- $(S_i = S_j) \and (S_i = -1) \and (T_i = STOP) \and (T_j \ne STOP) \and (F_i \ne F_j)$
 
-<!-- Since all these attributes have a small number of possible values ($+1$ or $-1$ for the strand;
-$ATG$, $GTG$, $TTG$ or $STOP$ for the type; $-1$, $-2$, $-3$, $+1$, $+2$, $+3$ for the frame),
-they can each be stored in an single byte. -->
+where $T_i$, $S_i$ and $F_i$ are respectively the type, strand, and reading
+frame of the node $i$.
 
-Before scoring the connections between node $i$ and all subsequent nodes,
-Pyrodigal makes a first pass to check which connections are invalid based on the
-equations above. Using SIMD features of modern CPUs allows processing several
-nodes at once (8 nodes with NEON and SSE features, 16 nodes with AVX). This
-first pass produces a look-up table that allows bypassing the scoring
-of invalid connection.
+We developed a heuristic filter to quickly identify node pairs forming an
+invalid connection prior to the scoring step using the above formula.
+Since all these attributes have a small number of possible values
+($+1$ or $-1$ for the strand; $ATG$, $GTG$, $TTG$ or $STOP$ for the type;
+$-1$, $-2$, $-3$, $+1$, $+2$, $+3$ for the frame), they can all be stored in
+a single byte. Using the SIMD features of modern CPUs allows processing several
+nodes at once (8 nodes with NEON and SSE2 features, 16 nodes with AVX2). This
+first pass produces a look-up table that allows bypassing the scoring of invalid
+connection.
+
+The performance of the connection scoring was evaluated on 50 bacterial
+sequences of various length, as shown in \autoref{fig:benchmark}. It suggests
+that even with the added cost of the initial pass, enabling the heuristic
+filter saves about half of the time needed to score connections between all
+nodes of a sequence.
+
+![Evaluation of the connection scoring performance with different heuristic
+filter backends (SSE2 or AVX2) or without enabling the filter (None). *Each
+sequence was processed 10 times on a quiet i7-8550U CPU @ 1.80GHz*. \label{fig:benchmark}](figure2.svg){width=100%}
 
 
-# Distribution
+# Availability
 
-Pyrodigal is distributed on the Python Package Index (PyPI), which make it
-extremely simple to install with `pip`. Pre-compiled distributions are made
-available for MacOS, Linux and Windows x86-64, as well as Linux Aarch64 machines.
-Overall, distribution through PyPI makes it easier to develop a Python
+Pyrodigal is distributed on the Python Package Index (PyPI) under the
+[GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl-3.0).
+Pre-compiled distributions are available for MacOS, Linux and Windows x86-64,
+as well as Linux Aarch64 machines. A [Conda](https://conda.io/) package is
+also available in the Bioconda channel [@Bioconda:2018].
+
+<!-- Overall, distribution through PyPI makes it easier to develop a Python
 workflow or application relying on Pyrodigal for the gene calling, since
 end-users are not required to handle the setup of the Prodigal binaries
-themselves.
+themselves. -->
 
 
 # Acknowledgments
 
+We thank Laura M. Carroll for her input on the redaction of this manuscript.
 This work was funded by the European Molecular Biology Laboratory and the
 German Research Foundation (Deutsche Forschungsgemeinschaft, DFG, grant no. 395357507 – SFB 1371).
 
