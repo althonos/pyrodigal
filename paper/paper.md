@@ -77,16 +77,30 @@ re-implementing peripheral parts of the original software:
 
 # Method
 
+Prodigal works internally with a dynamic programming approach to score all the
+connections nodes, which represent start and stop codon throughout the sequence,
+as shown in \autoref{fig:method}. The dynamic programming algorithm assigns a
+score for a gene spanning between two codons based mostly on the frequency of
+nucleotide hexamers inside the gene sequence.
+
 ![Graphical depiction of the Prodigal method for identifying genes in a sequence.
 First, the sequence is analysed to find start and stop in the 6 reading frames (1). Then
 dynamic programming nodes are created for each codon, each storing the strand and the
-type (green for start, red for stop) of the codon they were obtained from (2).
+type (green for start, red for stop) of the codon they were obtained from. They are then
+scored on biological criteria, such as the presence of a Shine-Dalgarno sequence (2).
 Putative genes are identified between all start and stop codons in a given
 window (a gene cannot span between any pair of nodes; some invalid connections are
-shown with red dashed lines), The putative genes are then scored using a dynamic
-programming approach (3). Once all genes have been scored, the dynamic programming
-matrix is traversed  to find the highest scoring path, giving the final predictions (4).
+shown with red dashed lines). Then putative genes are then scored using a dynamic
+programming approach (3). Once all connections have been scored, the dynamic programming
+matrix is traversed to find the highest scoring path, giving the final predictions (4).
 \label{fig:method}](figure1.svg){width=100%}
+
+Pyrodigal adapts the first two steps so that the dynamic programming nodes
+can be extracted directly from a Python string containing the sequence data,
+rather than requiring formatting to an external file. In addition, the node
+storage has been reworked to use reallocating buffers, saving memory on
+smaller sequences. The node and connection scoring steps use the original
+Prodigal code.
 
 
 # Optimization
@@ -97,13 +111,10 @@ database [@proGenomes2:2020], we found that for long enough sequences,
 a large fraction of the CPU cycles was spent in the `score_connections`
 function.
 
-Prodigal works internally with a dynamic programming approach to score all the
-connections nodes, which represent start and stop codon throughout the sequence.
-The dynamic programming algorithm assigns a score for a gene spanning between
-two codons based mostly on the frequency of nucleotide hexamers inside the
-gene sequence. There are however pairs of codons between which a gene can
-never span, such as two stop codons, or a forward start codon and a reverse
-stop codon, as shown in \autoref{fig:method}.
+There are pairs of codons between which a gene can never span, such as two
+stop codons, or a forward start codon and a reverse stop codon, as shown in
+\autoref{fig:method}. Upon inspection, we realized the `score_connections`
+was still called in invalid cases that could be labelled as such beforehand.
 
 Identifying these invalid connections is done by checking the strand, type and
 reading frame of the pair of nodes. Considering two nodes $i$ and $j$, the
@@ -132,8 +143,8 @@ connection.
 The performance of the connection scoring was evaluated on 50 bacterial
 sequences of various length, as shown in \autoref{fig:benchmark}. It suggests
 that even with the added cost of the additional pass for each node, enabling
-the heuristic filter saves about half of the time needed to score connections
-between all the nodes of a sequence.
+the heuristic filter in Pyrodigal saves about half of the time needed to score
+connections between all the nodes of a sequence.
 
 ![Evaluation of the connection scoring performance with different heuristic
 filter SIMD backends (SSE2 or AVX2) or without enabling the filter (None).
@@ -148,18 +159,18 @@ Pre-compiled distributions are available for MacOS, Linux and Windows x86-64,
 as well as Linux Aarch64 machines. A [Conda](https://conda.io/) package is
 also available in the Bioconda channel [@Bioconda:2018].
 
-<!-- Overall, distribution through PyPI makes it easier to develop a Python
-workflow or application relying on Pyrodigal for the gene calling, since
-end-users are not required to handle the setup of the Prodigal binaries
-themselves. -->
+The source code is available in a git repository on [GitHub](https://github.com/althonos/pyrodigal),
+and features a Continuous Integration workflow to run integration tests on changes.
+Documentation is hosted on [ReadTheDocs](https://pyrodigal.readthedocs.io) and
+built for each new release.
 
 
 # Acknowledgments
 
-We thank Laura M. Carroll for her input on the redaction of this manuscript.
-This work was funded by the European Molecular Biology Laboratory and the
-German Research Foundation (Deutsche Forschungsgemeinschaft, DFG, grant no. 395357507
-– [SFB 1371](https://www.sfb1371.tum.de/)).
+We thank Laura M. Carroll for her input on the redaction of this manuscript,
+and Georg Zeller for his supervision. This work was funded by the European
+Molecular Biology Laboratory and the German Research Foundation
+(Deutsche Forschungsgemeinschaft, DFG, grant no. 395357507 – [SFB 1371](https://www.sfb1371.tum.de/)).
 
 
 # References
