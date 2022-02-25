@@ -87,13 +87,12 @@ nucleotide hexamers inside the gene sequence.
 First, the sequence is analysed to find start and stop in the 6 reading frames (1). Then
 dynamic programming nodes are created for each codon, each storing the strand and the
 type (green for start, red for stop) of the codon they were obtained from. They are then
-scored on biological criteria, such as the presence of a Shine-Dalgarno sequence (2).
-Putative genes are identified between all start and stop codons in a given
-window (a gene cannot span between any pair of nodes; some invalid connections are
-shown with red dashed lines). Then putative genes are then scored using a dynamic
-programming approach (3). Once all connections have been scored, the dynamic programming
-matrix is traversed to find the highest scoring path, giving the final predictions (4).
-\label{fig:method}](figure1.svg){width=100%}
+scored on biological criteria (2). Putative genes are identified between all start and
+stop codons in a given window (a gene cannot span between any pair of nodes;
+some invalid connections are shown with dashed lines as examples). Then putative
+genes are scored using a dynamic programming approach (3). Once all connections
+have been processed, the dynamic programming matrix is traversed to find the highest scoring
+path, giving the final predictions (4). \label{fig:method}](figure1.svg){width=100%}
 
 Pyrodigal adapts the first two steps so that the dynamic programming nodes
 can be extracted directly from a Python string containing the sequence data,
