@@ -166,6 +166,12 @@ Contributions are more than welcome! See
 [`CONTRIBUTING.md`](https://github.com/althonos/pyrodigal/blob/main/CONTRIBUTING.md)
 for more details.
 
+## 📋 Changelog
+
+This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
+and provides a [changelog](https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md)
+in the [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) format.
+
 
 ## ⚖️ License
 
