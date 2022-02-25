@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 import scipy.stats
 from palettable.cartocolors.qualitative import Bold_4
 
-plt.rcParams["svg.fonttype"] = "none"
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", required=True)
@@ -66,6 +64,7 @@ plt.xlabel("Nucleotide count (Mbp)")
 plt.ylabel("Time (s)")
 
 
+plt.tight_layout()
 output = args.output or args.input.replace(".json", ".svg")
 plt.savefig(output, transparent=True)
 if args.show:
