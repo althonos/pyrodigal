@@ -1,5 +1,5 @@
 ---
-title: 'Pyrodigal: Python bindings and interface to Prodigal, an efficient ORF finder for prokaryotes.'
+title: 'Pyrodigal: Python bindings and interface to Prodigal, an efficient method for gene prediction in prokaryotes.'
 tags:
   - Python
   - Cython
@@ -19,13 +19,13 @@ bibliography: paper.bib
 
 Improvements in sequencing technologies have seen the amount of available
 genomic data expand considerably over the last twenty years. One of the key
-step for analysing this data is the prediction of protein-coding regions in
-the genomic sequences, known as Open Reading Frames (ORFs), which span between
+step for analysing is the prediction of protein-coding regions in genomic
+sequences, known as Open Reading Frames (ORFs), which span between
 a start and a stop codon. A recent comparison of several ORF prediction methods
 [@AssessORF:2019] has shown that Prodigal [@Prodigal:2010], a prokaryotic gene
-finder using dynamic programming, is one of the highest performing *ab initio*
-ORF finder. Pyrodigal is a Python package that provides bindings and an
-interface to Prodigal to make it easier to use in Python applications.
+finder that uses dynamic programming, is one of the highest performing
+*ab initio* ORF finders. Pyrodigal is a Python package that provides bindings
+and an interface to Prodigal to make it easier to use in Python applications.
 
 
 # Statement of need
@@ -33,9 +33,9 @@ interface to Prodigal to make it easier to use in Python applications.
 Prodigal is used in thousands of applications as the gene calling method
 for processing genomic sequences. It is implemented in ANSI C, making it
 extremely efficient and relatively easy to compile on different platforms.
-However, the only way to use Prodigal is through an executable making it
-inconvenient for less knowledgeable bioinformaticians only familiar with
-the Python language. In addition to the hassle caused by the invocation of
+However, the only way to use Prodigal is through an executable, making it
+inconvenient for bioinformaticians who rely on the increasingly popular
+Python language. In addition to the hassle caused by the invocation of
 the executable from Python code, the distribution of Python programs relying
 on Prodigal is also problematic, since they now require an external binary
 that cannot be installed from the [Python Package Index](https://pypi.org) (PyPI).
@@ -46,7 +46,7 @@ predictions and similar performance through a friendly object-oriented interface
 The predicted genes are returned as Python objects, with properties for retrieving
 confidence scores or coordinates, and methods for translating the gene sequence.
 Prodigal is compiled from source and statically linked into a compiled Python
-extension, which allows installing it with a single `pip install` command,
+extension, which allows it to be installed with a single `pip install` command,
 even on a target machine that requires compilation.
 
 Pyrodigal has already been used as the initial ORF finding method in several
@@ -55,40 +55,21 @@ prophage identification [@PhageBoost:2021; @hafeZ:2021], and pangenome
 analysis [@AlphaMine:2021].
 
 
-<!-- # Improvements
-
-Although using the same data structures and scoring method as Prodigal,
-Pyrodigal improves on several aspects of the original software by
-re-implementing peripheral parts of the original software:
-
-- Sequence data is not stored as a bitmap but as a byte array, which comes at
-  the cost of slightly increased memory consumption in exchange of faster memory
-  access. Memory profiling has revealed that the bulk of memory consumption
-  in Prodigal is not caused by sequence data but node data, so this trade-off
-  is acceptable.
-- Memory management has been reworked to use buffers growing on insertion,
-  making the memory consumption slightly more conservative on smaller sequences
-  and addressing edges cases on sequences with a large number of start and
-  STOP codons.
-- Use of local buffers allows for thread-locality in the `OrfFinder.find_genes`
-  method. In addition, `pyrodigal` makes use of the Cython feature for
-  releasing the Python Global Interpreter Lock (GIL), which makes the ORF
-  finder class usable in multi-threaded code. -->
-
 # Method
 
-Prodigal works internally with a dynamic programming approach to score all the
-connections nodes, which represent start and stop codon throughout the sequence,
-as shown in \autoref{fig:method}. The dynamic programming algorithm assigns a
-score for a gene spanning between two codons based mostly on the frequency of
-nucleotide hexamers inside the gene sequence.
+Internally, Prodigal identifies start and stop codons throughout a genomic
+sequence, which are represented as nodes. It then uses a dynamic programming
+approach to compute scores for every pair of nodes (i.e. putative genes) as
+shown in \autoref{fig:method}. Scores assigned to predicted genes are based
+primarily on the frequency of nucleotide hexamers inside the gene sequence.
 
 ![Graphical depiction of the Prodigal method for identifying genes in a sequence.
-First, the sequence is analysed to find start and stop in the 6 reading frames (1). Then
-dynamic programming nodes are created for each codon, each storing the strand and the
-type (green for start, red for stop) of the codon they were obtained from. They are then
-scored on biological criteria (2). Putative genes are identified between all start and
-stop codons in a given window (a gene cannot span between any pair of nodes;
+First, the sequence is analysed to find start and stop codons in the 6 reading frames (1).
+Dynamic programming nodes are then created for each codon, each storing the strand
+(shown with the triangle direction, right for the direct strand, left for the reverse strand)
+and the type (green for start, red for stop) of the codon they were obtained from.
+Nodes are then scored on biological criteria (2). Putative genes are identified between all
+start and stop codons in a given window (a gene cannot span between any pair of nodes;
 some invalid connections are shown with dashed lines as examples). Then putative
 genes are scored using a dynamic programming approach (3). Once all connections
 have been processed, the dynamic programming matrix is traversed to find the highest scoring
@@ -105,20 +86,20 @@ Prodigal code.
 # Optimization
 
 Prodigal was profiled with Valgrind [@Valgrind:2007] to identify critical
-parts of the original code. Using bacterial genomes from the proGenomes2
+parts of the original code. Using bacterial genomes from the proGenomes v2.1
 database [@proGenomes2:2020], we found that for long enough sequences,
-a large fraction of the CPU cycles was spent in the `score_connections`
+a large fraction of the CPU cycles was spent in the `score_connection`
 function.
 
 There are pairs of codons between which a gene can never span, such as two
 stop codons, or a forward start codon and a reverse stop codon, as shown in
-\autoref{fig:method}. Upon inspection, we realized the `score_connections`
+\autoref{fig:method}. Upon inspection, we realized the `score_connection`
 was still called in invalid cases that could be labelled as such beforehand.
 Identifying these invalid connections is feasible by checking the strand, type
 and reading frame of a node pair. Considering two nodes $i$ and $j$, the
 connection between them is invalid if any of these boolean equations is true:
 
-- $(T_i = STOP) \land (T_j \ne STOP) \land (S_i = S_j)$
+- $(T_i \ne STOP) \land (T_j \ne STOP) \land (S_i = S_j)$
 - $(S_i = 1) \land (T_i \ne STOP) \land (S_j = -1)$
 - $(S_i = -1) \land (T_i = STOP) \land (S_j = 1)$
 - $(S_i = -1) \land (T_i \ne STOP) \land (S_j = 1) \land (T_j = STOP)$
@@ -126,17 +107,18 @@ connection between them is invalid if any of these boolean equations is true:
 - $(S_i = S_j) \land (S_i = -1) \land (T_i = STOP) \land (T_j \ne STOP) \land (F_i \ne F_j)$
 
 where $T_i$, $S_i$ and $F_i$ are respectively the type, strand, and reading
-frame of the node $i$.
+frame of the node $i$, with forward and reverse strands encoded as $+1$ and
+$-1$ respectively.
 
 We developed a heuristic filter to quickly identify node pairs forming an
 invalid connection prior to the scoring step using the above formulas.
 Since all these attributes have a small number of possible values
-($+1$ or $-1$ for the strand; $ATG$, $GTG$, $TTG$ or $STOP$ for the type;
-$-1$, $-2$, $-3$, $+1$, $+2$, $+3$ for the frame), they can all be stored in
-a single byte. Using the SIMD features of modern CPUs allows processing several
-nodes at once (8 nodes with NEON and SSE2 features, 16 nodes with AVX2). This
-first pass produces a look-up table used to bypass the scoring of invalid
-connections.
+($+1$ or $-1$ for the forward or reverse strand; $ATG$, $GTG$, $TTG$ or $STOP$
+for the codon type; $-1$, $-2$, $-3$, $+1$, $+2$, $+3$ for the reading frame),
+they can all be stored in a single byte. Use of the SIMD features of modern CPUs
+allows several nodes to be processed at once (8 nodes with NEON and SSE2 features,
+16 nodes with AVX2). This first pass produces a look-up table used to bypass the
+scoring of invalid connections.
 
 The performance of the connection scoring was evaluated on 50 bacterial
 sequences of various length, as shown in \autoref{fig:benchmark}. It suggests
