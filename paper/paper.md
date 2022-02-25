@@ -35,19 +35,24 @@ for processing genomic sequences. It is implemented in ANSI C, making it
 extremely efficient and relatively easy to compile on different platforms.
 However, the only way to use Prodigal is through an executable making it
 inconvenient for less knowledgeable bioinformaticians only familiar with
-the Python language.
+the Python language. In addition to the hassle caused by the invocation of
+the executable from Python code, the distribution of Python programs relying
+on Prodigal is also problematic, since they now require an external binary
+that cannot be installed from the [Python Package Index](https://pypi.org) (PyPI).
 
-In this work we present Pyrodigal, a Python module implemented in Cython
-that binds to the Prodigal internals, resulting in identical predictions and
-similar performance through a friendly object-oriented interface. The
-predicted genes are returned as Python objects, with properties for retrieving
+To address these issues, we developed Pyrodigal, a Python module implemented
+in Cython [@Cython] that binds to the Prodigal internals, resulting in identical
+predictions and similar performance through a friendly object-oriented interface.
+The predicted genes are returned as Python objects, with properties for retrieving
 confidence scores or coordinates, and methods for translating the gene sequence.
+Prodigal is compiled from source and statically linked into a compiled Python
+extension, which allows installing it with a single `pip install` command,
+even on a target machine that requires compilation.
 
 Pyrodigal has already been used as the initial ORF finding method in several
 domains, including biosynthetic gene cluster prediction [@GECCO:2021],
-prophage identification [@PhageBoost:2021, @hafeZ:2021], and pangenome
+prophage identification [@PhageBoost:2021; @hafeZ:2021], and pangenome
 analysis [@AlphaMine:2021].
-
 
 
 <!-- # Improvements
@@ -89,20 +94,20 @@ stop codon.
 
 Identifying these invalid connections is done by checking the strand, type and
 reading frame of the pair of nodes. Considering two nodes $i$ and $j$, the
-connection between them is invalid if any of these boolean equations evaluates to true:
+connection between them is invalid if any of these boolean equations is true:
 
-- $(T_i = STOP) \and (T_j \ne STOP) \and (S_i = S_j)$
-- $(S_i = 1) \and (T_i \ne STOP) \and (S_j = -1)$
-- $(S_i = -1) \and (T_i = STOP) \and (S_j = 1)$
-- $(S_i = -1) \and (T_i \ne STOP) \and (S_j = 1) \and (T_j = STOP)$
-- $(S_i = S_j) \and (S_i = 1) \and (T_i \ne STOP) \and (T_j = STOP) \and (F_i \ne F_j)$
-- $(S_i = S_j) \and (S_i = -1) \and (T_i = STOP) \and (T_j \ne STOP) \and (F_i \ne F_j)$
+- $(T_i = STOP) \land (T_j \ne STOP) \land (S_i = S_j)$
+- $(S_i = 1) \land (T_i \ne STOP) \land (S_j = -1)$
+- $(S_i = -1) \land (T_i = STOP) \land (S_j = 1)$
+- $(S_i = -1) \land (T_i \ne STOP) \land (S_j = 1) \land (T_j = STOP)$
+- $(S_i = S_j) \land (S_i = 1) \land (T_i \ne STOP) \land (T_j = STOP) \land (F_i \ne F_j)$
+- $(S_i = S_j) \land (S_i = -1) \land (T_i = STOP) \land (T_j \ne STOP) \land (F_i \ne F_j)$
 
 where $T_i$, $S_i$ and $F_i$ are respectively the type, strand, and reading
 frame of the node $i$.
 
 We developed a heuristic filter to quickly identify node pairs forming an
-invalid connection prior to the scoring step using the above formula.
+invalid connection prior to the scoring step using the above formulas.
 Since all these attributes have a small number of possible values
 ($+1$ or $-1$ for the strand; $ATG$, $GTG$, $TTG$ or $STOP$ for the type;
 $-1$, $-2$, $-3$, $+1$, $+2$, $+3$ for the frame), they can all be stored in
@@ -113,18 +118,18 @@ connection.
 
 The performance of the connection scoring was evaluated on 50 bacterial
 sequences of various length, as shown in \autoref{fig:benchmark}. It suggests
-that even with the added cost of the initial pass, enabling the heuristic
-filter saves about half of the time needed to score connections between all
-nodes of a sequence.
+that even with the added cost of the additional pass for each node, enabling
+the heuristic filter saves about half of the time needed to score connections
+between all the nodes of a sequence.
 
 ![Evaluation of the connection scoring performance with different heuristic
-filter backends (SSE2 or AVX2) or without enabling the filter (None). *Each
-sequence was processed 10 times on a quiet i7-8550U CPU @ 1.80GHz*. \label{fig:benchmark}](figure2.svg){width=100%}
+filter SIMD backends (SSE2 or AVX2) or without enabling the filter (None).
+*Each sequence was processed 10 times on a quiet i7-8550U CPU @ 1.80GHz*. \label{fig:benchmark}](figure2.svg){width=100%}
 
 
 # Availability
 
-Pyrodigal is distributed on the Python Package Index (PyPI) under the
+Pyrodigal is distributed on PyPI under the
 [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl-3.0).
 Pre-compiled distributions are available for MacOS, Linux and Windows x86-64,
 as well as Linux Aarch64 machines. A [Conda](https://conda.io/) package is
@@ -140,7 +145,8 @@ themselves. -->
 
 We thank Laura M. Carroll for her input on the redaction of this manuscript.
 This work was funded by the European Molecular Biology Laboratory and the
-German Research Foundation (Deutsche Forschungsgemeinschaft, DFG, grant no. 395357507 – SFB 1371).
+German Research Foundation (Deutsche Forschungsgemeinschaft, DFG, grant no. 395357507
+– [SFB 1371](https://www.sfb1371.tum.de/)).
 
 
 # References
