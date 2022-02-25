@@ -21,11 +21,11 @@ Improvements in sequencing technologies have seen the amount of available
 genomic data expand considerably over the last twenty years. One of the key
 step for analysing this data is the prediction of protein-coding regions in
 the genomic sequences, known as Open Reading Frames (ORFs), which span between
-a start and a stop codon.
-
-A recent comparison of several ORF prediction methods [@AssessORF:2019]
-has shown that Prodigal [@Prodigal:2010], a prokaryotic gene finder using
-dynamic programming, is one of the highest performing *ab initio* ORF finder.
+a start and a stop codon. A recent comparison of several ORF prediction methods
+[@AssessORF:2019] has shown that Prodigal [@Prodigal:2010], a prokaryotic gene
+finder using dynamic programming, is one of the highest performing *ab initio*
+ORF finder. Pyrodigal is a Python package that provides bindings and an
+interface to Prodigal to make it easier to use in Python applications.
 
 
 # Statement of need
@@ -75,6 +75,19 @@ re-implementing peripheral parts of the original software:
   releasing the Python Global Interpreter Lock (GIL), which makes the ORF
   finder class usable in multi-threaded code. -->
 
+# Method
+
+![Graphical depiction of the Prodigal method for identifying genes in a sequence.
+First, the sequence is analysed to find start and stop in the 6 reading frames (1). Then
+dynamic programming nodes are created for each codon, each storing the strand and the
+type (green for start, red for stop) of the codon they were obtained from (2).
+Putative genes are identified between all start and stop codons in a given
+window (a gene cannot span between any pair of nodes; some invalid connections are
+shown with red dashed lines), The putative genes are then scored using a dynamic
+programming approach (3). Once all genes have been scored, the dynamic programming
+matrix is traversed  to find the highest scoring path, giving the final predictions (4).
+\label{fig:method}](figure1.svg){width=100%}
+
 
 # Optimization
 
@@ -90,7 +103,7 @@ The dynamic programming algorithm assigns a score for a gene spanning between
 two codons based mostly on the frequency of nucleotide hexamers inside the
 gene sequence. There are however pairs of codons between which a gene can
 never span, such as two stop codons, or a forward start codon and a reverse
-stop codon.
+stop codon, as shown in \autoref{fig:method}.
 
 Identifying these invalid connections is done by checking the strand, type and
 reading frame of the pair of nodes. Considering two nodes $i$ and $j$, the
