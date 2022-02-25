@@ -44,15 +44,16 @@ To address these issues, we developed Pyrodigal, a Python module implemented
 in Cython [@Cython] that binds to the Prodigal internals, resulting in identical
 predictions and similar performance through a friendly object-oriented interface.
 The predicted genes are returned as Python objects, with properties for retrieving
-confidence scores or coordinates, and methods for translating the gene sequence.
-Prodigal is compiled from source and statically linked into a compiled Python
-extension, which allows it to be installed with a single `pip install` command,
-even on a target machine that requires compilation.
+confidence scores or coordinates, and methods for translating the gene sequence
+with a default or user-provided translation table. Prodigal is compiled from
+source and statically linked into a compiled Python extension, which allows
+it to be installed with a single `pip install` command, even on a target
+machine that requires compilation.
 
-Pyrodigal has already been used as the initial ORF finding method in several
-domains, including biosynthetic gene cluster prediction [@GECCO:2021],
-prophage identification [@PhageBoost:2021; @hafeZ:2021], and pangenome
-analysis [@AlphaMine:2021].
+Pyrodigal has already been used as the implementation for the initial ORF
+finding stage in several domains, including biosynthetic gene cluster
+prediction [@GECCO:2021], prophage identification [@PhageBoost:2021; @hafeZ:2021],
+and pangenome analysis [@AlphaMine:2021].
 
 
 # Method
