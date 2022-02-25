@@ -39,7 +39,7 @@ for color, (backend, group) in zip(
     reg = scipy.stats.linregress(X, Y)
     plt.plot([ 0, max(X) ], [ reg.intercept, reg.slope*max(X) + reg.intercept ], color=color, linestyle="--", marker="")
     ci = [1.96 * r["stddev"] / math.sqrt(len(r["times"])) for r in group]
-    plt.errorbar(X, Y, ci, linestyle='', marker="+", color=color, elinewidth=0.3, ecolor='black', label=f"{backend} (R={reg.rvalue:.3f})")
+    plt.errorbar(X, Y, ci, linestyle='', marker="+", color=color, elinewidth=0.3, ecolor='black', label=f"{backend} ($R^2$={reg.rvalue**2:.3f})")
 plt.legend()
 plt.xlabel("Node count")
 plt.ylabel("Time (s)")
@@ -56,7 +56,7 @@ for color, (backend, group) in zip(
     reg = scipy.stats.linregress(X, Y)
     plt.plot([ 0, max(X) ], [ reg.intercept, reg.slope*max(X) + reg.intercept ], color=color, linestyle="--", marker="")
     ci = [1.96 * r["stddev"] / math.sqrt(len(r["times"])) for r in group]
-    plt.errorbar(X, Y, ci, linestyle='', marker="+", color=color, elinewidth=0.3, ecolor='black', label=f"{backend} (R={reg.rvalue:.3f})")
+    plt.errorbar(X, Y, ci, linestyle='', marker="+", color=color, elinewidth=0.3, ecolor='black', label=f"{backend} ($R^2$={reg.rvalue**2:.3f})")
 plt.legend()
 plt.xlabel("Nucleotide count (Mbp)")
 plt.ylabel("Time (s)")
