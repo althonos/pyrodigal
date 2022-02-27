@@ -11,6 +11,7 @@ authors:
     affiliation: 1
 affiliations:
   - name: Structural and Computational Biology Unit, EMBL, Heidelberg, Germany
+    index: 1
 date: 24 February 2022
 bibliography: paper.bib
 ---
