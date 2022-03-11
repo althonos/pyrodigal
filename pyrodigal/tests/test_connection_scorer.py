@@ -5,7 +5,7 @@ import sys
 import unittest
 
 from .. import Nodes, Sequence, _pyrodigal
-from .._pyrodigal import METAGENOMIC_BINS, add_nodes, ConnectionScorer
+from .._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
 
 from .fasta import parse
 
@@ -30,7 +30,7 @@ class TestConnectionScorer(unittest.TestCase):
         scorer_generic = ConnectionScorer(backend=None)
         # add nodes from the sequence
         nodes = Nodes()
-        add_nodes(nodes, seq, tinf)
+        nodes.extract(seq, tinf)
         nodes.sort()
         # index nodes for the scorers
         scorer_sse.index(nodes)
@@ -62,7 +62,7 @@ class TestConnectionScorer(unittest.TestCase):
         scorer_generic = ConnectionScorer(backend=None)
         # add nodes from the sequence
         nodes = Nodes()
-        add_nodes(nodes, seq, tinf)
+        nodes.extract(seq, tinf)
         nodes.sort()
         # index nodes for the scorers
         scorer_avx.index(nodes)

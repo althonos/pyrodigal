@@ -859,6 +859,8 @@ cdef class Nodes:
 
     """
 
+    # --- Magic methods ------------------------------------------------------
+
     def __cinit__(self):
         self.nodes = NULL
         self.capacity = 0
@@ -889,6 +891,8 @@ cdef class Nodes:
 
     def __sizeof__(self):
         return self.capacity * sizeof(_node) + sizeof(self)
+
+    # --- C interface --------------------------------------------------------
 
     cdef inline _node* _add_node(
         self,
@@ -928,13 +932,199 @@ cdef class Nodes:
         old_length, self.length = self.length, 0
         memset(self.nodes, 0, old_length * sizeof(_node))
 
-    def clear(self):
-        """Remove all nodes from the vector.
+    cdef int _extract(
+        self,
+        Sequence sequence,
+        TrainingInfo training_info,
+        bint closed=False,
+        int min_gene=MIN_GENE,
+        int min_edge_gene=MIN_EDGE_GENE,
+    ) nogil except -1:
+        cdef int    i
+        cdef int    last[3]
+        cdef int    min_dist[3]
+        cdef bint   saw_start[3]
+        cdef int    slmod        = sequence.slen % 3
+        cdef int    nn           = 0
+        cdef int    tt           = training_info.tinf.trans_table
+        cdef _mask* mlist        = sequence.masks.masks
+        cdef int    nm           = sequence.masks.length
+
+        # If sequence is smaller than a codon, there are no nodes to add
+        if sequence.slen < 3:
+            return nn
+
+        # Forward strand nodes
+        for i in range(3):
+            last[(i+slmod)%3] = sequence.slen + i
+            saw_start[i%3] = False
+            min_dist[i%3] = min_edge_gene
+            if not closed:
+                while last[(i+slmod)%3] + 3 > sequence.slen:
+                    last[(i+slmod)%3] -= 3
+        for i in reversed(range(sequence.slen-2)):
+            if sequence._is_stop(i, tt):
+                if saw_start[i%3]:
+                    self._add_node(
+                        ndx = last[i%3],
+                        type = node_type.STOP,
+                        strand = 1,
+                        stop_val = i,
+                        edge = not sequence._is_stop(last[i%3], tt),
+                    )
+                    nn += 1
+                min_dist[i%3] = min_gene
+                last[i%3] = i
+                saw_start[i%3] = False
+                continue
+            if last[i%3] >= sequence.slen:
+                continue
+            if not cross_mask(i, last[i%3], mlist, nm):
+                if last[i%3] - i + 3 >= min_dist[i%3] and sequence._is_start(i, tt):
+                    if sequence._is_atg(i):
+                        saw_start[i%3] = True
+                        self._add_node(
+                            ndx = i,
+                            type = node_type.ATG,
+                            stop_val = last[i%3],
+                            strand = 1,
+                            edge = False
+                        )
+                        nn += 1
+                    elif sequence._is_ttg(i):
+                        saw_start[i%3] = True
+                        self._add_node(
+                            ndx = i,
+                            type = node_type.TTG,
+                            stop_val = last[i%3],
+                            strand = 1,
+                            edge = False
+                        )
+                        nn += 1
+                    elif sequence._is_gtg(i):
+                        saw_start[i%3] = True
+                        self._add_node(
+                            ndx = i,
+                            type = node_type.GTG,
+                            stop_val = last[i%3],
+                            strand = 1,
+                            edge = False
+                        )
+                        nn += 1
+                if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+                    saw_start[i%3] = True
+                    self._add_node(
+                        ndx = i,
+                        type = node_type.ATG,
+                        stop_val = last[i%3],
+                        strand = 1,
+                        edge = True,
+                    )
+                    nn += 1
+        for i in range(3):
+            if saw_start[i%3]:
+                self._add_node(
+                    ndx = last[i%3],
+                    type = node_type.STOP,
+                    strand = 1,
+                    stop_val = i - 6,
+                    edge = not sequence._is_stop(last[i%3], tt)
+                )
+                nn += 1
+        # Reverse strand nodes
+        for i in range(3):
+            last[(i + slmod) % 3] = sequence.slen + i
+            saw_start[i%3] = False
+            min_dist[i%3] = min_edge_gene
+            if not closed:
+                while last[(i+slmod) % 3] + 3 > sequence.slen:
+                    last[(i+slmod)%3] -= 3
+        for i in reversed(range(sequence.slen-2)):
+            if sequence._is_stop(i, tt, strand=-1):
+                if saw_start[i%3]:
+                    self._add_node(
+                        ndx = sequence.slen - last[i%3] - 1,
+                        type = node_type.STOP,
+                        strand = -1,
+                        stop_val = sequence.slen - i - 1,
+                        edge = not sequence._is_stop(last[i%3], tt, strand=-1)
+                    )
+                    nn += 1
+                min_dist[i%3] = min_gene
+                last[i%3] = i
+                saw_start[i%3] = False
+                continue
+            if last[i%3] >= sequence.slen:
+                continue
+            if not cross_mask(sequence.slen-last[i%3]-1, sequence.slen-i-1, mlist, nm):
+                if last[i%3] - i + 3 >= min_dist[i%3] and sequence._is_start(i, tt, strand=-1):
+                    if sequence._is_atg(i, strand=-1):
+                        saw_start[i%3] = True
+                        self._add_node(
+                            ndx = sequence.slen - i - 1,
+                            type = node_type.ATG,
+                            strand = -1,
+                            stop_val = sequence.slen - last[i%3] - 1,
+                            edge = False
+                        )
+                        nn += 1
+                    elif sequence._is_gtg(i, strand=-1):
+                        saw_start[i%3] = True
+                        self._add_node(
+                            ndx = sequence.slen - i - 1,
+                            type = node_type.GTG,
+                            strand = -1,
+                            stop_val = sequence.slen - last[i%3] - 1,
+                            edge = False
+                        )
+                        nn += 1
+                    elif sequence._is_ttg(i, strand=-1):
+                        saw_start[i%3] = 1
+                        self._add_node(
+                            ndx = sequence.slen - i - 1,
+                            type = node_type.TTG,
+                            strand = -1,
+                            stop_val = sequence.slen - last[i%3] - 1,
+                            edge = False,
+                        )
+                        nn += 1
+                if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+                    saw_start[i%3] = 1
+                    node = self._add_node(
+                        ndx = sequence.slen - i - 1,
+                        type = node_type.ATG,
+                        strand = -1,
+                        stop_val = sequence.slen - last[i%3] - 1,
+                        edge = True,
+                    )
+                    nn += 1
+        for i in range(3):
+            if saw_start[i%3]:
+                node = self._add_node(
+                    ndx = sequence.slen - last[i%3] - 1,
+                    type = node_type.STOP,
+                    strand = -1,
+                    stop_val = sequence.slen - i + 5,
+                    edge = not sequence._is_stop(last[i%3], tt, strand=-1),
+                )
+                nn += 1
+
+        return nn
+
+    cdef int _sort(self) nogil except 1:
+        """Sort all nodes in the vector by their index and strand.
         """
-        with nogil:
-            self._clear()
+        qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
+
+    # --- Python interface ---------------------------------------------------
 
     cpdef Nodes copy(self):
+        """copy(self)\n--
+
+        Create a copy of the `Nodes` object.
+
+        """
+        assert self.nodes != NULL
         cdef Nodes new = Nodes.__new__(Nodes)
         new.capacity = self.capacity
         new.length = self.length
@@ -944,13 +1134,68 @@ cdef class Nodes:
         memcpy(new.nodes, self.nodes, new.capacity * sizeof(_node))
         return new
 
-    cdef int _sort(self) nogil except 1:
-        """Sort all nodes in the vector by their index and strand.
+    def clear(self):
+        """clear(self)\n--
+
+        Remove all nodes from the vector.
+
         """
-        qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
+        with nogil:
+            self._clear()
+
+    def extract(
+        self,
+        Sequence sequence,
+        TrainingInfo training_info,
+        bint closed=False,
+        int min_gene=MIN_GENE,
+        int min_edge_gene=MIN_EDGE_GENE
+    ):
+        """Extract nodes from the given sequence based on the training info.
+
+        After calling this method, nodes won't be sorted; make sure to call
+        `Nodes.sort` before using this further.
+
+        Arguments:
+            sequence (`~pyrodigal.Sequence`): The sequence to extract the
+                nodes from.
+            training_info (`~pyrodigal.TrainingInfo`): The training
+                information to use when extracting genes, containing relevant
+                data such as the translation table.
+            closed (`bool`): Set to `True` to prevent proteins from running
+                off edges when finding genes in a sequence.
+            min_gene (`int`): The minimum gene length. Defaults to the value
+                used in Prodigal.
+            min_edge_gene (`int`): The minimum edge gene length. Defaults to
+                the value used in Prodigal.
+
+        Returns:
+            `int`: The number of nodes added from the given sequence.
+
+        Note:
+            This function is adapted from the ``add_nodes`` function in
+            the ``node.c`` file of the Prodigal source code.
+
+        """
+        assert self.nodes != NULL
+
+        cdef int nn
+
+        with nogil:
+            nn = self._extract(
+                sequence,
+                training_info,
+                closed=closed,
+                min_gene=min_gene,
+                min_edge_gene=min_edge_gene
+            )
+        return nn
 
     def sort(self):
-        """Sort all nodes in the vector by their index and strand.
+        """sort(self)\n--
+
+        Sort all nodes in the vector by their index and strand.
+
         """
         with nogil:
             self._sort()
@@ -1991,184 +2236,6 @@ class Pyrodigal(OrfFinder):
         super(Pyrodigal, self).__init__(meta=meta, closed=closed, mask=mask, training_info=training_info)
 
 # --- C-level API reimplementation -------------------------------------------
-
-cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, int min_gene=MIN_GENE, int min_edge_gene=MIN_EDGE_GENE) nogil except -1:
-    """Adds nodes to the node list, based on the sequence.
-
-    Genes must be larger than 90bp in length, unless they run off the edge,
-    in which case they only have to be 50bp.
-
-    """
-    cdef int    i
-    cdef int    last[3]
-    cdef int    min_dist[3]
-    cdef bint   saw_start[3]
-    cdef int    slmod        = seq.slen % 3
-    cdef int    nn           = 0
-    cdef int    tt           = tinf.tinf.trans_table
-    cdef _mask* mlist        = seq.masks.masks
-    cdef int    nm           = seq.masks.length
-
-    # If sequence is smaller than a codon, there are no nodes to add
-    if seq.slen < 3:
-        return nn
-
-    # Forward strand nodes
-    for i in range(3):
-        last[(i+slmod)%3] = seq.slen + i
-        saw_start[i%3] = False
-        min_dist[i%3] = min_edge_gene
-        if not closed:
-            while last[(i+slmod)%3] + 3 > seq.slen:
-                last[(i+slmod)%3] -= 3
-    for i in reversed(range(seq.slen-2)):
-        if seq._is_stop(i, tt):
-            if saw_start[i%3]:
-                nodes._add_node(
-                    ndx = last[i%3],
-                    type = node_type.STOP,
-                    strand = 1,
-                    stop_val = i,
-                    edge = not seq._is_stop(last[i%3], tt),
-                )
-                nn += 1
-            min_dist[i%3] = min_gene
-            last[i%3] = i
-            saw_start[i%3] = False
-            continue
-        if last[i%3] >= seq.slen:
-            continue
-        if not cross_mask(i, last[i%3], mlist, nm):
-            if last[i%3] - i + 3 >= min_dist[i%3] and seq._is_start(i, tt):
-                if seq._is_atg(i):
-                    saw_start[i%3] = True
-                    nodes._add_node(
-                        ndx = i,
-                        type = node_type.ATG,
-                        stop_val = last[i%3],
-                        strand = 1,
-                        edge = False
-                    )
-                    nn += 1
-                elif seq._is_ttg(i):
-                    saw_start[i%3] = True
-                    nodes._add_node(
-                        ndx = i,
-                        type = node_type.TTG,
-                        stop_val = last[i%3],
-                        strand = 1,
-                        edge = False
-                    )
-                    nn += 1
-                elif seq._is_gtg(i):
-                    saw_start[i%3] = True
-                    nodes._add_node(
-                        ndx = i,
-                        type = node_type.GTG,
-                        stop_val = last[i%3],
-                        strand = 1,
-                        edge = False
-                    )
-                    nn += 1
-            if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
-                saw_start[i%3] = True
-                nodes._add_node(
-                    ndx = i,
-                    type = node_type.ATG,
-                    stop_val = last[i%3],
-                    strand = 1,
-                    edge = True,
-                )
-                nn += 1
-    for i in range(3):
-        if saw_start[i%3]:
-            nodes._add_node(
-                ndx = last[i%3],
-                type = node_type.STOP,
-                strand = 1,
-                stop_val = i - 6,
-                edge = not seq._is_stop(last[i%3], tt)
-            )
-            nn += 1
-    # Reverse strand nodes
-    for i in range(3):
-        last[(i + slmod) % 3] = seq.slen + i
-        saw_start[i%3] = False
-        min_dist[i%3] = min_edge_gene
-        if not closed:
-            while last[(i+slmod) % 3] + 3 > seq.slen:
-                last[(i+slmod)%3] -= 3
-    for i in reversed(range(seq.slen-2)):
-        if seq._is_stop(i, tt, strand=-1):
-            if saw_start[i%3]:
-                nodes._add_node(
-                    ndx = seq.slen - last[i%3] - 1,
-                    type = node_type.STOP,
-                    strand = -1,
-                    stop_val = seq.slen - i - 1,
-                    edge = not seq._is_stop(last[i%3], tt, strand=-1)
-                )
-                nn += 1
-            min_dist[i%3] = min_gene
-            last[i%3] = i
-            saw_start[i%3] = False
-            continue
-        if last[i%3] >= seq.slen:
-            continue
-        if not cross_mask(seq.slen-last[i%3]-1, seq.slen-i-1, mlist, nm):
-            if last[i%3] - i + 3 >= min_dist[i%3] and seq._is_start(i, tt, strand=-1):
-                if seq._is_atg(i, strand=-1):
-                    saw_start[i%3] = True
-                    nodes._add_node(
-                        ndx = seq.slen - i - 1,
-                        type = node_type.ATG,
-                        strand = -1,
-                        stop_val = seq.slen - last[i%3] - 1,
-                        edge = False
-                    )
-                    nn += 1
-                elif seq._is_gtg(i, strand=-1):
-                    saw_start[i%3] = True
-                    nodes._add_node(
-                        ndx = seq.slen - i - 1,
-                        type = node_type.GTG,
-                        strand = -1,
-                        stop_val = seq.slen - last[i%3] - 1,
-                        edge = False
-                    )
-                    nn += 1
-                elif seq._is_ttg(i, strand=-1):
-                    saw_start[i%3] = 1
-                    nodes._add_node(
-                        ndx = seq.slen - i - 1,
-                        type = node_type.TTG,
-                        strand = -1,
-                        stop_val = seq.slen - last[i%3] - 1,
-                        edge = False,
-                    )
-                    nn += 1
-            if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
-                saw_start[i%3] = 1
-                node = nodes._add_node(
-                    ndx = seq.slen - i - 1,
-                    type = node_type.ATG,
-                    strand = -1,
-                    stop_val = seq.slen - last[i%3] - 1,
-                    edge = True,
-                )
-                nn += 1
-    for i in range(3):
-        if saw_start[i%3]:
-            node = nodes._add_node(
-                ndx = seq.slen - last[i%3] - 1,
-                type = node_type.STOP,
-                strand = -1,
-                stop_val = seq.slen - i + 5,
-                edge = not seq._is_stop(last[i%3], tt, strand=-1),
-            )
-            nn += 1
-
-    return nn
 
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
     """Adds genes to the gene list, based on the nodes.
@@ -3601,7 +3668,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
 
     with nogil:
         # find all the potential starts and stops
-        add_nodes(nodes, sequence, tinf, closed=closed, min_gene=MIN_GENE, min_edge_gene=MIN_EDGE_GENE)
+        nodes._extract(sequence, tinf, closed=closed)
         nodes._sort()
         scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
@@ -3639,7 +3706,7 @@ cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint c
 
     with nogil:
         # find all the potential starts and stops, and sort them
-        add_nodes(nodes, sequence, tinf, closed=closed, min_gene=MIN_GENE, min_edge_gene=MIN_EDGE_GENE)
+        nodes._extract(sequence, tinf, closed=closed)
         nodes._sort()
         scorer._index(nodes)
         # second dynamic programming, using the dicodon statistics as the
@@ -3697,7 +3764,7 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
             if tinf.tinf.trans_table != tt:
                 tt = tinf.tinf.trans_table
                 nodes._clear()
-                add_nodes(nodes, sequence, tinf, closed=closed)
+                nodes._extract(sequence, tinf, closed=closed)
                 nodes._sort()
                 scorer._index(nodes)
             # compute the score for the current bin
@@ -3722,7 +3789,7 @@ cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int se
         # recover the nodes corresponding to the best run
         tinf.tinf = _METAGENOMIC_BINS[max_phase].tinf
         nodes._clear()
-        add_nodes(nodes, sequence, tinf, closed=closed)
+        nodes._extract(sequence, tinf, closed=closed)
         nodes._sort()
         score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
 
