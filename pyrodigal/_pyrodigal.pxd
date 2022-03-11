@@ -41,6 +41,7 @@ cdef class Masks:
     cpdef Masks copy(self)
     cdef int _clear(self) nogil except 1
 
+
 # --- Input sequence ---------------------------------------------------------
 
 cdef class Sequence:
@@ -62,6 +63,7 @@ cdef class Sequence:
 
     cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
     cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
+
 
 # --- Connection Scorer ------------------------------------------------------
 
@@ -87,6 +89,7 @@ cdef class ConnectionScorer:
     cdef int _compute_skippable(self, int min, int i) nogil except 1
     cdef int _score_connections(self, Nodes nodes, int min, int i, TrainingInfo tinf, bint final=*) nogil except 1
 
+
 # --- Nodes ------------------------------------------------------------------
 
 cdef class Motif:
@@ -96,6 +99,14 @@ cdef class Motif:
 cdef class Node:
     cdef Nodes  owner
     cdef _node* node
+
+    @staticmethod
+    cdef int _find_best_upstream_motif(
+        _node* node,
+        Sequence seq,
+        _training* tinf,
+        int stage
+    ) nogil except -1
 
 cdef class Nodes:
     # contiguous array of nodes, with capacity and length
@@ -111,7 +122,7 @@ cdef class Nodes:
         const int  stop_val,
         const bint edge,
     ) nogil except NULL
-    cdef int _calc_orf_gc(self, Sequence seq, TrainingInfo tinf) nogil except -1
+    cdef int _calc_orf_gc(self, Sequence seq) nogil except -1
     cdef int _clear(self) nogil except 1
     cdef int _extract(
         self,
@@ -121,7 +132,7 @@ cdef class Nodes:
         int min_gene=*,
         int min_edge_gene=*
     ) nogil except -1
-    cdef int _raw_coding_score(self, Sequence seq, TrainingInfo tinf) nogil except -1
+    cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1
     cdef int _reset_scores(self) nogil except 1
     cdef int _score(self, Sequence seq, TrainingInfo training_info, bint closed=*, bint is_meta=*) nogil except -1
     cdef int _sort(self) nogil except 1
@@ -150,6 +161,7 @@ cdef class Genes:
 
     cdef int _clear(self) nogil except 1
 
+
 # --- Training Info ----------------------------------------------------------
 
 cdef class TrainingInfo:
@@ -158,6 +170,7 @@ cdef class TrainingInfo:
 
     cpdef object dump(self, object fp)
 
+
 # --- Metagenomic Bins -------------------------------------------------------
 
 cdef class MetagenomicBin:
@@ -165,6 +178,7 @@ cdef class MetagenomicBin:
     cdef readonly TrainingInfo      training_info
 
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
+
 
 # --- Predictions ------------------------------------------------------------
 
@@ -189,6 +203,7 @@ cdef class Predictions:
     cpdef ssize_t write_gff(self, object file, str prefix=*, str tool=*) except -1
     cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
+
 
 # --- OrfFinder --------------------------------------------------------------
 
@@ -232,13 +247,13 @@ cdef class OrfFinder:
 
     cpdef Predictions  find_genes(self, object sequence)
 
+
 # --- C-level API reimplementation -------------------------------------------
 
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
 cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer score, bint final=*) nogil
-cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil
 cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil

@@ -810,6 +810,8 @@ cdef class Node:
 
     """
 
+    # --- Properties ---------------------------------------------------------
+
     @property
     def type(self):
         """`str`: The node type (ATG, GTG, TTG, or Stop).
@@ -851,6 +853,73 @@ cdef class Node:
         """
         assert self.node != NULL
         return self.node.score
+
+    # --- C interface --------------------------------------------------------
+
+    @staticmethod
+    cdef int _find_best_upstream_motif(
+        _node* node,
+        Sequence seq,
+        _training* tinf,
+        int stage
+    ) nogil except -1:
+        cdef int i
+        cdef int j
+        cdef int start
+        cdef int spacer
+        cdef int spacendx
+        cdef int index
+        cdef int max_spacer   = 0
+        cdef int max_spacendx = 0
+        cdef int max_len      = 0
+        cdef int max_ndx      = 0
+        cdef double max_sc    = -100.0
+        cdef double score     = 0.0
+
+        if node.type == node_type.STOP or node.edge:
+            return 0
+
+        if node.strand == 1:
+            start = node.ndx
+        else:
+            start = seq.slen - 1 - node.ndx
+
+        for i in reversed(range(4)):
+            for j in range(start-18-i, start-5-i):
+                if j < 0:
+                    continue
+                spacer = start - j - i - 3
+
+                if j <= start - 16 - i:
+                    spacendx = 3
+                elif j <= start - 14 - i:
+                    spacendx = 2
+                elif j >= start - 7 - i:
+                    spacendx = 1
+                else:
+                    spacendx = 0
+
+                index = seq._mer_ndx(j, length=i+3, strand=node.strand)
+                score = tinf.mot_wt[i][spacendx][index]
+                if score > max_sc:
+                    max_sc = score
+                    max_spacendx = spacendx
+                    max_spacer = spacer
+                    max_ndx = index
+                    max_len = i+3
+
+        if stage == 2 and (max_sc == -4.0 or max_sc < tinf.no_mot + 0.69):
+            node.mot.ndx = 0
+            node.mot.len = 0
+            node.mot.spacendx = 0
+            node.mot.spacer = 0
+            node.mot.score = tinf.no_mot
+        else:
+            node.mot.ndx = max_ndx
+            node.mot.len = max_len
+            node.mot.spacendx = max_spacendx
+            node.mot.spacer = max_spacer
+            node.mot.score = max_sc
 
 cdef class Nodes:
     """A list of dynamic programming nodes used by Prodigal to score ORFs.
@@ -925,7 +994,7 @@ cdef class Nodes:
         node.edge = edge
         return node
 
-    cdef int _calc_orf_gc(self, Sequence seq, TrainingInfo tinf) nogil except -1:
+    cdef int _calc_orf_gc(self, Sequence seq) nogil except -1:
         cdef int i
         cdef int j
         cdef int last[3]
@@ -1152,7 +1221,7 @@ cdef class Nodes:
 
         return nn
 
-    cdef int _raw_coding_score(self, Sequence seq, TrainingInfo tinf) nogil except -1:
+    cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1:
         cdef double  score[3]
         cdef double  lfac
         cdef double  no_stop
@@ -1163,13 +1232,13 @@ cdef class Nodes:
         cdef ssize_t i
         cdef ssize_t nn = self.length
 
-        if tinf.tinf.trans_table != 11:
-            no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 8.0
-            no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
+        if tinf.trans_table != 11:
+            no_stop =  ((1-tinf.gc)*(1-tinf.gc)*tinf.gc)     / 8.0
+            no_stop += ((1-tinf.gc)*(1-tinf.gc)*(1-tinf.gc)) / 8.0
             no_stop = 1 - no_stop
         else:
-            no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 4.0
-            no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
+            no_stop =  ((1-tinf.gc)*(1-tinf.gc)*tinf.gc)     / 4.0
+            no_stop += ((1-tinf.gc)*(1-tinf.gc)*(1-tinf.gc)) / 8.0
             no_stop = 1 - no_stop
 
         # Initial Pass: Score coding potential (start->stop)
@@ -1182,7 +1251,7 @@ cdef class Nodes:
                     score[phase] = 0.0
                 else:
                     for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
-                        score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
+                        score[phase] += tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
                     self.nodes[i].cscore = score[phase]
                     last[phase] = self.nodes[i].ndx
         score[0] = score[1] = score[2] = 0.0
@@ -1194,7 +1263,7 @@ cdef class Nodes:
                     score[phase] = 0.0
                 else:
                     for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                        score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
+                        score[phase] += tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
                     self.nodes[i].cscore = score[phase]
                     last[phase] = self.nodes[i].ndx
 
@@ -1268,7 +1337,13 @@ cdef class Nodes:
         # Return 0 on success
         return 0
 
-    cdef int _score(self, Sequence seq, TrainingInfo training_info, bint closed=False, bint is_meta=False) nogil except -1:
+    cdef int _score(
+        self,
+        Sequence seq,
+        TrainingInfo training_info,
+        bint closed=False,
+        bint is_meta=False
+    ) nogil except -1:
 
         cdef size_t i
         cdef size_t j
@@ -1282,8 +1357,8 @@ cdef class Nodes:
         cdef double min_meta_len
 
         # Calculate raw coding potential for every start-stop pair
-        self._calc_orf_gc(seq, training_info)
-        self._raw_coding_score(seq, training_info)
+        self._calc_orf_gc(seq)
+        self._raw_coding_score(seq, training_info.tinf)
 
         # Calculate raw RBS Scores for every start node.
         if training_info.tinf.uses_sd:
@@ -1292,7 +1367,7 @@ cdef class Nodes:
             for i in range(self.length):
                 if self.nodes[i].type == node_type.STOP or self.nodes[i].edge:
                     continue
-                find_best_upstream_motif(self, i, seq, training_info, stage=2)
+                Node._find_best_upstream_motif(&self.nodes[i], seq, training_info.tinf, stage=2)
 
         # Score the start nodes
         for i in range(self.length):
@@ -2528,7 +2603,7 @@ cdef class OrfFinder:
         ipath = dynamic_programming(nodes, tinf, scorer, final=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
-        nodes._raw_coding_score(sequence, tinf)
+        nodes._raw_coding_score(sequence, tinf.tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
         rbs_score(nodes, sequence, tinf)
         train_starts_sd(nodes, sequence, tinf)
@@ -2606,15 +2681,10 @@ cdef class OrfFinder:
         cdef int          max_phase = 0
         cdef double       max_score = -100.0
 
-
         # compute the min/max acceptable gc for the sequence to only
         # use appropriate metagenomic bins
-        low = 0.88495*sequence.gc - 0.0102337
-        high = 0.86596*sequence.gc + 0.1131991
-        if low > 0.65:
-            low = 0.65
-        if high < 0.35:
-            high = 0.35
+        low = fmin(0.65, 0.88495*sequence.gc - 0.0102337)
+        high = fmax(0.35, 0.86596*sequence.gc + 0.1131991)
 
         # check which of the metagenomic bins gets the best results
         for i in range(NUM_META):
@@ -2642,30 +2712,31 @@ cdef class OrfFinder:
             node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, True)
             ipath = dynamic_programming(nodes, tinf, scorer, final=True)
             # update genes if the current bin had a better score
-            if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
-                # record best phase and score
-                max_phase = i
-                max_score = nodes.nodes[ipath].score
-                # eliminate eventual bad genes in the nodes
-                dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
-                # clear the gene array
-                genes._clear()
-                # extract the genes from the dynamic programming array
-                add_genes(genes, nodes, ipath)
-                gene.tweak_final_starts(
-                    genes.genes,
-                    genes.length,
-                    nodes.nodes,
-                    nodes.length,
-                    tinf.tinf
-                )
-                gene.record_gene_data(
-                    genes.genes,
-                    genes.length,
-                    nodes.nodes,
-                    tinf.tinf,
-                    sequence_index
-                )
+            with nogil:
+                if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
+                    # record best phase and score
+                    max_phase = i
+                    max_score = nodes.nodes[ipath].score
+                    # eliminate eventual bad genes in the nodes
+                    dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
+                    # clear the gene array
+                    genes._clear()
+                    # extract the genes from the dynamic programming array
+                    add_genes(genes, nodes, ipath)
+                    gene.tweak_final_starts(
+                        genes.genes,
+                        genes.length,
+                        nodes.nodes,
+                        nodes.length,
+                        tinf.tinf
+                    )
+                    gene.record_gene_data(
+                        genes.genes,
+                        genes.length,
+                        nodes.nodes,
+                        tinf.tinf,
+                        sequence_index
+                    )
 
         # recover the nodes corresponding to the best run
         tinf = METAGENOMIC_BINS[max_phase].training_info
@@ -3124,64 +3195,7 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer s
 
     return -1 if nodes.nodes[max_ndx].traceb == -1 else max_ndx
 
-cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1:
-    cdef int i
-    cdef int j
-    cdef int start
-    cdef int spacer
-    cdef int spacendx
-    cdef int index
-    cdef int max_spacer   = 0
-    cdef int max_spacendx = 0
-    cdef int max_len      = 0
-    cdef int max_ndx      = 0
-    cdef double max_sc    = -100.0
-    cdef double score     = 0.0
 
-    if nodes.nodes[ni].type == node_type.STOP or nodes.nodes[ni].edge:
-        return 0
-
-    if nodes.nodes[ni].strand == 1:
-        start = nodes.nodes[ni].ndx
-    else:
-        start = seq.slen - 1 - nodes.nodes[ni].ndx
-
-    for i in reversed(range(4)):
-        for j in range(start-18-i, start-5-i):
-            if j < 0:
-                continue
-            spacer = start - j - i - 3
-
-            if j <= start - 16 - i:
-                spacendx = 3
-            elif j <= start - 14 - i:
-                spacendx = 2
-            elif j >= start - 7 - i:
-                spacendx = 1
-            else:
-                spacendx = 0
-
-            index = seq._mer_ndx(j, length=i+3, strand=nodes.nodes[ni].strand)
-            score = tinf.tinf.mot_wt[i][spacendx][index]
-            if score > max_sc:
-                max_sc = score
-                max_spacendx = spacendx
-                max_spacer = spacer
-                max_ndx = index
-                max_len = i+3
-
-    if stage == 2 and (max_sc == -4.0 or max_sc < tinf.tinf.no_mot + 0.69):
-        nodes.nodes[ni].mot.ndx = 0
-        nodes.nodes[ni].mot.len = 0
-        nodes.nodes[ni].mot.spacendx = 0
-        nodes.nodes[ni].mot.spacer = 0
-        nodes.nodes[ni].mot.score = tinf.tinf.no_mot
-    else:
-        nodes.nodes[ni].mot.ndx = max_ndx
-        nodes.nodes[ni].mot.len = max_len
-        nodes.nodes[ni].mot.spacendx = max_spacendx
-        nodes.nodes[ni].mot.spacer = max_spacer
-        nodes.nodes[ni].mot.score = max_sc
 
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     cdef int i
@@ -3727,7 +3741,7 @@ cpdef void train_starts_nonsd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogi
         for j in range(nn):
             if nodes.nodes[j].type == node_type.STOP or nodes.nodes[j].edge:
                 continue
-            find_best_upstream_motif(nodes, j, seq, tinf, stage);
+            Node._find_best_upstream_motif(&nodes.nodes[j], seq, tinf.tinf, stage)
             update_motif_counts(mbg, &zbg, seq, &nodes.nodes[j], stage)
         sum = 0.0
         for j in range(4):
