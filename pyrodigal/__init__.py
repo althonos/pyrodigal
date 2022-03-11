@@ -3,8 +3,9 @@ from collections.abc import (
     Sized as _Sized,
 )
 
-from . import _pyrodigal
 from ._version import __version__
+
+from . import _pyrodigal
 from ._pyrodigal import (
     Gene,
     Genes,

@@ -94,7 +94,7 @@ import warnings
 import textwrap
 import threading
 
-from ._version import __version__
+include "_version.py"
 
 # --- Module-level constants -------------------------------------------------
 
