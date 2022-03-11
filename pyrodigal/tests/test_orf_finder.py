@@ -219,6 +219,15 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         self.assertTranslationsEqual(preds, proteins)
         self.assertGCContentEqual(preds, proteins)
 
+    def test_find_genes_large_minsize(self):
+        record = load_record("KK037166")
+        genes = load_genes("KK037166", "meta+mask")
+        large_genes = [gene for gene in genes if len(gene.seq) >= 200]
+
+        orf_finder = OrfFinder(meta=True, min_gene=200, min_edge_gene=200, mask=True)
+        preds = orf_finder.find_genes(record.seq)
+        self.assertEqual(len(preds), len(large_genes))
+
 
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
 
