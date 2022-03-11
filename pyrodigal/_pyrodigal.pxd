@@ -231,10 +231,10 @@ cdef class Predictions:
     cdef readonly Sequence     sequence
     cdef readonly TrainingInfo training_info
 
-    cpdef ssize_t write_gff(self, object file, str prefix=*, str tool=*) except -1
+    cpdef ssize_t write_gff(self, object file, str prefix=*) except -1
     cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
-
+    cpdef ssize_t write_scores(self, object file, bint header=*) except -1
 
 # --- OrfFinder --------------------------------------------------------------
 

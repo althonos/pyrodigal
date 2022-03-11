@@ -94,6 +94,8 @@ import warnings
 import textwrap
 import threading
 
+from ._version import __version__
+
 # --- Module-level constants -------------------------------------------------
 
 cdef int    IDEAL_SINGLE_GENOME = 100000
@@ -3128,6 +3130,27 @@ METAGENOMIC_BINS = _m
 
 # --- Predictions ------------------------------------------------------------
 
+cdef list _RBS_MOTIF = [
+    "None", "GGA/GAG/AGG", "3Base/5BMM", "4Base/6BMM", "AGxAG", "AGxAG",
+    "GGA/GAG/AGG", "GGxGG", "GGxGG", "AGxAG", "AGGAG(G)/GGAGG",
+    "AGGA/GGAG/GAGG", "AGGA/GGAG/GAGG", "GGA/GAG/AGG", "GGxGG",
+    "AGGA", "GGAG/GAGG", "AGxAGG/AGGxGG", "AGxAGG/AGGxGG",
+    "AGxAGG/AGGxGG", "AGGAG/GGAGG", "AGGAG", "AGGAG", "GGAGG",
+    "GGAGG", "AGGAGG", "AGGAGG", "AGGAGG",
+]
+
+cdef list _RBS_SPACER = [
+    "None", "3-4bp", "13-15bp", "13-15bp", "11-12bp", "3-4bp",
+    "11-12bp", "11-12bp", "3-4bp", "5-10bp", "13-15bp", "3-4bp",
+    "11-12bp", "5-10bp", "5-10bp", "5-10bp", "5-10bp", "11-12bp",
+    "3-4bp", "5-10bp", "11-12bp", "3-4bp", "5-10bp", "3-4bp",
+    "5-10bp", "11-12bp", "3-4bp", "5-10bp",
+]
+
+cdef list _NODE_TYPE = [
+    "ATG", "GTG", "TTG" , "Edge",
+]
+
 cdef class Prediction:
     """A single predicted gene found by Prodigal.
     """
@@ -3187,7 +3210,7 @@ cdef class Prediction:
         """
         node = self.owner.nodes.nodes[self.gene.gene.start_ndx]
         start_type = 3 if node.edge else node.type
-        return ["ATG", "GTG", "TTG" , "Edge"][start_type]
+        return _NODE_TYPE[start_type]
 
     @property
     def rbs_motif(self):
@@ -3452,7 +3475,7 @@ cdef class Prediction:
         return protein
 
 cdef class Predictions:
-    """A list of predictions found by Prodigal in a single sequence.
+    """A list of predictions made by Prodigal on a single sequence.
 
     Attributes:
         sequence (`pyrodigal.Sequence`): The compressed input sequence for
@@ -3489,7 +3512,7 @@ cdef class Predictions:
         pred.gene = self.genes[index]
         return pred
 
-    cpdef ssize_t write_gff(self, object file, str prefix="gene_", str tool="pyrodigal") except -1:
+    cpdef ssize_t write_gff(self, object file, str prefix="gene_") except -1:
         """write_gff(self, file, prefix="gene_", width=60)\n--
 
         Write the predictions to ``file`` in General Feature Format.
@@ -3499,9 +3522,6 @@ cdef class Predictions:
                the features.
            prefix (`str`): The prefix to use to make identifiers for each
                predicted gene.
-           tool (`str`): The name of the gene detection tool, typically
-              ``pyrodigal``, but you can change to a different name if
-              you are building a larger pipeline.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3515,7 +3535,8 @@ cdef class Predictions:
             n += file.write(prefix)
             n += file.write(str(i+1))
             n += file.write("\t")
-            n += file.write(tool)
+            n += file.write("pyrodigal_v")
+            n += file.write(__version__)
             n += file.write("\t")
             n += file.write("CDS")
             n += file.write("\t")
@@ -3622,6 +3643,103 @@ cdef class Predictions:
 
         return n
 
+    cpdef ssize_t write_scores(self, object file, bint header=True) except -1:
+        """write_scores(self, file)\n--
+
+        Write the start scores to ``file`` in tabular format.
+
+        Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the features.
+            header (`bool`): `True` to write a header line, `False` otherwise.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        .. versionadded:: 0.7.0
+
+        """
+        cdef size_t     i
+        cdef int        rbs_index
+        cdef _node*     node
+        cdef int        st_type
+        cdef ssize_t    n           = 0
+        cdef int        prev_stop   = -1
+        cdef int        prev_strand = 0
+        cdef _training* tinf        = self.training_info.tinf
+
+        cdef char      qt[10]
+        cdef double    rbs1
+        cdef double    rbs2
+
+        if header:
+            # FIXME: missing some header data
+            # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
+            # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
+            n += file.write(f"# Sequence Data: seqlen={len(self.sequence)}\n")
+            n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
+            # write column names
+            n += file.write(
+                "Beg\t" "End\t" "Std\t" "Total\t" "CodPot\t" "StrtSc\t"
+                "Codon\t" "RBSMot\t" "Spacer\t" "RBSScr\t" "UpsScr\t"
+                "TypeScr\t" "GCCont\n"
+            )
+
+        for i in range(self.nodes.length):
+            node = &self.nodes.nodes[i]
+            if node.type == node_type.STOP:
+                continue
+
+            st_type = node_type.STOP if node.edge else node.type
+            if node.stop_val != prev_stop or node.strand != prev_strand:
+                prev_stop = node.stop_val
+                prev_strand = node.strand
+                n += file.write("\n")
+
+            if node.strand == 1:
+                n += file.write(f"{node.ndx + 1:d}\t")
+                n += file.write(f"{node.stop_val+3:d}\t")
+                n += file.write("+\t")
+            else:
+                n += file.write(f"{node.stop_val - 1:d}\t")
+                n += file.write(f"{node.ndx + 1:d}\t")
+                n += file.write("-\t")
+
+            n += file.write(f"{node.cscore + node.sscore:.2f}\t")
+            n += file.write(f"{node.cscore:.2f}\t")
+            n += file.write(f"{node.sscore:.2f}\t")
+            n += file.write(f"{_NODE_TYPE[st_type]}\t")
+
+            rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+            rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+            if tinf.uses_sd:
+                rbs_index = 0 if rbs1 > rbs2 else 1
+                n += file.write(f"{_RBS_MOTIF[node.rbs[rbs_index]]}\t")
+                n += file.write(f"{_RBS_SPACER[node.rbs[rbs_index]]}\t")
+                n += file.write(f"{node.rscore:.2f}\t")
+            else:
+                if tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+                    n += file.write(f"{_RBS_MOTIF[node.rbs[0]]}\t")
+                    n += file.write(f"{_RBS_SPACER[node.rbs[0]]}\t")
+                    n += file.write(f"{node.rscore:.2f}\t")
+                elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+                    n += file.write(f"{_RBS_MOTIF[node.rbs[1]]}\t")
+                    n += file.write(f"{_RBS_SPACER[node.rbs[1]]}\t")
+                    n += file.write(f"{node.rscore:.2f}\t")
+                else:
+                    if node.mot.len == 0:
+                        n += file.write(f"None\tNone\t{node.rscore:.2f}\t")
+                    else:
+                        sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
+                        n += file.write(f"{qt.decode('ascii')}\t{node.mot.spacer:d}bp\t{node.rscore:.2f}\t")
+
+            n += file.write(f"{node.uscore:.2f}\t")
+            n += file.write(f"{node.tscore:.2f}\t")
+            n += file.write(f"{node.gc_cont:.3f}\n")
+
+        n += file.write("\n")
+        return n
+
 
 # --- OrfFinder --------------------------------------------------------------
 
@@ -3639,7 +3757,11 @@ cdef class OrfFinder:
         training_info (`~pyrodigal.TrainingInfo`): The object storing the
             training information, or `None` if the object is in metagenomic
             mode or hasn't been trained yet.
-
+        min_gene (`int`): The minimum gene length.
+        min_edge_gene (`int`): The minimum edge gene length.
+        max_overlap (`int`): The maximum number of nucleotides that can
+            overlap between two genes on the same strand.
+            
     """
 
     # --- Magic methods ------------------------------------------------------
@@ -3686,6 +3808,9 @@ cdef class OrfFinder:
 
         .. versionchanged:: 0.6.4
            Added the ``training_info`` argument.
+
+        .. versionchanged:: 0.7.0
+           Added ``min_edge``, ``min_edge_gene`` and ``max_overlap``.
 
         """
         if meta and training_info is not None:

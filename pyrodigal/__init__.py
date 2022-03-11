@@ -4,6 +4,7 @@ from collections.abc import (
 )
 
 from . import _pyrodigal
+from ._version import __version__
 from ._pyrodigal import (
     Gene,
     Genes,
@@ -39,7 +40,6 @@ __all__ = [
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
 __license__ = "GPLv3"
-__version__ = "0.6.4"
 
 _Sized.register(Sequence)
 _Sequence.register(Genes)
