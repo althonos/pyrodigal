@@ -64,7 +64,7 @@ from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
-from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, cross_mask
+from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._unicode cimport *
@@ -1705,6 +1705,58 @@ cdef class Nodes:
 
         return 0
 
+    cdef void _record_overlapping_starts(
+        self,
+        _training* tinf,
+        int flag,
+        int max_sam_overlap=MAX_SAM_OVLP
+    ) nogil:
+        cdef int    i
+        cdef int    j
+        cdef double sc
+        cdef double max_sc
+        cdef int    nn     = <int> self.length
+
+        for i in range(nn):
+            for j in range(3):
+                self.nodes[i].star_ptr[j] = -1
+            if self.nodes[i].type != node_type.STOP or self.nodes[i].edge == 1:
+                continue
+            if self.nodes[i].strand == 1:
+                max_sc = -100
+                for j in reversed(range(i+4)):
+                    if j >= nn or self.nodes[j].ndx > self.nodes[i].ndx+2:
+                        continue
+                    if self.nodes[j].ndx + max_sam_overlap < self.nodes[i].ndx:
+                        break
+                    if self.nodes[j].strand == 1 and self.nodes[j].type != node_type.STOP:
+                        if self.nodes[j].stop_val <= self.nodes[i].ndx:
+                            continue
+                        if flag == 0 and self.nodes[i].star_ptr[self.nodes[j].ndx%3] == -1:
+                            self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
+                        elif flag == 1:
+                            sc = self.nodes[j].cscore + self.nodes[j].sscore + node.intergenic_mod(&self.nodes[i], &self.nodes[j], tinf)
+                            if sc > max_sc:
+                                self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
+                                max_sc = sc
+            else:
+                max_sc = -100
+                for j in range(i-3, nn):
+                    if j < 0 or self.nodes[j].ndx < self.nodes[i].ndx-2:
+                        continue
+                    if self.nodes[j].ndx - max_sam_overlap > self.nodes[i].ndx:
+                        break
+                    if self.nodes[j].strand == -1 and self.nodes[j].type != node_type.STOP:
+                        if self.nodes[j].stop_val >= self.nodes[i].ndx:
+                            continue
+                        if flag == 0 and self.nodes[i].star_ptr[self.nodes[j].ndx%3] == -1:
+                            self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
+                        elif flag == 1:
+                            sc = self.nodes[j].cscore + self.nodes[j].sscore + node.intergenic_mod(&self.nodes[j], &self.nodes[i], tinf)
+                            if sc > max_sc:
+                                self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
+                                max_sc = sc
+
     cdef int _score(
         self,
         Sequence seq,
@@ -2001,6 +2053,8 @@ cdef class Gene:
 
     """
 
+    # --- Properties ---------------------------------------------------------
+
     @property
     def begin(self):
         """`int`: The coordinate at which the gene begins.
@@ -2099,6 +2153,138 @@ cdef class Genes:
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.genes, 0, old_length * sizeof(_gene))
+
+    cdef void _tweak_final_starts(
+        self,
+        Nodes nodes,
+        _training* tinf,
+        int max_sam_overlap=MAX_SAM_OVLP,
+    ) nogil:
+
+        cdef int    i
+        cdef int    j
+        cdef int    ndx
+        cdef int    mndx
+        cdef int    maxndx[2]
+        cdef double sc
+        cdef double igm
+        cdef double tigm
+        cdef double maxsc[2]
+        cdef double maxigm[2]
+        cdef int    nn        = <int> nodes.length
+        cdef int    ng        = <int> self.length
+
+        for i in range(ng):
+
+            ndx = self.genes[i].start_ndx
+            sc = nodes.nodes[ndx].sscore + nodes.nodes[ndx].cscore
+            igm = 0.0
+
+            if i > 0 and nodes.nodes[ndx].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == 1:
+                igm = node.intergenic_mod(&nodes.nodes[self.genes[i-1].stop_ndx], &nodes.nodes[ndx], tinf)
+            if i > 0 and nodes.nodes[ndx].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == -1:
+                igm = node.intergenic_mod(&nodes.nodes[self.genes[i-1].start_ndx], &nodes.nodes[ndx], tinf)
+            if i < ng-1 and nodes.nodes[ndx].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == 1:
+                igm = node.intergenic_mod(&nodes.nodes[ndx], &nodes.nodes[self.genes[i+1].start_ndx], tinf)
+            if i < ng-1 and nodes.nodes[ndx].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == -1:
+                igm = node.intergenic_mod(&nodes.nodes[ndx], &nodes.nodes[self.genes[i+1].stop_ndx], tinf)
+
+            # Search upstream and downstream for the #2 and #3 scoring starts
+            maxndx[0] = maxndx[1] = -1
+            maxsc[0] = maxsc[1] = 0
+            maxigm[0] = maxigm[1] = 0
+            for j in range(ndx-100, ndx+100):
+                if j < 0 or j >= nn or j == ndx:
+                    continue
+                if nodes.nodes[j].type == node_type.STOP or nodes.nodes[j].stop_val != nodes.nodes[ndx].stop_val:
+                    continue
+
+                tigm = 0.0
+                if i > 0 and nodes.nodes[j].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == 1:
+                    if nodes.nodes[self.genes[i-1].stop_ndx].ndx - nodes.nodes[j].ndx > max_sam_overlap:
+                        continue
+                    tigm = node.intergenic_mod(&nodes.nodes[self.genes[i-1].stop_ndx], &nodes.nodes[j], tinf)
+                if i > 0 and nodes.nodes[j].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == -1:
+                    if nodes.nodes[self.genes[i-1].start_ndx].ndx - nodes.nodes[j].ndx >= 0:
+                        continue
+                    tigm = node.intergenic_mod(&nodes.nodes[self.genes[i-1].start_ndx], &nodes.nodes[j], tinf)
+                if i < ng-1 and nodes.nodes[j].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == 1:
+                    if nodes.nodes[j].ndx - nodes.nodes[self.genes[i+1].start_ndx].ndx >= 0:
+                        continue
+                    tigm = node.intergenic_mod(&nodes.nodes[j], &nodes.nodes[self.genes[i+1].start_ndx], tinf);
+                if i < ng-1 and nodes.nodes[j].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == -1:
+                    if nodes.nodes[j].ndx - nodes.nodes[self.genes[i+1].stop_ndx].ndx > max_sam_overlap:
+                        continue
+                    tigm = node.intergenic_mod(&nodes.nodes[j], &nodes.nodes[self.genes[i+1].stop_ndx], tinf)
+
+                if maxndx[0] == -1:
+                    maxndx[0] = j
+                    maxsc[0] = nodes.nodes[j].cscore + nodes.nodes[j].sscore
+                    maxigm[0] = tigm
+                elif nodes.nodes[j].cscore + nodes.nodes[j].sscore + tigm > maxsc[0]:
+                    maxndx[1] = maxndx[0]
+                    maxsc[1] = maxsc[0]
+                    maxigm[1] = maxigm[0]
+                    maxndx[0] = j
+                    maxsc[0] = nodes.nodes[j].cscore + nodes.nodes[j].sscore
+                    maxigm[0] = tigm
+                elif maxndx[1] == -1 or nodes.nodes[j].cscore + nodes.nodes[j].sscore + tigm > maxsc[1]:
+                    maxndx[1] = j
+                    maxsc[1] = nodes.nodes[j].cscore + nodes.nodes[j].sscore
+                    maxigm[1] = tigm
+
+            # Change the start if it's a TTG with better coding/RBS/upstream score
+            # Also change the start if it's <=15bp but has better coding/RBS
+            for j in range(2):
+                mndx = maxndx[j]
+                if mndx == -1:
+                    continue;
+
+                # Start of less common type but with better coding, rbs, and
+                # upstream.  Must be 18 or more bases away from original.
+                if (
+                        nodes.nodes[mndx].tscore < nodes.nodes[ndx].tscore
+                    and maxsc[j]-nodes.nodes[mndx].tscore >= sc-nodes.nodes[ndx].tscore+tinf.st_wt
+                    and nodes.nodes[mndx].rscore > nodes.nodes[ndx].rscore
+                    and nodes.nodes[mndx].uscore > nodes.nodes[ndx].uscore
+                    and nodes.nodes[mndx].cscore > nodes.nodes[ndx].cscore
+                    and abs(nodes.nodes[mndx].ndx-nodes.nodes[ndx].ndx) > 15
+                ):
+                    maxsc[j] += nodes.nodes[ndx].tscore - nodes.nodes[mndx].tscore
+
+                # Close starts.  Ignore coding and see if start has better rbs
+                # and type.
+                elif(
+                      abs(nodes.nodes[mndx].ndx-nodes.nodes[ndx].ndx) <= 15
+                  and nodes.nodes[mndx].rscore+ nodes.nodes[mndx].tscore > nodes.nodes[ndx].rscore+nodes.nodes[ndx].tscore
+                  and nodes.nodes[ndx].edge == 0
+                  and nodes.nodes[mndx].edge == 0
+                ):
+                  if nodes.nodes[ndx].cscore > nodes.nodes[mndx].cscore:
+                      maxsc[j] += nodes.nodes[ndx].cscore - nodes.nodes[mndx].cscore
+                  if nodes.nodes[ndx].uscore > nodes.nodes[mndx].uscore:
+                      maxsc[j] += nodes.nodes[ndx].uscore - nodes.nodes[mndx].uscore
+                  if igm > maxigm[j]:
+                      maxsc[j] += igm - maxigm[j]
+
+                else:
+                    maxsc[j] = -1000.0
+
+            # Change the gene coordinates to the new maximum. */
+            mndx = -1;
+            for j in range(2):
+                if maxndx[j] == -1:
+                    continue
+                if mndx == -1 and maxsc[j] + maxigm[j] > sc + igm:
+                    mndx = j
+                elif mndx >= 0 and maxsc[j] + maxigm[j] > maxsc[mndx] + maxigm[mndx]:
+                    mndx = j
+            if mndx != -1 and nodes.nodes[maxndx[mndx]].strand == 1:
+                self.genes[i].start_ndx = maxndx[mndx]
+                self.genes[i].begin = nodes.nodes[maxndx[mndx]].ndx+1
+            elif mndx != -1 and nodes.nodes[maxndx[mndx]].strand == -1:
+                self.genes[i].start_ndx = maxndx[mndx]
+                self.genes[i].end = nodes.nodes[maxndx[mndx]].ndx+1
 
     # --- Python interface ---------------------------------------------------
 
@@ -3470,6 +3656,7 @@ cdef class OrfFinder:
         bint mask=False,
         int min_gene=MIN_GENE,
         int min_edge_gene=MIN_EDGE_GENE,
+        int max_overlap=MAX_SAM_OVLP,
     ):
         """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60)\n--
 
@@ -3493,6 +3680,9 @@ cdef class OrfFinder:
                 used in Prodigal.
             min_edge_gene (`int`): The minimum edge gene length. Defaults to
                 the value used in Prodigal.
+            max_overlap (`int`): The maximum number of nucleotides that can
+                overlap between two genes on the same strand. **This must be
+                lower or equal to the minimum gene length**.
 
         .. versionchanged:: 0.6.4
            Added the ``training_info`` argument.
@@ -3505,6 +3695,10 @@ cdef class OrfFinder:
             raise ValueError("`min_gene` must be strictly positive")
         if min_edge_gene <= 0:
             raise ValueError("`min_edge_gene` must be strictly positive")
+        if max_overlap < 0:
+            raise ValueError("`max_overlap` must be positive")
+        elif max_overlap > min_gene:
+            raise ValueError("`max_overlap` must be lower than `min_gene`")
 
         self.meta = meta
         self.closed = closed
@@ -3513,6 +3707,7 @@ cdef class OrfFinder:
         self.training_info = training_info
         self.min_gene = min_gene
         self.min_edge_gene = min_edge_gene
+        self.max_overlap = max_overlap
 
     def __repr__(self):
         ty = type(self).__name__
@@ -3563,7 +3758,7 @@ cdef class OrfFinder:
         free(gc_frame)
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
-        node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, False)
+        nodes._record_overlapping_starts(tinf.tinf, False, self.max_overlap)
         ipath = nodes._dynamic_programming(tinf.tinf, scorer, final=False)
         # gather dicodon statistics for the training set
         tinf._calc_dicodon_gene(sequence, nodes.nodes, ipath)
@@ -3604,20 +3799,14 @@ cdef class OrfFinder:
         # scoring function
         nodes._reset_scores()
         nodes._score(sequence, tinf.tinf, closed=self.closed, is_meta=False)
-        node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, True)
+        nodes._record_overlapping_starts(tinf.tinf, True, self.max_overlap)
         ipath = nodes._dynamic_programming(tinf.tinf, scorer, final=True)
         # eliminate eventual bad genes in the nodes
         if nodes.length > 0:
             dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
         # record genes
         add_genes(genes, nodes, ipath)
-        gene.tweak_final_starts(
-            genes.genes,
-            genes.length,
-            nodes.nodes,
-            nodes.length,
-            tinf.tinf
-        )
+        genes._tweak_final_starts(nodes, tinf.tinf, self.max_overlap)
         gene.record_gene_data(
             genes.genes,
             genes.length,
@@ -3673,7 +3862,7 @@ cdef class OrfFinder:
             # compute the score for the current bin
             nodes._reset_scores()
             nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
-            node.record_overlapping_starts(nodes.nodes, nodes.length, tinf, True)
+            nodes._record_overlapping_starts(tinf, True, self.max_overlap)
             ipath = nodes._dynamic_programming(tinf, scorer, final=True)
             # update genes if the current bin had a better score
             if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
@@ -3686,13 +3875,7 @@ cdef class OrfFinder:
                 genes._clear()
                 # extract the genes from the dynamic programming array
                 add_genes(genes, nodes, ipath)
-                gene.tweak_final_starts(
-                    genes.genes,
-                    genes.length,
-                    nodes.nodes,
-                    nodes.length,
-                    tinf
-                )
+                genes._tweak_final_starts(nodes, tinf, self.max_overlap)
                 gene.record_gene_data(
                     genes.genes,
                     genes.length,

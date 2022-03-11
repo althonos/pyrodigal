@@ -144,6 +144,12 @@ cdef class Nodes:
     ) nogil except -1
     cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1
     cdef int _rbs_score(self, Sequence seq, _training* tinf) nogil except -1
+    cdef void _record_overlapping_starts(
+        self,
+        _training* tinf,
+        int flag,
+        int max_sam_overlap=*,
+    ) nogil
     cdef int _reset_scores(self) nogil except 1
     cdef int _score(self, Sequence seq, _training* tinf, bint closed=*, bint is_meta=*) nogil except -1
     cdef int _sort(self) nogil except 1
@@ -169,6 +175,12 @@ cdef class Genes:
         const int start_ndx,
         const int stop_ndx,
     ) nogil except NULL
+    cdef void _tweak_final_starts(
+        self,
+        Nodes nodes,
+        _training* tinf,
+        int max_sam_overlap=*,
+    ) nogil
 
     cdef int _clear(self) nogil except 1
 
@@ -234,6 +246,7 @@ cdef class OrfFinder:
     cdef readonly bint         mask
     cdef readonly int          min_gene
     cdef readonly int          min_edge_gene
+    cdef readonly int          max_overlap
     cdef readonly TrainingInfo training_info
 
     cdef int _train(
