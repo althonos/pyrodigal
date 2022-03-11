@@ -1,5 +1,6 @@
 import collections.abc
 import gzip
+import io
 import os
 import sys
 import unittest
@@ -55,3 +56,27 @@ class TestGenes(unittest.TestCase):
         self.assertIsInstance(self.genes, collections.abc.Iterable)
         if sys.version_info >= (3, 6):
             self.assertIsInstance(self.genes, collections.abc.Reversible)
+
+    def test_write_scores(self):
+
+        buffer = io.StringIO()
+        self.genes.write_scores(buffer)
+        actual = [
+            line.strip()
+            for line in buffer.getvalue().splitlines()
+            if not line.startswith("#")
+            and line.strip()
+        ]
+
+        data = os.path.realpath(os.path.join(__file__, "..", "data"))
+        tsv = os.path.join(data, "SRR492066.meta.tsv")
+        with open(tsv) as f:
+            expected = [
+                line.strip()
+                for line in f
+                if not line.startswith("#")
+                and line.strip()
+            ]
+
+        for l1, l2 in zip(actual, expected):
+            self.assertEqual(l1, l2)

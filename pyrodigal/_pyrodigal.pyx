@@ -64,7 +64,7 @@ from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
-from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask
+from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask, compare_nodes, stopcmp_nodes
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._unicode cimport *
@@ -1920,7 +1920,7 @@ cdef class Nodes:
     cdef int _sort(self) nogil except 1:
         """Sort all nodes in the vector by their index and strand.
         """
-        qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
+        qsort(self.nodes, self.length, sizeof(_node), compare_nodes)
         return 0
 
     cdef int _reset_scores(self) nogil except 1:
@@ -3672,73 +3672,80 @@ cdef class Predictions:
         cdef double    rbs1
         cdef double    rbs2
 
-        if header:
-            # FIXME: missing some header data
-            # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
-            # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
-            n += file.write(f"# Sequence Data: seqlen={len(self.sequence)}\n")
-            n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
-            # write column names
-            n += file.write(
-                "Beg\t" "End\t" "Std\t" "Total\t" "CodPot\t" "StrtSc\t"
-                "Codon\t" "RBSMot\t" "Spacer\t" "RBSScr\t" "UpsScr\t"
-                "TypeScr\t" "GCCont\n"
-            )
+        try:
+            # Sort and groupd nodes by STOP codon position
+            qsort(self.nodes.nodes, self.nodes.length, sizeof(_node), stopcmp_nodes)
+            # Write headers if requested
+            if header:
+                # FIXME: missing some header data
+                # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
+                # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
+                n += file.write(f"# Sequence Data: seqlen={len(self.sequence)}\n")
+                n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
+                # write column names
+                n += file.write(
+                    "Beg\t" "End\t" "Std\t" "Total\t" "CodPot\t" "StrtSc\t"
+                    "Codon\t" "RBSMot\t" "Spacer\t" "RBSScr\t" "UpsScr\t"
+                    "TypeScr\t" "GCCont\n"
+                )
+            # Write a line for each start codon, grouped by STOP codon
+            for i in range(self.nodes.length):
+                node = &self.nodes.nodes[i]
+                if node.type == node_type.STOP:
+                    continue
 
-        for i in range(self.nodes.length):
-            node = &self.nodes.nodes[i]
-            if node.type == node_type.STOP:
-                continue
+                st_type = node_type.STOP if node.edge else node.type
+                if node.stop_val != prev_stop or node.strand != prev_strand:
+                    prev_stop = node.stop_val
+                    prev_strand = node.strand
+                    n += file.write("\n")
 
-            st_type = node_type.STOP if node.edge else node.type
-            if node.stop_val != prev_stop or node.strand != prev_strand:
-                prev_stop = node.stop_val
-                prev_strand = node.strand
-                n += file.write("\n")
+                if node.strand == 1:
+                    n += file.write(f"{node.ndx + 1:d}\t")
+                    n += file.write(f"{node.stop_val+3:d}\t")
+                    n += file.write("+\t")
+                else:
+                    n += file.write(f"{node.stop_val - 1:d}\t")
+                    n += file.write(f"{node.ndx + 1:d}\t")
+                    n += file.write("-\t")
 
-            if node.strand == 1:
-                n += file.write(f"{node.ndx + 1:d}\t")
-                n += file.write(f"{node.stop_val+3:d}\t")
-                n += file.write("+\t")
-            else:
-                n += file.write(f"{node.stop_val - 1:d}\t")
-                n += file.write(f"{node.ndx + 1:d}\t")
-                n += file.write("-\t")
+                n += file.write(f"{node.cscore + node.sscore:.2f}\t")
+                n += file.write(f"{node.cscore:.2f}\t")
+                n += file.write(f"{node.sscore:.2f}\t")
+                n += file.write(f"{_NODE_TYPE[st_type]}\t")
 
-            n += file.write(f"{node.cscore + node.sscore:.2f}\t")
-            n += file.write(f"{node.cscore:.2f}\t")
-            n += file.write(f"{node.sscore:.2f}\t")
-            n += file.write(f"{_NODE_TYPE[st_type]}\t")
-
-            rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
-            rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
-            if tinf.uses_sd:
-                rbs_index = 0 if rbs1 > rbs2 else 1
-                n += file.write(f"{_RBS_MOTIF[node.rbs[rbs_index]]}\t")
-                n += file.write(f"{_RBS_SPACER[node.rbs[rbs_index]]}\t")
-                n += file.write(f"{node.rscore:.2f}\t")
-            else:
-                if tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
-                    n += file.write(f"{_RBS_MOTIF[node.rbs[0]]}\t")
-                    n += file.write(f"{_RBS_SPACER[node.rbs[0]]}\t")
-                    n += file.write(f"{node.rscore:.2f}\t")
-                elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
-                    n += file.write(f"{_RBS_MOTIF[node.rbs[1]]}\t")
-                    n += file.write(f"{_RBS_SPACER[node.rbs[1]]}\t")
+                rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+                rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+                if tinf.uses_sd:
+                    rbs_index = 0 if rbs1 > rbs2 else 1
+                    n += file.write(f"{_RBS_MOTIF[node.rbs[rbs_index]]}\t")
+                    n += file.write(f"{_RBS_SPACER[node.rbs[rbs_index]]}\t")
                     n += file.write(f"{node.rscore:.2f}\t")
                 else:
-                    if node.mot.len == 0:
-                        n += file.write(f"None\tNone\t{node.rscore:.2f}\t")
+                    if tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+                        n += file.write(f"{_RBS_MOTIF[node.rbs[0]]}\t")
+                        n += file.write(f"{_RBS_SPACER[node.rbs[0]]}\t")
+                        n += file.write(f"{node.rscore:.2f}\t")
+                    elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+                        n += file.write(f"{_RBS_MOTIF[node.rbs[1]]}\t")
+                        n += file.write(f"{_RBS_SPACER[node.rbs[1]]}\t")
+                        n += file.write(f"{node.rscore:.2f}\t")
                     else:
-                        sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
-                        n += file.write(f"{qt.decode('ascii')}\t{node.mot.spacer:d}bp\t{node.rscore:.2f}\t")
+                        if node.mot.len == 0:
+                            n += file.write(f"None\tNone\t{node.rscore:.2f}\t")
+                        else:
+                            sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
+                            n += file.write(f"{qt.decode('ascii')}\t{node.mot.spacer:d}bp\t{node.rscore:.2f}\t")
 
-            n += file.write(f"{node.uscore:.2f}\t")
-            n += file.write(f"{node.tscore:.2f}\t")
-            n += file.write(f"{node.gc_cont:.3f}\n")
-
-        n += file.write("\n")
-        return n
+                n += file.write(f"{node.uscore:.2f}\t")
+                n += file.write(f"{node.tscore:.2f}\t")
+                n += file.write(f"{node.gc_cont:.3f}\n")
+            # Write final line and return number of bytes written
+            n += file.write("\n")
+            return n
+        finally:
+            # Revert back original node order
+            qsort(self.nodes.nodes, self.nodes.length, sizeof(_node), compare_nodes)
 
 
 # --- OrfFinder --------------------------------------------------------------
@@ -3761,7 +3768,7 @@ cdef class OrfFinder:
         min_edge_gene (`int`): The minimum edge gene length.
         max_overlap (`int`): The maximum number of nucleotides that can
             overlap between two genes on the same strand.
-            
+
     """
 
     # --- Magic methods ------------------------------------------------------
