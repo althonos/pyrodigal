@@ -206,7 +206,24 @@ cdef class OrfFinder:
         bint force_nonsd=*,
         double start_weight=*,
         int translation_table=*,
-    ) nogil except 1
+    ) nogil except -1
+    cdef int _find_genes_single(
+        self,
+        Sequence sequence,
+        TrainingInfo tinf,
+        ConnectionScorer scorer,
+        Nodes nodes,
+        Genes genes,
+        int sequence_index
+    ) nogil except -1
+    cdef int _find_genes_meta(
+        self,
+        Sequence sequence,
+        ConnectionScorer scorer,
+        Nodes nodes,
+        Genes genes,
+        int sequence_index
+    ) except -1
 
     cpdef Predictions  find_genes(self, object sequence)
 
@@ -230,13 +247,8 @@ cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) no
 # --- Wrappers ---------------------------------------------------------------
 
 cpdef void reset_node_scores(Nodes nodes) nogil
-cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
+cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint final=*) nogil
 cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
 cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
 cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil
 cpdef void determine_sd_usage(TrainingInfo tinf) nogil
-
-# --- Main functions ---------------------------------------------------------
-
-cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint closed=*, int sequence_index=*)
-cpdef Predictions find_genes_meta(Sequence seq, bint closed=*, int sequence_index=*)

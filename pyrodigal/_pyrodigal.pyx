@@ -2149,7 +2149,7 @@ cdef class OrfFinder:
         bint force_nonsd=False,
         double start_weight=4.35,
         int translation_table=11,
-    ) nogil except 1:
+    ) nogil except -1:
         # find all the potential starts and stops
         nodes._extract(
             sequence,
@@ -2169,7 +2169,7 @@ cdef class OrfFinder:
         free(gc_frame)
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
-        record_overlapping_starts(nodes, tinf, is_meta=False)
+        record_overlapping_starts(nodes, tinf, final=False)
         ipath = dynamic_programming(nodes, tinf, scorer, final=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
@@ -2185,6 +2185,124 @@ cdef class OrfFinder:
             train_starts_nonsd(nodes, sequence, tinf)
         # return 0 on success
         return 0
+
+    cdef int _find_genes_single(
+        self,
+        Sequence sequence,
+        TrainingInfo tinf,
+        ConnectionScorer scorer,
+        Nodes nodes,
+        Genes genes,
+        int sequence_index
+    ) nogil except -1:
+        cdef int ipath
+        # find all the potential starts and stops, and sort them
+        nodes._extract(
+            sequence,
+            tinf,
+            closed=self.closed,
+            min_gene=self.min_gene,
+            min_edge_gene=self.min_edge_gene
+        )
+        nodes._sort()
+        scorer._index(nodes)
+        # second dynamic programming, using the dicodon statistics as the
+        # scoring function
+        reset_node_scores(nodes)
+        score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=False)
+        record_overlapping_starts(nodes, tinf, final=True)
+        ipath = dynamic_programming(nodes, tinf, scorer, final=True)
+        # eliminate eventual bad genes in the nodes
+        if nodes.length > 0:
+            eliminate_bad_genes(nodes, ipath, tinf)
+        # record genes
+        add_genes(genes, nodes, ipath)
+        tweak_final_starts(genes, nodes, tinf)
+        record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
+        # return 0 on success
+        return 0
+
+    cdef int _find_genes_meta(
+        self,
+        Sequence sequence,
+        ConnectionScorer scorer,
+        Nodes nodes,
+        Genes genes,
+        int sequence_index
+    ) except -1:
+        cdef int          i
+        cdef double       low
+        cdef double       high
+        cdef int          ipath
+        cdef TrainingInfo tinf
+        cdef int          tt        = -1
+        cdef int          max_phase = 0
+        cdef double       max_score = -100.0
+
+
+        # compute the min/max acceptable gc for the sequence to only
+        # use appropriate metagenomic bins
+        low = 0.88495*sequence.gc - 0.0102337
+        high = 0.86596*sequence.gc + 0.1131991
+        if low > 0.65:
+            low = 0.65
+        if high < 0.35:
+            high = 0.35
+
+        # check which of the metagenomic bins gets the best results
+        for i in range(NUM_META):
+            # check which of the metagenomic bins gets the best results
+            if _METAGENOMIC_BINS[i].tinf.gc < low or _METAGENOMIC_BINS[i].tinf.gc > high:
+                continue
+            # record the training information for the current bin
+            tinf = METAGENOMIC_BINS[i].training_info
+            # recreate the node list if the translation table changed
+            if tinf.tinf.trans_table != tt:
+                tt = tinf.tinf.trans_table
+                nodes._clear()
+                nodes._extract(
+                    sequence,
+                    tinf,
+                    closed=self.closed,
+                    min_gene=self.min_gene,
+                    min_edge_gene=self.min_edge_gene
+                )
+                nodes._sort()
+                scorer._index(nodes)
+            # compute the score for the current bin
+            reset_node_scores(nodes)
+            score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=True)
+            record_overlapping_starts(nodes, tinf, final=True)
+            ipath = dynamic_programming(nodes, tinf, scorer, final=True)
+            # update genes if the current bin had a better score
+            if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
+                # record best phase and score
+                max_phase = i
+                max_score = nodes.nodes[ipath].score
+                # eliminate eventual bad genes in the nodes
+                eliminate_bad_genes(nodes, ipath, tinf)
+                # clear the gene array
+                genes._clear()
+                # extract the genes from the dynamic programming array
+                add_genes(genes, nodes, ipath)
+                tweak_final_starts(genes, nodes, tinf)
+                record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
+
+        # recover the nodes corresponding to the best run
+        tinf = METAGENOMIC_BINS[max_phase].training_info
+        nodes._clear()
+        nodes._extract(
+            sequence,
+            tinf,
+            closed=self.closed,
+            min_gene=self.min_gene,
+            min_edge_gene=self.min_edge_gene
+        )
+        nodes._sort()
+        score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=True)
+
+        # return the max phase on success
+        return max_phase
 
     # --- Python interface ---------------------------------------------------
 
@@ -2210,13 +2328,20 @@ cdef class OrfFinder:
                 protocol.
 
         """
-        cdef int         n
-        cdef Sequence    seq
-        cdef Predictions preds
+        cdef int              n
+        cdef int              phase
+        cdef Sequence         seq
+        cdef Predictions      preds
+        cdef TrainingInfo     tinf
+        cdef Genes            genes  = Genes()
+        cdef Nodes            nodes  = Nodes()
+        cdef ConnectionScorer scorer = ConnectionScorer()
 
+        # check argument values
         if not self.meta and self.training_info is None:
             raise RuntimeError("cannot find genes without having trained in single mode")
 
+        # convert the input to a `Sequence` object
         if isinstance(sequence, Sequence):
             seq = sequence
         elif isinstance(sequence, str):
@@ -2224,13 +2349,28 @@ cdef class OrfFinder:
         else:
             seq = Sequence.from_bytes(sequence, mask=self.mask)
 
+        # extract the current sequence index
         with self.lock:
             n = self._num_seq
             self._num_seq += 1
+
+        # find genes with the right mode
         if self.meta:
-            return find_genes_meta(seq, self.closed, n)
+            phase = self._find_genes_meta(seq, scorer, nodes, genes, n)
+            tinf = METAGENOMIC_BINS[phase].training_info
         else:
-            return find_genes_single(seq, self.training_info, self.closed, n)
+            tinf = self.training_info
+            with nogil:
+                self._find_genes_single(
+                    seq,
+                    tinf,
+                    scorer,
+                    nodes,
+                    genes,
+                    n
+                )
+
+        return Predictions(genes, nodes, seq, tinf)
 
     def train(
         self,
@@ -3742,8 +3882,8 @@ cdef void update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence se
 cpdef inline void reset_node_scores(Nodes nodes) nogil:
     node.reset_node_scores(nodes.nodes, nodes.length)
 
-cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta = False) nogil:
-    node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, is_meta)
+cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint final = False) nogil:
+    node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, final)
 
 cpdef inline void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil:
     dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
@@ -3756,104 +3896,3 @@ cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, 
 
 cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
     node.determine_sd_usage(tinf.tinf)
-
-# --- Main functions ---------------------------------------------------------
-
-cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint closed = False, int sequence_index = 1):
-
-    cdef int   ipath
-    cdef Genes genes = Genes()
-    cdef Nodes nodes = Nodes()
-    cdef ConnectionScorer scorer = ConnectionScorer()
-
-    with nogil:
-        # find all the potential starts and stops, and sort them
-        nodes._extract(sequence, tinf, closed=closed)
-        nodes._sort()
-        scorer._index(nodes)
-        # second dynamic programming, using the dicodon statistics as the
-        # scoring function
-        reset_node_scores(nodes)
-        score_nodes(nodes, sequence, tinf, closed=closed, is_meta=False)
-        record_overlapping_starts(nodes, tinf, is_meta=True)
-        ipath = dynamic_programming(nodes, tinf, scorer, final=True)
-        # eliminate eventual bad genes in the nodes
-        if nodes.length > 0:
-            eliminate_bad_genes(nodes, ipath, tinf)
-        # record genes
-        add_genes(genes, nodes, ipath)
-        tweak_final_starts(genes, nodes, tinf)
-        record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
-
-    # return the final predictions
-    return Predictions(genes, nodes, sequence, tinf)
-
-cpdef Predictions find_genes_meta(Sequence sequence, bint closed = False, int sequence_index = 1):
-
-    cdef int          i
-    cdef double       low
-    cdef double       high
-    cdef int          ipath
-    cdef int          tt        = -1
-    cdef Genes        genes     = Genes()
-    cdef Nodes        nodes     = Nodes()
-    cdef TrainingInfo tinf      = TrainingInfo.__new__(TrainingInfo)
-    cdef ConnectionScorer scorer = ConnectionScorer()
-    cdef int          max_phase = 0
-    cdef double       max_score = -100.0
-
-    with nogil:
-        # make sure tinf does not deallocate by mistake
-        tinf.owned = False
-
-        # compute the min/max acceptable gc for the sequence to only
-        # use appropriate metagenomic bins
-        low = 0.88495*sequence.gc - 0.0102337
-        high = 0.86596*sequence.gc + 0.1131991
-        if low > 0.65:
-            low = 0.65
-        if high < 0.35:
-            high = 0.35
-
-        # check which of the metagenomeic bins gets the best results
-        for i in range(NUM_META):
-            # check which of the metagenomic bins gets the best results
-            if _METAGENOMIC_BINS[i].tinf.gc < low or _METAGENOMIC_BINS[i].tinf.gc > high:
-                continue
-            # record the training information for the current bin
-            tinf.tinf = _METAGENOMIC_BINS[i].tinf
-            # recreate the node list if the translation table changed
-            if tinf.tinf.trans_table != tt:
-                tt = tinf.tinf.trans_table
-                nodes._clear()
-                nodes._extract(sequence, tinf, closed=closed)
-                nodes._sort()
-                scorer._index(nodes)
-            # compute the score for the current bin
-            reset_node_scores(nodes)
-            score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
-            record_overlapping_starts(nodes, tinf, is_meta=True)
-            ipath = dynamic_programming(nodes, tinf, scorer, final=True)
-            # update genes if the current bin had a better score
-            if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
-                # record best phase and score
-                max_phase = i
-                max_score = nodes.nodes[ipath].score
-                # eliminate eventual bad genes in the nodes
-                eliminate_bad_genes(nodes, ipath, tinf)
-                # clear the gene array
-                genes._clear()
-                # extract the genes from the dynamic programming array
-                add_genes(genes, nodes, ipath)
-                tweak_final_starts(genes, nodes, tinf)
-                record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
-
-        # recover the nodes corresponding to the best run
-        tinf.tinf = _METAGENOMIC_BINS[max_phase].tinf
-        nodes._clear()
-        nodes._extract(sequence, tinf, closed=closed)
-        nodes._sort()
-        score_nodes(nodes, sequence, tinf, closed=closed, is_meta=True)
-
-    # return the final predictions
-    return Predictions(genes, nodes, sequence, tinf)
