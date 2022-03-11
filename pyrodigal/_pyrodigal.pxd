@@ -192,7 +192,7 @@ cdef class OrfFinder:
 
 # --- C-level API reimplementation -------------------------------------------
 
-cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*) nogil except -1
+cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*, int min_gene=*, int min_edge_gene=*) nogil except -1
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL

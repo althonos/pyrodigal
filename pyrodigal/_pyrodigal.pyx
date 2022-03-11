@@ -1992,7 +1992,7 @@ class Pyrodigal(OrfFinder):
 
 # --- C-level API reimplementation -------------------------------------------
 
-cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False) nogil except -1:
+cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, int min_gene=MIN_GENE, int min_edge_gene=MIN_EDGE_GENE) nogil except -1:
     """Adds nodes to the node list, based on the sequence.
 
     Genes must be larger than 90bp in length, unless they run off the edge,
@@ -2017,7 +2017,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
     for i in range(3):
         last[(i+slmod)%3] = seq.slen + i
         saw_start[i%3] = False
-        min_dist[i%3] = MIN_EDGE_GENE
+        min_dist[i%3] = min_edge_gene
         if not closed:
             while last[(i+slmod)%3] + 3 > seq.slen:
                 last[(i+slmod)%3] -= 3
@@ -2032,7 +2032,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                     edge = not seq._is_stop(last[i%3], tt),
                 )
                 nn += 1
-            min_dist[i%3] = MIN_GENE
+            min_dist[i%3] = min_gene
             last[i%3] = i
             saw_start[i%3] = False
             continue
@@ -2070,7 +2070,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False
                     )
                     nn += 1
-            if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
+            if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
                 saw_start[i%3] = True
                 nodes._add_node(
                     ndx = i,
@@ -2094,7 +2094,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
     for i in range(3):
         last[(i + slmod) % 3] = seq.slen + i
         saw_start[i%3] = False
-        min_dist[i%3] = MIN_EDGE_GENE
+        min_dist[i%3] = min_edge_gene
         if not closed:
             while last[(i+slmod) % 3] + 3 > seq.slen:
                 last[(i+slmod)%3] -= 3
@@ -2109,7 +2109,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                     edge = not seq._is_stop(last[i%3], tt, strand=-1)
                 )
                 nn += 1
-            min_dist[i%3] = MIN_GENE
+            min_dist[i%3] = min_gene
             last[i%3] = i
             saw_start[i%3] = False
             continue
@@ -2147,7 +2147,7 @@ cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=Fa
                         edge = False,
                     )
                     nn += 1
-            if i <= 2 and not closed and last[i%3] - i > MIN_EDGE_GENE:
+            if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
                 saw_start[i%3] = 1
                 node = nodes._add_node(
                     ndx = seq.slen - i - 1,
@@ -3601,7 +3601,7 @@ cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=
 
     with nogil:
         # find all the potential starts and stops
-        add_nodes(nodes, sequence, tinf, closed=closed)
+        add_nodes(nodes, sequence, tinf, closed=closed, min_gene=MIN_GENE, min_edge_gene=MIN_EDGE_GENE)
         nodes._sort()
         scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
@@ -3639,7 +3639,7 @@ cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint c
 
     with nogil:
         # find all the potential starts and stops, and sort them
-        add_nodes(nodes, sequence, tinf, closed=closed)
+        add_nodes(nodes, sequence, tinf, closed=closed, min_gene=MIN_GENE, min_edge_gene=MIN_EDGE_GENE)
         nodes._sort()
         scorer._index(nodes)
         # second dynamic programming, using the dicodon statistics as the
