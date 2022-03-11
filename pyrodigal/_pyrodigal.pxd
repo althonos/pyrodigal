@@ -193,10 +193,22 @@ cdef class OrfFinder:
     cdef readonly object       lock
     cdef readonly bint         meta
     cdef readonly bint         mask
+    cdef readonly int          min_gene
+    cdef readonly int          min_edge_gene
     cdef readonly TrainingInfo training_info
 
+    cdef int _train(
+        self,
+        Sequence sequence,
+        Nodes nodes,
+        ConnectionScorer scorer,
+        TrainingInfo tinf,
+        bint force_nonsd=*,
+        double start_weight=*,
+        int translation_table=*,
+    ) nogil except 1
+
     cpdef Predictions  find_genes(self, object sequence)
-    cpdef TrainingInfo train(self, object sequence, bint force_nonsd=*, double st_wt=*, int translation_table=*)
 
 # --- C-level API reimplementation -------------------------------------------
 
@@ -226,6 +238,5 @@ cpdef void determine_sd_usage(TrainingInfo tinf) nogil
 
 # --- Main functions ---------------------------------------------------------
 
-cpdef TrainingInfo train(Sequence sequence, bint closed=*, bint force_nonsd=*, double start_weight=*, int translation_table=*)
 cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint closed=*, int sequence_index=*)
 cpdef Predictions find_genes_meta(Sequence seq, bint closed=*, int sequence_index=*)

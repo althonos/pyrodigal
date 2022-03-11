@@ -2062,21 +2062,31 @@ cdef class OrfFinder:
 
     """
 
+    # --- Magic methods ------------------------------------------------------
+
     def __cinit__(self):
         self._num_seq = 1
 
     def __init__(
         self,
+        TrainingInfo training_info=None,
+        *,
         bint meta=False,
         bint closed=False,
         bint mask=False,
-        TrainingInfo training_info=None,
+        int min_gene=MIN_GENE,
+        int min_edge_gene=MIN_EDGE_GENE,
     ):
-        """__init__(self, meta=False, closed=False, mask=False)\n--
+        f"""__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene={MIN_GENE}, min_edge_gene={MIN_EDGE_GENE})\n--
 
         Instantiate and configure a new ORF finder.
 
         Arguments:
+            training_info (`~pyrodigal.TrainingInfo`, optional): A training
+                info instance to use in single mode without having to
+                train first.
+
+        Keyword Arguments:
             meta (`bool`): Set to `True` to run in metagenomic mode, using
                 a pre-trained profiles for better results with metagenomic
                 or progenomic inputs. Defaults to `False`.
@@ -2085,9 +2095,10 @@ cdef class OrfFinder:
                 Defaults to `False`.
             mask (`bool`): Prevent genes from running across regions
                 containing unknown nucleotides. Defaults to `False`.
-            training_info (`~pyrodigal.TrainingInfo`, optional): A training
-                info instance to use in single mode without having to
-                train first.
+            min_gene (`int`): The minimum gene length. Defaults to the value
+                used in Prodigal.
+            min_edge_gene (`int`): The minimum edge gene length. Defaults to
+                the value used in Prodigal.
 
         .. versionchanged:: 0.6.4
            Added the ``training_info`` argument.
@@ -2096,11 +2107,18 @@ cdef class OrfFinder:
         if meta and training_info is not None:
             raise ValueError("cannot use a training info in meta mode.")
 
+        if min_gene <= 0:
+            raise ValueError("`min_gene` must be strictly positive")
+        if min_edge_gene <= 0:
+            raise ValueError("`min_edge_gene` must be strictly positive")
+
         self.meta = meta
         self.closed = closed
         self.lock = threading.Lock()
         self.mask = mask
         self.training_info = training_info
+        self.min_gene = min_gene
+        self.min_edge_gene = min_edge_gene
 
     def __repr__(self):
         ty = type(self).__name__
@@ -2119,6 +2137,56 @@ cdef class OrfFinder:
                 self.mask,
                 self.training_info
             )
+
+    # --- C interface --------------------------------------------------------
+
+    cdef int _train(
+        self,
+        Sequence sequence,
+        Nodes nodes,
+        ConnectionScorer scorer,
+        TrainingInfo tinf,
+        bint force_nonsd=False,
+        double start_weight=4.35,
+        int translation_table=11,
+    ) nogil except 1:
+        # find all the potential starts and stops
+        nodes._extract(
+            sequence,
+            tinf,
+            closed=self.closed,
+            min_gene=self.min_gene,
+            min_edge_gene=self.min_edge_gene
+        )
+        nodes._sort()
+        scorer._index(nodes)
+        # scan all the ORFs looking for a potential GC bias in a particular
+        # codon position, in order to acquire a good initial set of genes
+        gc_frame = calc_most_gc_frame(sequence)
+        if not gc_frame:
+            raise MemoryError()
+        node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)
+        free(gc_frame)
+        # do an initial dynamic programming routine with just the GC frame bias
+        # used as a scoring function.
+        record_overlapping_starts(nodes, tinf, is_meta=False)
+        ipath = dynamic_programming(nodes, tinf, scorer, final=False)
+        # gather dicodon statistics for the training set
+        calc_dicodon_gene(tinf, sequence, nodes, ipath)
+        raw_coding_score(nodes, sequence, tinf)
+        # determine if this organism uses Shine-Dalgarno and score the node
+        rbs_score(nodes, sequence, tinf)
+        train_starts_sd(nodes, sequence, tinf)
+        if force_nonsd:
+            tinf.tinf.uses_sd = False
+        else:
+            determine_sd_usage(tinf)
+        if not tinf.tinf.uses_sd:
+            train_starts_nonsd(nodes, sequence, tinf)
+        # return 0 on success
+        return 0
+
+    # --- Python interface ---------------------------------------------------
 
     cpdef Predictions find_genes(self, object sequence):
         """find_genes(self, sequence)\n--
@@ -2149,7 +2217,9 @@ cdef class OrfFinder:
         if not self.meta and self.training_info is None:
             raise RuntimeError("cannot find genes without having trained in single mode")
 
-        if isinstance(sequence, str):
+        if isinstance(sequence, Sequence):
+            seq = sequence
+        elif isinstance(sequence, str):
             seq = Sequence.from_string(sequence, mask=self.mask)
         else:
             seq = Sequence.from_bytes(sequence, mask=self.mask)
@@ -2162,8 +2232,15 @@ cdef class OrfFinder:
         else:
             return find_genes_single(seq, self.training_info, self.closed, n)
 
-    cpdef TrainingInfo train(self, object sequence, bint force_nonsd=False, double st_wt=4.35, int translation_table=11):
-        """train(self, sequence, force_nonsd=False, st_wt=4.35, translation_table=11)\n--
+    def train(
+        self,
+        object sequence,
+        *,
+        bint force_nonsd=False,
+        double start_weight=4.35,
+        int translation_table=11
+    ):
+        """train(self, sequence, *, force_nonsd=False, start_weight=4.35, translation_table=11)\n--
 
         Search parameters for the ORF finder using a training sequence.
 
@@ -2171,12 +2248,14 @@ cdef class OrfFinder:
             sequence (`str` or buffer): The nucleotide sequence to use,
                 either as a string of nucleotides, or as an object
                 implementing the buffer protocol.
+
+        Keyword Arguments:
             force_nonsd (`bool`, optional): Set to ``True`` to bypass the
                 heuristic algorithm that tries to determine if the organism
                 the training sequence belongs to uses a Shine-Dalgarno motif
                 or not.
-            st_wt (`float`, optional): The start score weight to use. The
-                default value has been manually selected by the Prodigal
+            start_weight (`float`, optional): The start score weight to use.
+                The default value has been manually selected by the Prodigal
                 authors as an appropriate value for 99% of genomes.
             translation_table (`int`, optional): The translation table to
                 use. Check the `Wikipedia <https://w.wiki/47wo>`_ page
@@ -2197,20 +2276,27 @@ cdef class OrfFinder:
                 code number, or when ``sequence`` is too short to train.
 
         """
-        cdef Sequence     seq
-        cdef int          slen
-        cdef TrainingInfo tinf
+        cdef Sequence         seq
+        cdef int              slen
+        cdef TrainingInfo     tinf
+        cdef Nodes            nodes  = Nodes()
+        cdef ConnectionScorer scorer = ConnectionScorer()
 
+        # Check arguments
         if self.meta:
             raise RuntimeError("cannot use training sequence in metagenomic mode")
         if translation_table not in TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
 
-        if isinstance(sequence, str):
+        # extract sequence
+        if isinstance(sequence, Sequence):
+            seq = sequence
+        elif isinstance(sequence, str):
             seq = Sequence.from_string(sequence, mask=self.mask)
         else:
             seq = Sequence.from_bytes(sequence, mask=self.mask)
 
+        # check sequence length
         if seq.slen < MIN_SINGLE_GENOME:
             raise ValueError(
                 f"sequence must be at least {MIN_SINGLE_GENOME} characters ({seq.slen} found)"
@@ -2220,7 +2306,21 @@ cdef class OrfFinder:
                 f"sequence should be at least {IDEAL_SINGLE_GENOME} characters ({seq.slen} found)"
             )
 
-        tinf = train(seq, self.closed, force_nonsd, st_wt, translation_table)
+        # build training info
+        tinf = TrainingInfo(seq.gc, start_weight, translation_table)
+        with nogil:
+            self._train(
+                seq,
+                nodes,
+                scorer,
+                tinf,
+                force_nonsd=force_nonsd,
+                start_weight=start_weight,
+                translation_table=translation_table,
+            )
+
+        # store it, using a lock to avoid race condition if there is
+        # currently a `find_genes` call going on in a different thread
         with self.lock:
             self.training_info = tinf
 
@@ -3658,44 +3758,6 @@ cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
     node.determine_sd_usage(tinf.tinf)
 
 # --- Main functions ---------------------------------------------------------
-
-cpdef TrainingInfo train(Sequence sequence, bint closed=False, bint force_nonsd=False, double start_weight=4.35, int translation_table=11):
-
-    cdef int*         gc_frame
-    cdef Nodes        nodes    = Nodes()
-    cdef TrainingInfo tinf     = TrainingInfo(sequence.gc, start_weight, translation_table)
-    cdef ConnectionScorer scorer = ConnectionScorer()
-
-    with nogil:
-        # find all the potential starts and stops
-        nodes._extract(sequence, tinf, closed=closed)
-        nodes._sort()
-        scorer._index(nodes)
-        # scan all the ORFs looking for a potential GC bias in a particular
-        # codon position, in order to acquire a good initial set of genes
-        gc_frame = calc_most_gc_frame(sequence)
-        if not gc_frame:
-            raise MemoryError()
-        node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)
-        free(gc_frame)
-        # do an initial dynamic programming routine with just the GC frame bias
-        # used as a scoring function.
-        record_overlapping_starts(nodes, tinf, is_meta=False)
-        ipath = dynamic_programming(nodes, tinf, scorer, final=False)
-        # gather dicodon statistics for the training set
-        calc_dicodon_gene(tinf, sequence, nodes, ipath)
-        raw_coding_score(nodes, sequence, tinf)
-        # determine if this organism uses Shine-Dalgarno and score the node
-        rbs_score(nodes, sequence, tinf)
-        train_starts_sd(nodes, sequence, tinf)
-        if force_nonsd:
-            tinf.tinf.uses_sd = False
-        else:
-            determine_sd_usage(tinf)
-        if not tinf.tinf.uses_sd:
-            train_starts_nonsd(nodes, sequence, tinf)
-
-    return tinf
 
 cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint closed = False, int sequence_index = 1):
 
