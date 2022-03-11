@@ -179,7 +179,13 @@ cdef class TrainingInfo:
     cdef bint       owned
     cdef _training* tinf
 
+    @staticmethod
+    cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
+
     cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) nogil
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil
 
     cpdef object dump(self, object fp)
 
@@ -265,5 +271,3 @@ cdef class OrfFinder:
 
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
-cpdef void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
-cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
