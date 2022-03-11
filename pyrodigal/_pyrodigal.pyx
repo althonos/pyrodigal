@@ -204,6 +204,7 @@ cdef class Masks:
         memcpy(new.masks, self.masks, new.capacity * sizeof(_mask))
         return new
 
+
 # --- Input sequence ---------------------------------------------------------
 
 cdef enum:
@@ -213,13 +214,13 @@ cdef enum:
     T = 0b011
     N = 0b110  # use 6 so that N & 0x3 == C
 
-cdef uint8_t _translation[N+1]
+cdef uint8_t _complement[N+1]
 for i in range(N+1):
-    _translation[i] = N
-_translation[A] = T
-_translation[T] = A
-_translation[C] = G
-_translation[G] = C
+    _complement[i] = N
+_complement[A] = T
+_complement[T] = A
+_complement[C] = G
+_complement[G] = C
 
 cdef Py_UCS4 _letters[N+1]
 for i in range(N+1):
@@ -228,7 +229,6 @@ _letters[A] = "A"
 _letters[T] = "T"
 _letters[C] = "C"
 _letters[G] = "G"
-
 
 cdef class Sequence:
     """A digitized input sequence.
@@ -430,9 +430,9 @@ cdef class Sequence:
             x1 = self.digits[i+1]
             x2 = self.digits[i+2]
         else:
-            x0 = _translation[self.digits[self.slen - 1 - i]]
-            x1 = _translation[self.digits[self.slen - 2 - i]]
-            x2 = _translation[self.digits[self.slen - 3 - i]]
+            x0 = _complement[self.digits[self.slen - 1 - i]]
+            x1 = _complement[self.digits[self.slen - 2 - i]]
+            x2 = _complement[self.digits[self.slen - 3 - i]]
 
         # ATG
         if x0 == A and x1 == T and x2 == G:
@@ -459,9 +459,9 @@ cdef class Sequence:
             x1 = self.digits[i+1]
             x2 = self.digits[i+2]
         else:
-            x0 = _translation[self.digits[self.slen - 1 - i]]
-            x1 = _translation[self.digits[self.slen - 2 - i]]
-            x2 = _translation[self.digits[self.slen - 3 - i]]
+            x0 = _complement[self.digits[self.slen - 1 - i]]
+            x1 = _complement[self.digits[self.slen - 2 - i]]
+            x2 = _complement[self.digits[self.slen - 3 - i]]
 
         # TAG
         if x0 == T and x1 == A and x2 == G:
@@ -497,9 +497,9 @@ cdef class Sequence:
             x1 = self.digits[i+1]
             x2 = self.digits[i+2]
         else:
-            x0 = _translation[self.digits[self.slen - 1 - i]]
-            x1 = _translation[self.digits[self.slen - 2 - i]]
-            x2 = _translation[self.digits[self.slen - 3 - i]]
+            x0 = _complement[self.digits[self.slen - 1 - i]]
+            x1 = _complement[self.digits[self.slen - 2 - i]]
+            x2 = _complement[self.digits[self.slen - 3 - i]]
         return x0 == A and x1 == T and x2 == G
 
     cdef inline bint _is_gtg(self, int i, int strand = 1) nogil:
@@ -511,9 +511,9 @@ cdef class Sequence:
             x1 = self.digits[i+1]
             x2 = self.digits[i+2]
         else:
-            x0 = _translation[self.digits[self.slen - 1 - i]]
-            x1 = _translation[self.digits[self.slen - 2 - i]]
-            x2 = _translation[self.digits[self.slen - 3 - i]]
+            x0 = _complement[self.digits[self.slen - 1 - i]]
+            x1 = _complement[self.digits[self.slen - 2 - i]]
+            x2 = _complement[self.digits[self.slen - 3 - i]]
         return x0 == G and x1 == T and x2 == G
 
     cdef inline bint _is_ttg(self, int i, int strand = 1) nogil:
@@ -525,9 +525,9 @@ cdef class Sequence:
             x1 = self.digits[i+1]
             x2 = self.digits[i+2]
         else:
-            x0 = _translation[self.digits[self.slen - 1 - i]]
-            x1 = _translation[self.digits[self.slen - 2 - i]]
-            x2 = _translation[self.digits[self.slen - 3 - i]]
+            x0 = _complement[self.digits[self.slen - 1 - i]]
+            x1 = _complement[self.digits[self.slen - 2 - i]]
+            x2 = _complement[self.digits[self.slen - 3 - i]]
         return x0 == T and x1 == T and x2 == G
 
     cdef inline int _mer_ndx(self, int i, int length, int strand = 1) nogil:
@@ -544,7 +544,7 @@ cdef class Sequence:
         else:
             for j, k in enumerate(range(self.slen - 1 - i, self.slen - 1 - i - length, -1)):
                 x = self.digits[k]
-                ndx |= (_translation[x] & 0b11) << 2*j
+                ndx |= (_complement[x] & 0b11) << 2*j
 
         return ndx
 
@@ -559,9 +559,9 @@ cdef class Sequence:
             x1 = self.digits[i+1]
             x2 = self.digits[i+2]
         else:
-            x0 = _translation[self.digits[self.slen - 1 - i]]
-            x1 = _translation[self.digits[self.slen - 2 - i]]
-            x2 = _translation[self.digits[self.slen - 3 - i]]
+            x0 = _complement[self.digits[self.slen - 1 - i]]
+            x1 = _complement[self.digits[self.slen - 2 - i]]
+            x2 = _complement[self.digits[self.slen - 3 - i]]
 
         if self._is_stop(i, tt, strand=strand):
             return b"*"
@@ -1016,6 +1016,7 @@ cdef class ConnectionScorer:
         with nogil:
             self._score_connections(nodes, min, i, tinf.tinf, final)
 
+
 # --- Nodes ------------------------------------------------------------------
 
 cdef class Node:
@@ -1165,11 +1166,10 @@ cdef class Node:
             if strand == 1:
                 mer = seq.digits[start - i] & 0b11
             else:
-                mer = _translation[seq.digits[seq.slen - 1 - start + i]] & 0b11
+                mer = _complement[seq.digits[seq.slen - 1 - start + i]] & 0b11
 
             node.uscore += 0.4 * tinf.st_wt * tinf.ups_comp[count][mer]
             count += 1
-
 
 cdef class Nodes:
     """A list of dynamic programming nodes used by Prodigal to score ORFs.
@@ -2108,6 +2108,7 @@ cdef class Genes:
         with nogil:
             self._clear()
 
+
 # --- Training Info ----------------------------------------------------------
 
 cdef class TrainingInfo:
@@ -2270,7 +2271,80 @@ cdef class TrainingInfo:
     def start_weight(self, double st_wt):
         self.tinf.st_wt = st_wt
 
-    # --- Methods ----------------------------------------------------------
+    # --- C interface --------------------------------------------------------
+
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil:
+        """Compute the dicodon frequency in genes and in the background.
+
+        Stores the log-likelihood of each 6-mer relative to the background.
+
+        """
+        cdef int    i
+        cdef int    right
+        cdef int    counts[4096]
+        cdef double prob[4096]
+        cdef double bg[4096]
+        cdef int    in_gene      = 0
+        cdef int    path         = ipath
+        cdef int    left         = -1
+        cdef int    glob
+
+        for i in range(4096):
+            prob[i] = 0.0
+            bg[i] = 0.0
+
+        # get background counts
+        # (shortened code from `calc_mer_bg` without malloc)
+        glob = 0
+        memset(counts, 0, 4096*sizeof(int))
+        for i in range(seq.slen - 5):
+            counts[seq._mer_ndx(i, length=6, strand=+1)] += 1
+            counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
+            glob += 2
+        for i in range(4096):
+            bg[i] = (<double> counts[i]) / (<double> glob)
+
+        # get counts in genes
+        glob = 0
+        memset(counts, 0, 4096*sizeof(int))
+        while path != -1:
+            if nodes[path].strand == 1:
+                if nodes[path].type == node_type.STOP:
+                    in_gene = 1
+                    right = nodes[path].ndx+2
+                elif in_gene == 1:
+                    left = nodes[path].ndx
+                    for i in range(left, right-5, 3):
+                        counts[seq._mer_ndx(i, length=6, strand=1)] += 1
+                        glob += 1
+                    in_gene = 0
+            else:
+                if nodes[path].type != node_type.STOP:
+                    in_gene = -1
+                    left = seq.slen - nodes[path].ndx - 1
+                elif in_gene == -1:
+                    right = seq.slen - nodes[path].ndx + 1
+                    for i in range(left, right-5, 3):
+                        counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
+                        glob += 1
+                    in_gene = 0
+            path = nodes[path].traceb
+
+        # compute log likelihood
+        for i in range(4096):
+            prob[i] = (<double> counts[i])/(<double> glob)
+            if prob[i] == 0 and bg[i] != 0:
+                self.tinf.gene_dc[i] = -5.0;
+            elif bg[i] == 0:
+                self.tinf.gene_dc[i] = 0.0
+            else:
+                self.tinf.gene_dc[i] = log(prob[i]/bg[i])
+            if self.tinf.gene_dc[i] > 5.0:
+                self.tinf.gene_dc[i] = 5.0
+            elif self.tinf.gene_dc[i] < -5.0:
+                self.tinf.gene_dc[i] = -5.0
+
+    # --- Python interface ---------------------------------------------------
 
     cpdef object dump(self, fp):
         """dump(self, fp)\n--
@@ -2295,6 +2369,7 @@ cdef class TrainingInfo:
         """
         cdef object mem = PyMemoryView_FromMemory(<char*> self.tinf, sizeof(_training), MVIEW_READ)
         fp.write(mem)
+
 
 # --- Metagenomic Bins -------------------------------------------------------
 
@@ -2575,7 +2650,7 @@ cdef class Prediction:
                 if strand == 1:
                     nuc = _letters[digits[j]]
                 else:
-                    nuc = _letters[_translation[digits[slen - 1 - j]]]
+                    nuc = _letters[_complement[digits[slen - 1 - j]]]
                 IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
                     (<char*> data)[i] = nuc
                 ELSE:
@@ -2970,7 +3045,7 @@ cdef class OrfFinder:
         node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, False)
         ipath = nodes._dynamic_programming(tinf.tinf, scorer, final=False)
         # gather dicodon statistics for the training set
-        calc_dicodon_gene(tinf, sequence, nodes, ipath)
+        tinf._calc_dicodon_gene(sequence, nodes.nodes, ipath)
         nodes._raw_coding_score(sequence, tinf.tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
         nodes._rbs_score(sequence, tinf.tinf)
@@ -3334,77 +3409,6 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
 
     return ng
 
-cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence seq, Nodes nodes, int ipath) nogil:
-    """Compute the dicodon frequency in genes and in the background.
-
-    Stores the log-likelihood of each 6-mer relative to the background.
-
-    """
-    cdef int    i
-    cdef int    right
-    cdef int    counts[4096]
-    cdef double prob[4096]
-    cdef double bg[4096]
-    cdef int    in_gene      = 0
-    cdef int    path         = ipath
-    cdef int    left         = -1
-    cdef int    glob
-
-    for i in range(4096):
-        prob[i] = 0.0
-        bg[i] = 0.0
-
-    # get background counts
-    # (shortened code from `calc_mer_bg` without malloc)
-    glob = 0
-    memset(counts, 0, 4096*sizeof(int))
-    for i in range(seq.slen - 5):
-        counts[seq._mer_ndx(i, length=6, strand=+1)] += 1
-        counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
-        glob += 2
-    for i in range(4096):
-        bg[i] = (<double> counts[i]) / (<double> glob)
-
-    # get counts in genes
-    glob = 0
-    memset(counts, 0, 4096*sizeof(int))
-    while path != -1:
-        if nodes.nodes[path].strand == 1:
-            if nodes.nodes[path].type == node_type.STOP:
-                in_gene = 1
-                right = nodes.nodes[path].ndx+2
-            elif in_gene == 1:
-                left = nodes.nodes[path].ndx
-                for i in range(left, right-5, 3):
-                    counts[seq._mer_ndx(i, length=6, strand=1)] += 1
-                    glob += 1
-                in_gene = 0
-        else:
-            if nodes.nodes[path].type != node_type.STOP:
-                in_gene = -1
-                left = seq.slen - nodes.nodes[path].ndx - 1
-            elif in_gene == -1:
-                right = seq.slen - nodes.nodes[path].ndx + 1
-                for i in range(left, right-5, 3):
-                    counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
-                    glob += 1
-                in_gene = 0
-        path = nodes.nodes[path].traceb
-
-    # compute log likelihood
-    for i in range(4096):
-        prob[i] = (<double> counts[i])/(<double> glob)
-        if prob[i] == 0 and bg[i] != 0:
-            tinf.tinf.gene_dc[i] = -5.0;
-        elif bg[i] == 0:
-            tinf.tinf.gene_dc[i] = 0.0
-        else:
-            tinf.tinf.gene_dc[i] = log(prob[i]/bg[i])
-        if tinf.tinf.gene_dc[i] > 5.0:
-            tinf.tinf.gene_dc[i] = 5.0
-        elif tinf.tinf.gene_dc[i] < -5.0:
-            tinf.tinf.gene_dc[i] = -5.0
-
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
     cdef int  i
     cdef int  j
@@ -3472,11 +3476,11 @@ cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, 
         start = seq.slen - 1 - pos
         for j in range(1, 3):
             if pos + j < seq.slen:
-                tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
+                tinf.tinf.ups_comp[i][_complement[seq.digits[pos+j]] & 0b11] += 1
             i += 1
         for j in range(15, 45):
             if pos + j < seq.slen:
-                tinf.tinf.ups_comp[i][_translation[seq.digits[pos+j]] & 0b11] += 1
+                tinf.tinf.ups_comp[i][_complement[seq.digits[pos+j]] & 0b11] += 1
             i += 1
 
 cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
