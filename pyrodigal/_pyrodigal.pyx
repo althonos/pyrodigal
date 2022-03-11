@@ -925,6 +925,47 @@ cdef class Nodes:
         node.edge = edge
         return node
 
+    cdef int _calc_orf_gc(self, Sequence seq, TrainingInfo tinf) nogil except -1:
+        cdef int i
+        cdef int j
+        cdef int last[3]
+        cdef int phase
+        cdef double gc[3]
+        cdef double gsize = 0.0
+
+        # direct strand
+        gc[0] = gc[1] = gc[2] = 0.0
+        for i in reversed(range(<int> self.length)):
+            if self.nodes[i].strand == 1:
+                phase = self.nodes[i].ndx %3
+                if self.nodes[i].type == node_type.STOP:
+                    last[phase] = j = self.nodes[i].ndx
+                    gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                else:
+                    for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
+                        gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                    gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
+                    self.nodes[i].gc_cont = gc[phase] / gsize
+                    last[phase] = self.nodes[i].ndx
+
+        # reverse strand
+        gc[0] = gc[1] = gc[2] = 0.0
+        for i in range(<int> self.length):
+            if self.nodes[i].strand == -1:
+                phase = self.nodes[i].ndx % 3
+                if self.nodes[i].type == node_type.STOP:
+                    last[phase] = j = self.nodes[i].ndx
+                    gc[phase] = seq._is_gc(j) + seq._is_gc(j-1) + seq._is_gc(j-2)
+                else:
+                    for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
+                        gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                    gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
+                    self.nodes[i].gc_cont = gc[phase] / gsize
+                    last[phase] = self.nodes[i].ndx
+
+        # return 0 on success
+        return 0
+
     cdef int _clear(self) nogil except 1:
         """Remove all nodes from the vector.
         """
@@ -1111,6 +1152,274 @@ cdef class Nodes:
 
         return nn
 
+    cdef int _raw_coding_score(self, Sequence seq, TrainingInfo tinf) nogil except -1:
+        cdef double  score[3]
+        cdef double  lfac
+        cdef double  no_stop
+        cdef double  gsize
+        cdef ssize_t last[3]
+        cdef size_t  phase
+        cdef ssize_t j
+        cdef ssize_t i
+        cdef ssize_t nn = self.length
+
+        if tinf.tinf.trans_table != 11:
+            no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 8.0
+            no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
+            no_stop = 1 - no_stop
+        else:
+            no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 4.0
+            no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
+            no_stop = 1 - no_stop
+
+        # Initial Pass: Score coding potential (start->stop)
+        score[0] = score[1] = score[2] = 0.0
+        for i in reversed(range(nn)):
+            if self.nodes[i].strand == 1:
+                phase = self.nodes[i].ndx%3
+                if self.nodes[i].type == node_type.STOP:
+                    last[phase] = self.nodes[i].ndx
+                    score[phase] = 0.0
+                else:
+                    for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
+                        score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
+                    self.nodes[i].cscore = score[phase]
+                    last[phase] = self.nodes[i].ndx
+        score[0] = score[1] = score[2] = 0.0
+        for i in range(nn):
+            if self.nodes[i].strand == -1:
+                phase = self.nodes[i].ndx%3
+                if self.nodes[i].type == node_type.STOP:
+                    last[phase] = self.nodes[i].ndx
+                    score[phase] = 0.0
+                else:
+                    for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
+                        score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
+                    self.nodes[i].cscore = score[phase]
+                    last[phase] = self.nodes[i].ndx
+
+        # Second Pass: Penalize start nodes with ascending coding to their left
+        score[0] = score[1] = score[2] = -10000.0
+        for i in range(nn):
+            if self.nodes[i].strand == 1:
+                phase = self.nodes[i].ndx%3
+                if self.nodes[i].type == node_type.STOP:
+                    score[phase] = -10000.0
+                elif self.nodes[i].cscore > score[phase]:
+                    score[phase] = self.nodes[i].cscore
+                else:
+                    self.nodes[i].cscore -= score[phase] - self.nodes[i].cscore
+        score[0] = score[1] = score[2] = -10000.0
+        for i in reversed(range(nn)):
+            if self.nodes[i].strand == -1:
+                phase = self.nodes[i].ndx%3
+                if self.nodes[i].type == node_type.STOP:
+                    score[phase] = -10000.0
+                elif self.nodes[i].cscore > score[phase]:
+                    score[phase] = self.nodes[i].cscore
+                else:
+                    self.nodes[i].cscore -= (score[phase] - self.nodes[i].cscore);
+
+        # Third Pass: Add length-based factor to the score
+        # Penalize start nodes based on length to their left
+        for i in range(nn):
+            if self.nodes[i].strand == 1:
+                phase = self.nodes[i].ndx%3
+                if self.nodes[i].type == node_type.STOP:
+                    score[phase] = -10000.0;
+                else:
+                    gsize = ((<double> self.nodes[i].stop_val - self.nodes[i].ndx)+3.0)/3.0
+                    if gsize > 1000.0:
+                        lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0))
+                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
+                        lfac *= (gsize - 80) / 920.0
+                    else:
+                        lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize))
+                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
+                    if lfac > score[phase]:
+                        score[phase] = lfac
+                    else:
+                        lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+                    if lfac > 3.0 and self.nodes[i].cscore < 0.5*lfac:
+                        self.nodes[i].cscore = 0.5*lfac
+                    self.nodes[i].cscore += lfac
+        for i in reversed(range(nn)):
+            if self.nodes[i].strand == -1:
+                phase = self.nodes[i].ndx%3;
+                if self.nodes[i].type == node_type.STOP:
+                    score[phase] = -10000.0;
+                else:
+                    gsize = ((<double> self.nodes[i].ndx - self.nodes[i].stop_val)+3.0)/3.0
+                    if(gsize > 1000.0):
+                        lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
+                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                        lfac *= (gsize - 80) / 920.0;
+                    else:
+                        lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
+                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                    if lfac > score[phase]:
+                        score[phase] = lfac
+                    else:
+                        lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+                    if lfac > 3.0 and self.nodes[i].cscore < 0.5*lfac:
+                        self.nodes[i].cscore = 0.5*lfac
+                    self.nodes[i].cscore += lfac
+
+        # Return 0 on success
+        return 0
+
+    cdef int _score(self, Sequence seq, TrainingInfo training_info, bint closed=False, bint is_meta=False) nogil except -1:
+
+        cdef size_t i
+        cdef size_t j
+        cdef size_t orf_length
+        cdef double negf
+        cdef double posf
+        cdef double rbs1
+        cdef double rbs2
+        cdef double sd_score
+        cdef double edge_gene
+        cdef double min_meta_len
+
+        # Calculate raw coding potential for every start-stop pair
+        self._calc_orf_gc(seq, training_info)
+        self._raw_coding_score(seq, training_info)
+
+        # Calculate raw RBS Scores for every start node.
+        if training_info.tinf.uses_sd:
+            rbs_score(self, seq, training_info)
+        else:
+            for i in range(self.length):
+                if self.nodes[i].type == node_type.STOP or self.nodes[i].edge:
+                    continue
+                find_best_upstream_motif(self, i, seq, training_info, stage=2)
+
+        # Score the start nodes
+        for i in range(self.length):
+            if self.nodes[i].type == node_type.STOP:
+                continue
+
+            # compute ORF length, we'll need it later several times
+            if self.nodes[i].ndx > self.nodes[i].stop_val:
+                orf_length = self.nodes[i].ndx - self.nodes[i].stop_val
+            else:
+                orf_length = self.nodes[i].stop_val - self.nodes[i].ndx
+
+            # Does this gene run off the edge?
+            edge_gene = 0
+            if self.nodes[i].edge:
+                edge_gene += 1
+            if (
+                    self.nodes[i].strand == 1 and not seq._is_stop(self.nodes[i].stop_val, training_info.tinf.trans_table)
+                or  self.nodes[i].strand == -1 and not seq._is_stop(seq.slen - 1 - self.nodes[i].stop_val, training_info.tinf.trans_table, strand=-1)
+            ):
+                edge_gene += 1
+
+            # Edge Nodes : stops with no starts, give a small bonus
+            if self.nodes[i].edge:
+                self.nodes[i].tscore = node.EDGE_BONUS*training_info.tinf.st_wt / edge_gene
+                self.nodes[i].uscore = 0.0
+                self.nodes[i].rscore = 0.0
+            else:
+                # Type Score
+                self.nodes[i].tscore = training_info.tinf.type_wt[self.nodes[i].type] * training_info.tinf.st_wt
+
+                # RBS Motif Score
+                rbs1 = training_info.tinf.rbs_wt[self.nodes[i].rbs[0]];
+                rbs2 = training_info.tinf.rbs_wt[self.nodes[i].rbs[1]];
+                sd_score = node.dmax(rbs1, rbs2) * training_info.tinf.st_wt
+                if training_info.tinf.uses_sd:
+                    self.nodes[i].rscore = sd_score
+                else:
+                    self.nodes[i].rscore = training_info.tinf.st_wt * self.nodes[i].mot.score
+                    if self.nodes[i].rscore < sd_score and training_info.tinf.no_mot > -0.5:
+                        self.nodes[i].rscore = sd_score
+
+                # Upstream Score
+                score_upstream_composition(self, i, seq, training_info)
+
+                # Penalize upstream score if choosing this start would stop the gene
+                # from running off the edge
+                if not closed and self.nodes[i].ndx <= 2 and self.nodes[i].strand == 1:
+                    self.nodes[i].uscore += node.EDGE_UPS*training_info.tinf.st_wt
+                elif not closed and self.nodes[i].ndx >= seq.slen - 3 and self.nodes[i].strand == -1:
+                    self.nodes[i].uscore += node.EDGE_UPS*training_info.tinf.st_wt
+                elif i < 500 and self.nodes[i].strand == 1:
+                    for j in reversed(range(i)):
+                        if self.nodes[j].edge and self.nodes[i].stop_val == self.nodes[j].stop_val:
+                            self.nodes[i].uscore += node.EDGE_UPS*training_info.tinf.st_wt
+                            break
+                elif i + 500>= self.length and self.nodes[i].strand == -1:
+                    for j in range(i+1, self.length):
+                        if self.nodes[j].edge and self.nodes[i].stop_val == self.nodes[j].stop_val:
+                            self.nodes[i].uscore += node.EDGE_UPS*training_info.tinf.st_wt
+                            break
+
+            # Convert starts at base 1 and slen to edge genes if closed = 0
+            if (
+                    not closed
+                and not self.nodes[i].edge
+                and ((self.nodes[i].ndx <= 2 and self.nodes[i].strand == 1) or (self.nodes[i].ndx >= seq.slen - 3 and self.nodes[i].strand == -1))
+            ):
+                edge_gene += 1
+                self.nodes[i].edge = True
+                self.nodes[i].tscore = 0.0
+                self.nodes[i].uscore = node.EDGE_BONUS*training_info.tinf.st_wt / edge_gene
+                self.nodes[i].rscore = 0.0
+
+            # Penalize starts with no stop codon
+            if not self.nodes[i].edge and edge_gene == 1:
+                self.nodes[i].uscore -= 0.5*node.EDGE_BONUS*training_info.tinf.st_wt
+
+            # Penalize non-edge genes < 250bp
+            if edge_gene == 0 and orf_length < 250:
+                negf = 250.0 / <float> orf_length
+                posf = <float> orf_length / 250.0
+                self.nodes[i].rscore *= negf if self.nodes[i].rscore < 0 else posf
+                self.nodes[i].uscore *= negf if self.nodes[i].uscore < 0 else posf
+                self.nodes[i].tscore *= negf if self.nodes[i].tscore < 0 else posf
+
+            # Coding Penalization in Metagenomic Fragments:  Internal genes must
+            # have a score of 5.0 and be >= 120bp.  High GC genes are also penalized.                                  */
+            if (
+                    is_meta
+                and seq.slen < 3000
+                and edge_gene == 0
+                and (self.nodes[i].cscore < 5.0 or orf_length < 120)
+            ):
+                self.nodes[i].cscore -= node.META_PEN * node.dmax(0, (3000.0 - seq.slen) / 2700.0)
+
+            # Base Start Score
+            self.nodes[i].sscore = self.nodes[i].tscore + self.nodes[i].rscore + self.nodes[i].uscore
+
+            # Penalize starts if coding is negative.  Larger penalty for edge genes,
+            # since the start is offset by a smaller amount of coding than normal.
+            if self.nodes[i].cscore < 0.0:
+                if edge_gene > 0 and not self.nodes[i].edge:
+                    if not is_meta or seq.slen > 1500:
+                        self.nodes[i].sscore -= training_info.tinf.st_wt
+                    else:
+                        self.nodes[i].sscore -= 10.31 - 0.004*seq.slen
+                elif is_meta and seq.slen < 3000 and self.nodes[i].edge:
+                    min_meta_len = sqrt(<double> seq.slen)*5.0
+                    if orf_length >= min_meta_len:
+                        if self.nodes[i].cscore >= 0:
+                            self.nodes[i].cscore = -1.0
+                        self.nodes[i].sscore = 0.0
+                        self.nodes[i].uscore = 0.0
+                else:
+                    self.nodes[i].sscore -= 0.5
+            elif (
+                    is_meta
+                and self.nodes[i].cscore < 5.0
+                and orf_length < 120
+                and self.nodes[i].sscore < 0.0
+            ):
+                self.nodes[i].sscore -= training_info.tinf.st_wt
+
+        # Return 0 on success
+        return 0
+
     cdef int _sort(self) nogil except 1:
         """Sort all nodes in the vector by their index and strand.
         """
@@ -1210,6 +1519,27 @@ cdef class Nodes:
         with nogil:
             self._reset_scores()
 
+    def score(
+        self,
+        Sequence sequence,
+        TrainingInfo training_info,
+        *,
+        bint closed=False,
+        bint is_meta=False
+    ):
+        """score(self, sequence, training_info, *, closed=False, is_meta=False)\n--
+
+        Score the start nodes currently scored.
+
+        Note:
+            This function is reimplemented from the ``score_nodes`` function of
+            ``node.c`` from the Prodigal source, and already contains the patch
+            from `hyattpd/Prodigal#88 <https://github.com/hyattpd/Prodigal/pull/88>`_.
+
+        """
+        with nogil:
+            self._score(sequence, training_info, closed=closed, is_meta=is_meta)
+
     def sort(self):
         """sort(self)\n--
 
@@ -1259,6 +1589,8 @@ cdef class Genes:
 
     """
 
+    # --- Magic methods ------------------------------------------------------
+
     def __cinit__(self):
         self.genes = NULL
         self.capacity = 0
@@ -1286,6 +1618,8 @@ cdef class Genes:
 
     def __sizeof__(self):
         return self.capacity * sizeof(_gene) + sizeof(self)
+
+    # --- C interface --------------------------------------------------------
 
     cdef inline _gene* _add_gene(
         self,
@@ -1322,6 +1656,8 @@ cdef class Genes:
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.genes, 0, old_length * sizeof(_gene))
+
+    # --- Python interface ---------------------------------------------------
 
     def clear(self):
         """Remove all genes from the vector.
@@ -2188,11 +2524,11 @@ cdef class OrfFinder:
         free(gc_frame)
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
-        record_overlapping_starts(nodes, tinf, final=False)
+        node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, False)
         ipath = dynamic_programming(nodes, tinf, scorer, final=False)
         # gather dicodon statistics for the training set
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
-        raw_coding_score(nodes, sequence, tinf)
+        nodes._raw_coding_score(sequence, tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
         rbs_score(nodes, sequence, tinf)
         train_starts_sd(nodes, sequence, tinf)
@@ -2228,12 +2564,12 @@ cdef class OrfFinder:
         # second dynamic programming, using the dicodon statistics as the
         # scoring function
         nodes._reset_scores()
-        score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=False)
-        record_overlapping_starts(nodes, tinf, final=True)
+        nodes._score(sequence, tinf, closed=self.closed, is_meta=False)
+        node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, True)
         ipath = dynamic_programming(nodes, tinf, scorer, final=True)
         # eliminate eventual bad genes in the nodes
         if nodes.length > 0:
-            eliminate_bad_genes(nodes, ipath, tinf)
+            dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
         # record genes
         add_genes(genes, nodes, ipath)
         gene.tweak_final_starts(
@@ -2302,8 +2638,8 @@ cdef class OrfFinder:
                 scorer._index(nodes)
             # compute the score for the current bin
             nodes._reset_scores()
-            score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=True)
-            record_overlapping_starts(nodes, tinf, final=True)
+            nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
+            node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, True)
             ipath = dynamic_programming(nodes, tinf, scorer, final=True)
             # update genes if the current bin had a better score
             if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
@@ -2311,7 +2647,7 @@ cdef class OrfFinder:
                 max_phase = i
                 max_score = nodes.nodes[ipath].score
                 # eliminate eventual bad genes in the nodes
-                eliminate_bad_genes(nodes, ipath, tinf)
+                dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
                 # clear the gene array
                 genes._clear()
                 # extract the genes from the dynamic programming array
@@ -2342,7 +2678,7 @@ cdef class OrfFinder:
             min_edge_gene=self.min_edge_gene
         )
         nodes._sort()
-        score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=True)
+        nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
 
         # return the max phase on success
         return max_phase
@@ -2679,44 +3015,6 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
 
     return gp;
 
-cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1:
-    cdef int i
-    cdef int j
-    cdef int last[3]
-    cdef int phase
-    cdef double gc[3]
-    cdef double gsize = 0.0
-
-    # direct strand
-    gc[0] = gc[1] = gc[2] = 0.0
-    for i in reversed(range(<int> nodes.length)):
-        if nodes.nodes[i].strand == 1:
-            phase = nodes.nodes[i].ndx %3
-            if nodes.nodes[i].type == node_type.STOP:
-                last[phase] = j = nodes.nodes[i].ndx
-                gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-            else:
-                for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
-                    gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-                gsize = abs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
-                nodes.nodes[i].gc_cont = gc[phase] / gsize
-                last[phase] = nodes.nodes[i].ndx
-
-    # reverse strand
-    gc[0] = gc[1] = gc[2] = 0.0
-    for i in range(<int> nodes.length):
-        if nodes.nodes[i].strand == -1:
-            phase = nodes.nodes[i].ndx % 3
-            if nodes.nodes[i].type == node_type.STOP:
-                last[phase] = j = nodes.nodes[i].ndx
-                gc[phase] = seq._is_gc(j) + seq._is_gc(j-1) + seq._is_gc(j-2)
-            else:
-                for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
-                    gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
-                gsize = abs(nodes.nodes[i].stop_val - nodes.nodes[i].ndx) + 3.0
-                nodes.nodes[i].gc_cont = gc[phase] / gsize
-                last[phase] = nodes.nodes[i].ndx
-
 cpdef void count_upstream_composition(Sequence seq, TrainingInfo tinf, int pos, int strand=1) nogil:
     cdef int start
     cdef int j
@@ -2885,119 +3183,6 @@ cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingIn
         nodes.nodes[ni].mot.spacer = max_spacer
         nodes.nodes[ni].mot.score = max_sc
 
-cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
-    cdef double  score[3]
-    cdef double  lfac
-    cdef double  no_stop
-    cdef double  gsize
-    cdef ssize_t last[3]
-    cdef size_t  phase
-    cdef ssize_t j
-    cdef ssize_t i
-    cdef ssize_t nn = nodes.length
-
-    if tinf.tinf.trans_table != 11:
-        no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 8.0
-        no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
-        no_stop = 1 - no_stop
-    else:
-        no_stop =  ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*tinf.tinf.gc)     / 4.0
-        no_stop += ((1-tinf.tinf.gc)*(1-tinf.tinf.gc)*(1-tinf.tinf.gc)) / 8.0
-        no_stop = 1 - no_stop
-
-    # Initial Pass: Score coding potential (start->stop)
-    score[0] = score[1] = score[2] = 0.0
-    for i in reversed(range(nn)):
-        if nodes.nodes[i].strand == 1:
-            phase = nodes.nodes[i].ndx%3
-            if nodes.nodes[i].type == node_type.STOP:
-                last[phase] = nodes.nodes[i].ndx
-                score[phase] = 0.0
-            else:
-                for j in range(last[phase] - 3, nodes.nodes[i].ndx - 1, -3):
-                    score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
-                nodes.nodes[i].cscore = score[phase]
-                last[phase] = nodes.nodes[i].ndx
-    score[0] = score[1] = score[2] = 0.0
-    for i in range(nn):
-        if nodes.nodes[i].strand == -1:
-            phase = nodes.nodes[i].ndx%3
-            if nodes.nodes[i].type == node_type.STOP:
-                last[phase] = nodes.nodes[i].ndx
-                score[phase] = 0.0
-            else:
-                for j in range(last[phase] + 3, nodes.nodes[i].ndx + 1, 3):
-                    score[phase] += tinf.tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
-                nodes.nodes[i].cscore = score[phase]
-                last[phase] = nodes.nodes[i].ndx
-
-    # Second Pass: Penalize start nodes with ascending coding to their left
-    score[0] = score[1] = score[2] = -10000.0;
-    for i in range(nn):
-        if nodes.nodes[i].strand == 1:
-            phase = nodes.nodes[i].ndx%3
-            if nodes.nodes[i].type == node_type.STOP:
-                score[phase] = -10000.0
-            elif nodes.nodes[i].cscore > score[phase]:
-                score[phase] = nodes.nodes[i].cscore
-            else:
-                nodes.nodes[i].cscore -= score[phase] - nodes.nodes[i].cscore
-    score[0] = score[1] = score[2] = -10000.0
-    for i in reversed(range(nn)):
-        if nodes.nodes[i].strand == -1:
-            phase = nodes.nodes[i].ndx%3
-            if nodes.nodes[i].type == node_type.STOP:
-                score[phase] = -10000.0
-            elif nodes.nodes[i].cscore > score[phase]:
-                score[phase] = nodes.nodes[i].cscore
-            else:
-                nodes.nodes[i].cscore -= (score[phase] - nodes.nodes[i].cscore);
-
-    # Third Pass: Add length-based factor to the score
-    # Penalize start nodes based on length to their left
-    for i in range(nn):
-        if nodes.nodes[i].strand == 1:
-            phase = nodes.nodes[i].ndx%3
-            if nodes.nodes[i].type == node_type.STOP:
-                score[phase] = -10000.0;
-            else:
-                gsize = ((<double> nodes.nodes[i].stop_val - nodes.nodes[i].ndx)+3.0)/3.0
-                if gsize > 1000.0:
-                    lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0))
-                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
-                    lfac *= (gsize - 80) / 920.0
-                else:
-                    lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize))
-                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
-                if lfac > score[phase]:
-                    score[phase] = lfac
-                else:
-                    lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
-                if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
-                    nodes.nodes[i].cscore = 0.5*lfac
-                nodes.nodes[i].cscore += lfac
-    for i in reversed(range(nn)):
-        if nodes.nodes[i].strand == -1:
-            phase = nodes.nodes[i].ndx%3;
-            if nodes.nodes[i].type == node_type.STOP:
-                score[phase] = -10000.0;
-            else:
-                gsize = ((<double> nodes.nodes[i].ndx - nodes.nodes[i].stop_val)+3.0)/3.0
-                if(gsize > 1000.0):
-                    lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
-                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-                    lfac *= (gsize - 80) / 920.0;
-                else:
-                    lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
-                    lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-                if lfac > score[phase]:
-                    score[phase] = lfac
-                else:
-                    lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
-                if lfac > 3.0 and nodes.nodes[i].cscore < 0.5*lfac:
-                    nodes.nodes[i].cscore = 0.5*lfac
-                nodes.nodes[i].cscore += lfac
-
 cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     cdef int i
     cdef int j
@@ -3029,164 +3214,6 @@ cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
                     nodes.nodes[i].rbs[0] = cur_sc[0]
                 if cur_sc[1] > nodes.nodes[i].rbs[1]:
                     nodes.nodes[i].rbs[1] = cur_sc[1]
-
-cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=False, bint is_meta=False) nogil:
-    """score_nodes(nodes, seq, tinf, closed=False, is_meta=False)\n--
-
-    Score the start nodes currently scored in ``nodes``.
-
-    Note:
-        This function is reimplemented from the ``score_nodes`` function of
-        ``node.c`` from the Prodigal source, and already contains the patch
-        from `hyattpd/Prodigal#88 <https://github.com/hyattpd/Prodigal/pull/88>`_.
-
-    """
-    cdef size_t i
-    cdef size_t j
-    cdef size_t orf_length
-    cdef double negf
-    cdef double posf
-    cdef double rbs1
-    cdef double rbs2
-    cdef double sd_score
-    cdef double edge_gene
-    cdef double min_meta_len
-
-    # Calculate raw coding potential for every start-stop pair
-    calc_orf_gc(nodes, seq, tinf)
-    raw_coding_score(nodes, seq, tinf)
-
-    # Calculate raw RBS Scores for every start node.
-    if tinf.tinf.uses_sd:
-        rbs_score(nodes, seq, tinf)
-    else:
-        for i in range(nodes.length):
-            if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
-                continue
-            find_best_upstream_motif(nodes, i, seq, tinf, stage=2)
-
-    # Score the start nodes
-    for i in range(nodes.length):
-        if nodes.nodes[i].type == node_type.STOP:
-            continue
-
-        # compute ORF length, we'll need it later several times
-        if nodes.nodes[i].ndx > nodes.nodes[i].stop_val:
-            orf_length = nodes.nodes[i].ndx - nodes.nodes[i].stop_val
-        else:
-            orf_length = nodes.nodes[i].stop_val - nodes.nodes[i].ndx
-
-        # Does this gene run off the edge?
-        edge_gene = 0
-        if nodes.nodes[i].edge:
-            edge_gene += 1
-        if (
-                nodes.nodes[i].strand == 1 and not seq._is_stop(nodes.nodes[i].stop_val, tinf.tinf.trans_table)
-            or  nodes.nodes[i].strand == -1 and not seq._is_stop(seq.slen - 1 - nodes.nodes[i].stop_val, tinf.tinf.trans_table, strand=-1)
-        ):
-            edge_gene += 1
-
-        # Edge Nodes : stops with no starts, give a small bonus
-        if nodes.nodes[i].edge:
-            nodes.nodes[i].tscore = node.EDGE_BONUS*tinf.tinf.st_wt / edge_gene
-            nodes.nodes[i].uscore = 0.0
-            nodes.nodes[i].rscore = 0.0
-        else:
-            # Type Score
-            nodes.nodes[i].tscore = tinf.tinf.type_wt[nodes.nodes[i].type] * tinf.tinf.st_wt
-
-            # RBS Motif Score
-            rbs1 = tinf.tinf.rbs_wt[nodes.nodes[i].rbs[0]];
-            rbs2 = tinf.tinf.rbs_wt[nodes.nodes[i].rbs[1]];
-            sd_score = node.dmax(rbs1, rbs2) * tinf.tinf.st_wt
-            if tinf.tinf.uses_sd:
-                nodes.nodes[i].rscore = sd_score
-            else:
-                nodes.nodes[i].rscore = tinf.tinf.st_wt * nodes.nodes[i].mot.score
-                if nodes.nodes[i].rscore < sd_score and tinf.tinf.no_mot > -0.5:
-                    nodes.nodes[i].rscore = sd_score
-
-            # Upstream Score
-            score_upstream_composition(nodes, i, seq, tinf)
-
-            # Penalize upstream score if choosing this start would stop the gene
-            # from running off the edge
-            if not closed and nodes.nodes[i].ndx <= 2 and nodes.nodes[i].strand == 1:
-                nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
-            elif not closed and nodes.nodes[i].ndx >= seq.slen - 3 and nodes.nodes[i].strand == -1:
-                nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
-            elif i < 500 and nodes.nodes[i].strand == 1:
-                for j in reversed(range(i)):
-                    if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
-                        nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
-                        break
-            elif i + 500>= nodes.length and nodes.nodes[i].strand == -1:
-                for j in range(i+1, nodes.length):
-                    if nodes.nodes[j].edge and nodes.nodes[i].stop_val == nodes.nodes[j].stop_val:
-                        nodes.nodes[i].uscore += node.EDGE_UPS*tinf.tinf.st_wt
-                        break
-
-        # Convert starts at base 1 and slen to edge genes if closed = 0
-        if (
-                not closed
-            and not nodes.nodes[i].edge
-            and ((nodes.nodes[i].ndx <= 2 and nodes.nodes[i].strand == 1) or (nodes.nodes[i].ndx >= seq.slen - 3 and nodes.nodes[i].strand == -1))
-        ):
-            edge_gene += 1
-            nodes.nodes[i].edge = True
-            nodes.nodes[i].tscore = 0.0
-            nodes.nodes[i].uscore = node.EDGE_BONUS*tinf.tinf.st_wt / edge_gene
-            nodes.nodes[i].rscore = 0.0
-
-        # Penalize starts with no stop codon
-        if not nodes.nodes[i].edge and edge_gene == 1:
-            nodes.nodes[i].uscore -= 0.5*node.EDGE_BONUS*tinf.tinf.st_wt
-
-        # Penalize non-edge genes < 250bp
-        if edge_gene == 0 and orf_length < 250:
-            negf = 250.0 / <float> orf_length
-            posf = <float> orf_length / 250.0
-            nodes.nodes[i].rscore *= negf if nodes.nodes[i].rscore < 0 else posf
-            nodes.nodes[i].uscore *= negf if nodes.nodes[i].uscore < 0 else posf
-            nodes.nodes[i].tscore *= negf if nodes.nodes[i].tscore < 0 else posf
-
-        # Coding Penalization in Metagenomic Fragments:  Internal genes must
-        # have a score of 5.0 and be >= 120bp.  High GC genes are also penalized.                                  */
-        if (
-                is_meta
-            and seq.slen < 3000
-            and edge_gene == 0
-            and (nodes.nodes[i].cscore < 5.0 or orf_length < 120)
-        ):
-            nodes.nodes[i].cscore -= node.META_PEN * node.dmax(0, (3000.0 - seq.slen) / 2700.0)
-
-        # Base Start Score
-        nodes.nodes[i].sscore = nodes.nodes[i].tscore + nodes.nodes[i].rscore + nodes.nodes[i].uscore
-
-        # Penalize starts if coding is negative.  Larger penalty for edge genes,
-        # since the start is offset by a smaller amount of coding than normal.
-        if nodes.nodes[i].cscore < 0.0:
-            if edge_gene > 0 and not nodes.nodes[i].edge:
-                if not is_meta or seq.slen > 1500:
-                    nodes.nodes[i].sscore -= tinf.tinf.st_wt
-                else:
-                    nodes.nodes[i].sscore -= 10.31 - 0.004*seq.slen
-            elif is_meta and seq.slen < 3000 and nodes.nodes[i].edge:
-                min_meta_len = sqrt(<double> seq.slen)*5.0
-                if orf_length >= min_meta_len:
-                    if nodes.nodes[i].cscore >= 0:
-                        nodes.nodes[i].cscore = -1.0
-                    nodes.nodes[i].sscore = 0.0
-                    nodes.nodes[i].uscore = 0.0
-            else:
-                nodes.nodes[i].sscore -= 0.5
-        elif (
-                is_meta
-            and nodes.nodes[i].cscore < 5.0
-            and orf_length < 120
-            and nodes.nodes[i].sscore < 0.0
-        ):
-            nodes.nodes[i].sscore -= tinf.tinf.st_wt
 
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil:
     cdef int i
@@ -3919,11 +3946,3 @@ cdef void update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence se
     # Stage 2:  Only count the highest scoring motif.
     elif stage == 2:
         mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
-
-# --- Wrappers ---------------------------------------------------------------
-
-cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint final = False) nogil:
-    node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, final)
-
-cpdef inline void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil:
-    dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
