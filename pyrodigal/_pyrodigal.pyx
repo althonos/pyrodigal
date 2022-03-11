@@ -1115,6 +1115,11 @@ cdef class Nodes:
         """Sort all nodes in the vector by their index and strand.
         """
         qsort(self.nodes, self.length, sizeof(_node), node.compare_nodes)
+        return 0
+
+    cdef int _reset_scores(self) nogil except 1:
+        node.reset_node_scores(self.nodes, self.length)
+        return 0
 
     # --- Python interface ---------------------------------------------------
 
@@ -1195,6 +1200,15 @@ cdef class Nodes:
                 min_edge_gene=min_edge_gene
             )
         return nn
+
+    def reset_scores(self):
+        """reset_scores(self)\n--
+
+        Reset node scores.
+
+        """
+        with nogil:
+            self._reset_scores()
 
     def sort(self):
         """sort(self)\n--
@@ -2185,7 +2199,7 @@ cdef class OrfFinder:
         if force_nonsd:
             tinf.tinf.uses_sd = False
         else:
-            determine_sd_usage(tinf)
+            node.determine_sd_usage(tinf.tinf)
         if not tinf.tinf.uses_sd:
             train_starts_nonsd(nodes, sequence, tinf)
         # return 0 on success
@@ -2213,7 +2227,7 @@ cdef class OrfFinder:
         scorer._index(nodes)
         # second dynamic programming, using the dicodon statistics as the
         # scoring function
-        reset_node_scores(nodes)
+        nodes._reset_scores()
         score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=False)
         record_overlapping_starts(nodes, tinf, final=True)
         ipath = dynamic_programming(nodes, tinf, scorer, final=True)
@@ -2222,8 +2236,20 @@ cdef class OrfFinder:
             eliminate_bad_genes(nodes, ipath, tinf)
         # record genes
         add_genes(genes, nodes, ipath)
-        tweak_final_starts(genes, nodes, tinf)
-        record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
+        gene.tweak_final_starts(
+            genes.genes,
+            genes.length,
+            nodes.nodes,
+            nodes.length,
+            tinf.tinf
+        )
+        gene.record_gene_data(
+            genes.genes,
+            genes.length,
+            nodes.nodes,
+            tinf.tinf,
+            sequence_index
+        )
         # return 0 on success
         return 0
 
@@ -2275,7 +2301,7 @@ cdef class OrfFinder:
                 nodes._sort()
                 scorer._index(nodes)
             # compute the score for the current bin
-            reset_node_scores(nodes)
+            nodes._reset_scores()
             score_nodes(nodes, sequence, tinf, closed=self.closed, is_meta=True)
             record_overlapping_starts(nodes, tinf, final=True)
             ipath = dynamic_programming(nodes, tinf, scorer, final=True)
@@ -2290,8 +2316,20 @@ cdef class OrfFinder:
                 genes._clear()
                 # extract the genes from the dynamic programming array
                 add_genes(genes, nodes, ipath)
-                tweak_final_starts(genes, nodes, tinf)
-                record_gene_data(genes, nodes, tinf, sequence_index=sequence_index)
+                gene.tweak_final_starts(
+                    genes.genes,
+                    genes.length,
+                    nodes.nodes,
+                    nodes.length,
+                    tinf.tinf
+                )
+                gene.record_gene_data(
+                    genes.genes,
+                    genes.length,
+                    nodes.nodes,
+                    tinf.tinf,
+                    sequence_index
+                )
 
         # recover the nodes corresponding to the best run
         tinf = METAGENOMIC_BINS[max_phase].training_info
@@ -3884,20 +3922,8 @@ cdef void update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence se
 
 # --- Wrappers ---------------------------------------------------------------
 
-cpdef inline void reset_node_scores(Nodes nodes) nogil:
-    node.reset_node_scores(nodes.nodes, nodes.length)
-
 cpdef inline void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint final = False) nogil:
     node.record_overlapping_starts(nodes.nodes, nodes.length, tinf.tinf, final)
 
 cpdef inline void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil:
     dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
-
-cpdef inline void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil:
-    gene.tweak_final_starts(genes.genes, genes.length, nodes.nodes, nodes.length, tinf.tinf)
-
-cpdef inline void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil:
-    gene.record_gene_data(genes.genes, genes.length, nodes.nodes, tinf.tinf, sequence_index)
-
-cpdef inline void determine_sd_usage(TrainingInfo tinf) nogil:
-    node.determine_sd_usage(tinf.tinf)

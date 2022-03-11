@@ -111,6 +111,7 @@ cdef class Nodes:
         const int  stop_val,
         const bint edge,
     ) nogil except NULL
+    cdef int _clear(self) nogil except 1
     cdef int _extract(
         self,
         Sequence sequence,
@@ -119,10 +120,11 @@ cdef class Nodes:
         int min_gene=*,
         int min_edge_gene=*
     ) nogil except -1
+    cdef int _reset_scores(self) nogil except 1
+    cdef int _sort(self) nogil except 1
 
     cpdef Nodes copy(self)
-    cdef int _clear(self) nogil except 1
-    cdef int _sort(self) nogil except 1
+
 
 # --- Genes ------------------------------------------------------------------
 
@@ -246,9 +248,5 @@ cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) no
 
 # --- Wrappers ---------------------------------------------------------------
 
-cpdef void reset_node_scores(Nodes nodes) nogil
 cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint final=*) nogil
 cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
-cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
-cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil
-cpdef void determine_sd_usage(TrainingInfo tinf) nogil
