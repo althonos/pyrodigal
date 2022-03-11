@@ -114,7 +114,7 @@ cdef class Nodes:
     cdef int _extract(
         self,
         Sequence sequence,
-        TrainingInfo training_info,
+        int translation_table,
         bint closed=*,
         int min_gene=*,
         int min_edge_gene=*

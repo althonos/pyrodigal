@@ -935,7 +935,7 @@ cdef class Nodes:
     cdef int _extract(
         self,
         Sequence sequence,
-        TrainingInfo training_info,
+        int translation_table,
         bint closed=False,
         int min_gene=MIN_GENE,
         int min_edge_gene=MIN_EDGE_GENE,
@@ -946,7 +946,7 @@ cdef class Nodes:
         cdef bint   saw_start[3]
         cdef int    slmod        = sequence.slen % 3
         cdef int    nn           = 0
-        cdef int    tt           = training_info.tinf.trans_table
+        cdef int    tt           = translation_table
         cdef _mask* mlist        = sequence.masks.masks
         cdef int    nm           = sequence.masks.length
 
@@ -1146,12 +1146,15 @@ cdef class Nodes:
     def extract(
         self,
         Sequence sequence,
-        TrainingInfo training_info,
+        *,
         bint closed=False,
         int min_gene=MIN_GENE,
-        int min_edge_gene=MIN_EDGE_GENE
+        int min_edge_gene=MIN_EDGE_GENE,
+        int translation_table=11,
     ):
-        """Extract nodes from the given sequence based on the training info.
+        """extract(self, sequence, *, closed=False, min_gene=90, min_edge_gene=60, translation_table=11)\n--
+
+        Extract nodes from the given sequence based on the training info.
 
         After calling this method, nodes won't be sorted; make sure to call
         `Nodes.sort` before using this further.
@@ -1159,15 +1162,17 @@ cdef class Nodes:
         Arguments:
             sequence (`~pyrodigal.Sequence`): The sequence to extract the
                 nodes from.
-            training_info (`~pyrodigal.TrainingInfo`): The training
-                information to use when extracting genes, containing relevant
-                data such as the translation table.
+
+        Keyword Arguments:
             closed (`bool`): Set to `True` to prevent proteins from running
                 off edges when finding genes in a sequence.
             min_gene (`int`): The minimum gene length. Defaults to the value
                 used in Prodigal.
             min_edge_gene (`int`): The minimum edge gene length. Defaults to
                 the value used in Prodigal.
+            translation_table (`int`): The translation table to use. Check the
+                `Wikipedia <https://w.wiki/47wo>`_ page listing all genetic
+                codes for the available values.
 
         Returns:
             `int`: The number of nodes added from the given sequence.
@@ -1184,7 +1189,7 @@ cdef class Nodes:
         with nogil:
             nn = self._extract(
                 sequence,
-                training_info,
+                translation_table=translation_table,
                 closed=closed,
                 min_gene=min_gene,
                 min_edge_gene=min_edge_gene
@@ -2077,7 +2082,7 @@ cdef class OrfFinder:
         int min_gene=MIN_GENE,
         int min_edge_gene=MIN_EDGE_GENE,
     ):
-        f"""__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene={MIN_GENE}, min_edge_gene={MIN_EDGE_GENE})\n--
+        """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60)\n--
 
         Instantiate and configure a new ORF finder.
 
@@ -2153,7 +2158,7 @@ cdef class OrfFinder:
         # find all the potential starts and stops
         nodes._extract(
             sequence,
-            tinf,
+            tinf.tinf.trans_table,
             closed=self.closed,
             min_gene=self.min_gene,
             min_edge_gene=self.min_edge_gene
@@ -2199,7 +2204,7 @@ cdef class OrfFinder:
         # find all the potential starts and stops, and sort them
         nodes._extract(
             sequence,
-            tinf,
+            tinf.tinf.trans_table,
             closed=self.closed,
             min_gene=self.min_gene,
             min_edge_gene=self.min_edge_gene
@@ -2262,7 +2267,7 @@ cdef class OrfFinder:
                 nodes._clear()
                 nodes._extract(
                     sequence,
-                    tinf,
+                    tinf.tinf.trans_table,
                     closed=self.closed,
                     min_gene=self.min_gene,
                     min_edge_gene=self.min_edge_gene
@@ -2293,7 +2298,7 @@ cdef class OrfFinder:
         nodes._clear()
         nodes._extract(
             sequence,
-            tinf,
+            tinf.tinf.trans_table,
             closed=self.closed,
             min_gene=self.min_gene,
             min_edge_gene=self.min_edge_gene

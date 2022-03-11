@@ -26,23 +26,17 @@ class TestNodes(unittest.TestCase):
         self.assertEqual(len(nodes), 0)
         # numbers below obtained directly in Prodigal by `printf`-ing the
         # node numbers on a normal run
-        self.assertEqual(nodes.extract(seq, METAGENOMIC_BINS[0].training_info), 2970)
-        self.assertEqual(len(nodes), 2970)
-        nodes.clear()
-        self.assertEqual(nodes.extract(seq, METAGENOMIC_BINS[2].training_info), 2970)
-        self.assertEqual(len(nodes), 2970)
-        nodes.clear()
-        self.assertEqual(nodes.extract(seq, METAGENOMIC_BINS[11].training_info), 2293)
-        self.assertEqual(len(nodes), 2293)
-        nodes.clear()
-        self.assertEqual(nodes.extract(seq, METAGENOMIC_BINS[24].training_info), 2293)
-        self.assertEqual(len(nodes), 2293)
-        nodes.clear()
+        for bin, expected in [(0, 2970), (2, 2970), (11, 2293), (24, 2293)]:
+            tt = METAGENOMIC_BINS[bin].training_info.translation_table
+            self.assertEqual(nodes.extract(seq, translation_table=tt), expected)
+            self.assertEqual(len(nodes), expected)
+            nodes.clear()
 
     def test_copy(self):
+        tt = METAGENOMIC_BINS[0].training_info.translation_table
         seq = Sequence.from_string(self.record.seq)
         nodes1 = Nodes()
-        nodes1.extract(seq, METAGENOMIC_BINS[0].training_info)
+        nodes1.extract(seq, translation_table=tt)
         nodes2 = nodes1.copy()
         for n1, n2 in zip(nodes1, nodes2):
             self.assertEqual(n1.type, n2.type)

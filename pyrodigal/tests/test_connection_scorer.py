@@ -30,7 +30,7 @@ class TestConnectionScorer(unittest.TestCase):
         scorer_generic = ConnectionScorer(backend=None)
         # add nodes from the sequence
         nodes = Nodes()
-        nodes.extract(seq, tinf)
+        nodes.extract(seq, translation_table=tinf.translation_table)
         nodes.sort()
         # index nodes for the scorers
         scorer_sse.index(nodes)
@@ -62,7 +62,7 @@ class TestConnectionScorer(unittest.TestCase):
         scorer_generic = ConnectionScorer(backend=None)
         # add nodes from the sequence
         nodes = Nodes()
-        nodes.extract(seq, tinf)
+        nodes.extract(seq, translation_table=tinf.translation_table)
         nodes.sort()
         # index nodes for the scorers
         scorer_avx.index(nodes)
@@ -94,7 +94,7 @@ class TestConnectionScorer(unittest.TestCase):
         scorer_generic = ConnectionScorer(backend=None)
         # add nodes from the sequence
         nodes = Nodes()
-        add_nodes(nodes, seq, tinf)
+        nodes.extract(seq, translation_table=tinf.translation_table)
         nodes.sort()
         # index nodes for the scorers
         scorer_avx.index(nodes)
