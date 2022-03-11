@@ -240,29 +240,7 @@ cdef class Sequence:
 
     """
 
-    def __cinit__(self):
-        self.slen = 0
-        self.gc = 0.0
-        self.digits = NULL
-        self.masks = None
-
-    def __dealloc__(self):
-        PyMem_Free(self.digits)
-
-    def __len__(self):
-        return self.slen
-
-    def __sizeof__(self):
-        return self.slen * sizeof(uint8_t) + sizeof(self)
-
-    cdef int _allocate(self, int slen) except 1:
-        self.slen = slen
-        self.digits = <uint8_t*> PyMem_Malloc(slen * sizeof(uint8_t))
-        if self.digits == NULL:
-            raise MemoryError()
-        with nogil:
-            memset(self.digits, 0, slen * sizeof(uint8_t))
-        return 0
+    # --- Class methods ------------------------------------------------------
 
     @classmethod
     def from_bytes(cls, const unsigned char[:] sequence, bint mask = False):
@@ -382,6 +360,34 @@ cdef class Sequence:
                             mask_begin = -1
 
         return seq
+
+    # --- Magic methods ------------------------------------------------------
+
+    def __cinit__(self):
+        self.slen = 0
+        self.gc = 0.0
+        self.digits = NULL
+        self.masks = None
+
+    def __dealloc__(self):
+        PyMem_Free(self.digits)
+
+    def __len__(self):
+        return self.slen
+
+    def __sizeof__(self):
+        return self.slen * sizeof(uint8_t) + sizeof(self)
+
+    # --- C interface -------------------------------------------------------
+
+    cdef int _allocate(self, int slen) except 1:
+        self.slen = slen
+        self.digits = <uint8_t*> PyMem_Malloc(slen * sizeof(uint8_t))
+        if self.digits == NULL:
+            raise MemoryError()
+        with nogil:
+            memset(self.digits, 0, slen * sizeof(uint8_t))
+        return 0
 
     cdef inline bint _is_a(self, int i, int strand = 1) nogil:
         cdef uint8_t x
@@ -629,6 +635,217 @@ cdef class Sequence:
             return b"G"
 
         return b'X'
+
+    cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=1) nogil:
+        cdef int i
+        cdef int j
+        cdef int k
+        cdef int mism
+        cdef int rdis
+        cdef int limit
+        cdef int max_val
+        cdef int cmp_val
+        cdef int cur_val = 0
+        cdef int match[6]
+        cdef int cur_ctr
+        cdef int dis_flag
+
+        limit = start - 4 - pos
+        if limit > 6:
+            limit = 6
+        for i in range(limit, 6):
+            match[i] = -10
+
+        # Compare the 6-base region to AGGAGG
+        for i in range(limit):
+            if pos + i < 0:
+                continue
+            if i%3 == 0 and self._is_a(pos+i, strand=strand):
+                match[i] = 2
+            elif i%3 != 0 and self._is_g(pos+i, strand=strand):
+                match[i] = 3
+            else:
+                match[i] = -10
+
+        # Find the maximally scoring motif
+        max_val = 0
+        for i in range(limit, 2, -1):
+            for j in range(limit+1-i):
+                cur_ctr = -2
+                mism = 0;
+                for k in range(j, j+i):
+                    cur_ctr += match[k]
+                    if match[k] < 0:
+                        mism += 1
+                if mism > 0:
+                    continue
+                rdis = start - (pos + j + i)
+                if rdis < 5 and i < 5:
+                    dis_flag = 2
+                elif rdis < 5 and i >= 5:
+                    dis_flag = 1
+                elif rdis > 10 and rdis <= 12 and i < 5:
+                    dis_flag = 1
+                elif rdis > 10 and rdis <= 12 and i >= 5:
+                    dis_flag = 2
+                elif rdis >= 13:
+                    dis_flag = 3
+                else:
+                    dis_flag = 0
+                if rdis > 15 or cur_ctr < 6.0:
+                    continue
+
+                # Exact-Matching RBS Motifs
+                if cur_ctr < 6:
+                    cur_val = 0
+                elif cur_ctr == 6 and dis_flag == 2:
+                    cur_val = 1
+                elif cur_ctr == 6 and dis_flag == 3:
+                    cur_val = 2
+                elif cur_ctr == 8 and dis_flag == 3:
+                    cur_val = 3
+                elif cur_ctr == 9 and dis_flag == 3:
+                    cur_val = 3
+                elif cur_ctr == 6 and dis_flag == 1:
+                    cur_val = 6
+                elif cur_ctr == 11 and dis_flag == 3:
+                    cur_val = 10
+                elif cur_ctr == 12 and dis_flag == 3:
+                    cur_val = 10
+                elif cur_ctr == 14 and dis_flag == 3:
+                    cur_val = 10
+                elif cur_ctr == 8 and dis_flag == 2:
+                    cur_val = 11
+                elif cur_ctr == 9 and dis_flag == 2:
+                    cur_val = 11
+                elif cur_ctr == 8 and dis_flag == 1:
+                    cur_val = 12
+                elif cur_ctr == 9 and dis_flag == 1:
+                    cur_val = 12
+                elif cur_ctr == 6 and dis_flag == 0:
+                    cur_val = 13
+                elif cur_ctr == 8 and dis_flag == 0:
+                    cur_val = 15
+                elif cur_ctr == 9 and dis_flag == 0:
+                    cur_val = 16
+                elif cur_ctr == 11 and dis_flag == 2:
+                    cur_val = 20
+                elif cur_ctr == 11 and dis_flag == 1:
+                    cur_val = 21
+                elif cur_ctr == 11 and dis_flag == 0:
+                    cur_val = 22
+                elif cur_ctr == 12 and dis_flag == 2:
+                    cur_val = 20
+                elif cur_ctr == 12 and dis_flag == 1:
+                    cur_val = 23
+                elif cur_ctr == 12 and dis_flag == 0:
+                    cur_val = 24
+                elif cur_ctr == 14 and dis_flag == 2:
+                    cur_val = 25
+                elif cur_ctr == 14 and dis_flag == 1:
+                    cur_val = 26
+                elif cur_ctr == 14 and dis_flag == 0:
+                    cur_val = 27
+
+                if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
+                    continue
+                if tinf.rbs_wt[cur_val] == tinf.rbs_wt[max_val] and cur_val < max_val:
+                    continue
+                max_val = cur_val
+
+        return max_val
+
+    cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=1) nogil:
+        cdef int i
+        cdef int j
+        cdef int k
+        cdef int mism
+        cdef int rdis
+        cdef int limit
+        cdef int max_val
+        cdef int cmp_val
+        cdef int cur_val = 0
+        cdef int match[6]
+        cdef int cur_ctr
+        cdef int dis_flag
+
+        limit = start - 4 - pos
+        if limit > 6:
+            limit = 6
+        for i in range(limit, 6):
+            match[i] = -10
+
+        # Compare the 6-base region to AGGAGG
+        for i in range(limit):
+            if pos + i < 0:
+                continue
+            if i%3 == 0:
+                match[i] = 2 if self._is_a(pos+i, strand=strand) else -3
+            else:
+                match[i] = 3 if self._is_g(pos+i, strand=strand) else -2
+
+        # Find the maximally scoring motif
+        max_val = 0
+        for i in range(limit, 4, -1):
+            for j in range(limit+1-i):
+                cur_ctr = -2
+                mism = 0;
+                for k in range(j, j+i):
+                    cur_ctr += match[k]
+                    if match[k] < 0.0:
+                        mism += 1
+                        if k <= j+1 or k >= j+i-2:
+                          cur_ctr -= 10
+                if mism != 1:
+                    continue
+                rdis = start - (pos + j + i)
+                if rdis < 5:
+                    dis_flag = 1
+                elif rdis > 10 and rdis <= 12:
+                    dis_flag = 2
+                elif rdis >= 13:
+                    dis_flag = 3
+                else:
+                    dis_flag = 0
+                if rdis > 15 or cur_ctr < 6:
+                    continue
+
+                # Single-Matching RBS Motifs
+                if cur_ctr < 6:
+                    cur_val = 0
+                elif cur_ctr == 6 and dis_flag == 3:
+                    cur_val = 2
+                elif cur_ctr == 7 and dis_flag == 3:
+                    cur_val = 2
+                elif cur_ctr == 9 and dis_flag == 3:
+                    cur_val = 3
+                elif cur_ctr == 6 and dis_flag == 2:
+                    cur_val = 4
+                elif cur_ctr == 6 and dis_flag == 1:
+                    cur_val = 5
+                elif cur_ctr == 6 and dis_flag == 0:
+                    cur_val = 9
+                elif cur_ctr == 7 and dis_flag == 2:
+                    cur_val = 7
+                elif cur_ctr == 7 and dis_flag == 1:
+                    cur_val = 8
+                elif cur_ctr == 7 and dis_flag == 0:
+                    cur_val = 14
+                elif cur_ctr == 9 and dis_flag == 2:
+                    cur_val = 17
+                elif cur_ctr == 9 and dis_flag == 1:
+                    cur_val = 18
+                elif cur_ctr == 9 and dis_flag == 0:
+                    cur_val = 19
+
+                if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
+                    continue
+                if tinf.rbs_wt[cur_val] == tinf.rbs_wt[max_val] and cur_val < max_val:
+                    continue
+                max_val = cur_val
+
+        return max_val
+
 
 # --- Connection Scorer ------------------------------------------------------
 
@@ -1337,6 +1554,40 @@ cdef class Nodes:
         # Return 0 on success
         return 0
 
+    cdef int _rbs_score(self, Sequence seq, _training* tinf) nogil except -1:
+        cdef int i
+        cdef int j
+        cdef int cur_sc[2]
+        cdef int slen      = seq.slen
+
+        for i in range(<int> self.length):
+            if self.nodes[i].type == node_type.STOP or self.nodes[i].edge:
+                continue
+            self.nodes[i].rbs[0] = self.nodes[i].rbs[1] = 0
+
+            if self.nodes[i].strand == 1:
+                for j in range(self.nodes[i].ndx - 20, self.nodes[i].ndx - 5):
+                    if j < 0:
+                        continue
+                    cur_sc[0] = seq._shine_dalgarno_exact(j, self.nodes[i].ndx, tinf, strand=1)
+                    cur_sc[1] = seq._shine_dalgarno_mm(j, self.nodes[i].ndx, tinf, strand=1)
+                    if cur_sc[0] > self.nodes[i].rbs[0]:
+                        self.nodes[i].rbs[0] = cur_sc[0]
+                    if cur_sc[1] > self.nodes[i].rbs[1]:
+                        self.nodes[i].rbs[1] = cur_sc[1]
+            else:
+                for j in range(slen - self.nodes[i].ndx - 21, slen - self.nodes[i].ndx - 6):
+                    if j + 1 > slen:
+                        continue
+                    cur_sc[0] = seq._shine_dalgarno_exact(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
+                    cur_sc[1] = seq._shine_dalgarno_mm(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
+                    if cur_sc[0] > self.nodes[i].rbs[0]:
+                        self.nodes[i].rbs[0] = cur_sc[0]
+                    if cur_sc[1] > self.nodes[i].rbs[1]:
+                        self.nodes[i].rbs[1] = cur_sc[1]
+
+        return 0
+
     cdef int _score(
         self,
         Sequence seq,
@@ -1362,7 +1613,7 @@ cdef class Nodes:
 
         # Calculate raw RBS Scores for every start node.
         if training_info.tinf.uses_sd:
-            rbs_score(self, seq, training_info)
+            self._rbs_score(seq, training_info.tinf)
         else:
             for i in range(self.length):
                 if self.nodes[i].type == node_type.STOP or self.nodes[i].edge:
@@ -2605,7 +2856,7 @@ cdef class OrfFinder:
         calc_dicodon_gene(tinf, sequence, nodes, ipath)
         nodes._raw_coding_score(sequence, tinf.tinf)
         # determine if this organism uses Shine-Dalgarno and score the node
-        rbs_score(nodes, sequence, tinf)
+        nodes._rbs_score(sequence, tinf.tinf)
         train_starts_sd(nodes, sequence, tinf)
         if force_nonsd:
             tinf.tinf.uses_sd = False
@@ -3197,37 +3448,6 @@ cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer s
 
 
 
-cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
-    cdef int i
-    cdef int j
-    cdef int cur_sc[2]
-    cdef int slen      = seq.slen
-
-    for i in range(<int> nodes.length):
-        if nodes.nodes[i].type == node_type.STOP or nodes.nodes[i].edge:
-            continue
-        nodes.nodes[i].rbs[0] = nodes.nodes[i].rbs[1] = 0
-
-        if nodes.nodes[i].strand == 1:
-            for j in range(nodes.nodes[i].ndx - 20, nodes.nodes[i].ndx - 5):
-                if j < 0:
-                    continue
-                cur_sc[0] = shine_dalgarno_exact(seq, j, nodes.nodes[i].ndx, tinf, strand=1)
-                cur_sc[1] = shine_dalgarno_mm(seq, j, nodes.nodes[i].ndx, tinf, strand=1)
-                if cur_sc[0] > nodes.nodes[i].rbs[0]:
-                    nodes.nodes[i].rbs[0] = cur_sc[0]
-                if cur_sc[1] > nodes.nodes[i].rbs[1]:
-                    nodes.nodes[i].rbs[1] = cur_sc[1]
-        else:
-            for j in range(slen - nodes.nodes[i].ndx - 21, slen - nodes.nodes[i].ndx - 6):
-                if j + 1 > slen:
-                    continue
-                cur_sc[0] = shine_dalgarno_exact(seq, j, slen-1-nodes.nodes[i].ndx, tinf, strand=-1)
-                cur_sc[1] = shine_dalgarno_mm(seq, j, slen-1-nodes.nodes[i].ndx, tinf, strand=-1)
-                if cur_sc[0] > nodes.nodes[i].rbs[0]:
-                    nodes.nodes[i].rbs[0] = cur_sc[0]
-                if cur_sc[1] > nodes.nodes[i].rbs[1]:
-                    nodes.nodes[i].rbs[1] = cur_sc[1]
 
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil:
     cdef int i
@@ -3258,215 +3478,6 @@ cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, Trainin
         nodes.nodes[ni].uscore += 0.4 * tinf.tinf.st_wt * tinf.tinf.ups_comp[count][mer]
         count += 1
 
-cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=1) nogil:
-    cdef int i
-    cdef int j
-    cdef int k
-    cdef int mism
-    cdef int rdis
-    cdef int limit
-    cdef int max_val
-    cdef int cmp_val
-    cdef int cur_val = 0
-    cdef int match[6]
-    cdef int cur_ctr
-    cdef int dis_flag
-
-    limit = start - 4 - pos
-    if limit > 6:
-        limit = 6
-    for i in range(limit, 6):
-        match[i] = -10
-
-    # Compare the 6-base region to AGGAGG
-    for i in range(limit):
-        if pos + i < 0:
-            continue
-        if i%3 == 0 and seq._is_a(pos+i, strand=strand):
-            match[i] = 2
-        elif i%3 != 0 and seq._is_g(pos+i, strand=strand):
-            match[i] = 3
-        else:
-            match[i] = -10
-
-    # Find the maximally scoring motif
-    max_val = 0
-    for i in range(limit, 2, -1):
-        for j in range(limit+1-i):
-            cur_ctr = -2
-            mism = 0;
-            for k in range(j, j+i):
-                cur_ctr += match[k]
-                if match[k] < 0:
-                    mism += 1
-            if mism > 0:
-                continue
-            rdis = start - (pos + j + i)
-            if rdis < 5 and i < 5:
-                dis_flag = 2
-            elif rdis < 5 and i >= 5:
-                dis_flag = 1
-            elif rdis > 10 and rdis <= 12 and i < 5:
-                dis_flag = 1
-            elif rdis > 10 and rdis <= 12 and i >= 5:
-                dis_flag = 2
-            elif rdis >= 13:
-                dis_flag = 3
-            else:
-                dis_flag = 0
-            if rdis > 15 or cur_ctr < 6.0:
-                continue
-
-            # Exact-Matching RBS Motifs
-            if cur_ctr < 6:
-                cur_val = 0
-            elif cur_ctr == 6 and dis_flag == 2:
-                cur_val = 1
-            elif cur_ctr == 6 and dis_flag == 3:
-                cur_val = 2
-            elif cur_ctr == 8 and dis_flag == 3:
-                cur_val = 3
-            elif cur_ctr == 9 and dis_flag == 3:
-                cur_val = 3
-            elif cur_ctr == 6 and dis_flag == 1:
-                cur_val = 6
-            elif cur_ctr == 11 and dis_flag == 3:
-                cur_val = 10
-            elif cur_ctr == 12 and dis_flag == 3:
-                cur_val = 10
-            elif cur_ctr == 14 and dis_flag == 3:
-                cur_val = 10
-            elif cur_ctr == 8 and dis_flag == 2:
-                cur_val = 11
-            elif cur_ctr == 9 and dis_flag == 2:
-                cur_val = 11
-            elif cur_ctr == 8 and dis_flag == 1:
-                cur_val = 12
-            elif cur_ctr == 9 and dis_flag == 1:
-                cur_val = 12
-            elif cur_ctr == 6 and dis_flag == 0:
-                cur_val = 13
-            elif cur_ctr == 8 and dis_flag == 0:
-                cur_val = 15
-            elif cur_ctr == 9 and dis_flag == 0:
-                cur_val = 16
-            elif cur_ctr == 11 and dis_flag == 2:
-                cur_val = 20
-            elif cur_ctr == 11 and dis_flag == 1:
-                cur_val = 21
-            elif cur_ctr == 11 and dis_flag == 0:
-                cur_val = 22
-            elif cur_ctr == 12 and dis_flag == 2:
-                cur_val = 20
-            elif cur_ctr == 12 and dis_flag == 1:
-                cur_val = 23
-            elif cur_ctr == 12 and dis_flag == 0:
-                cur_val = 24
-            elif cur_ctr == 14 and dis_flag == 2:
-                cur_val = 25
-            elif cur_ctr == 14 and dis_flag == 1:
-                cur_val = 26
-            elif cur_ctr == 14 and dis_flag == 0:
-                cur_val = 27
-
-            if tinf.tinf.rbs_wt[cur_val] < tinf.tinf.rbs_wt[max_val]:
-                continue
-            if tinf.tinf.rbs_wt[cur_val] == tinf.tinf.rbs_wt[max_val] and cur_val < max_val:
-                continue
-            max_val = cur_val
-
-    return max_val
-
-cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=1) nogil:
-    cdef int i
-    cdef int j
-    cdef int k
-    cdef int mism
-    cdef int rdis
-    cdef int limit
-    cdef int max_val
-    cdef int cmp_val
-    cdef int cur_val = 0
-    cdef int match[6]
-    cdef int cur_ctr
-    cdef int dis_flag
-
-    limit = start - 4 - pos
-    if limit > 6:
-        limit = 6
-    for i in range(limit, 6):
-        match[i] = -10
-
-    # Compare the 6-base region to AGGAGG
-    for i in range(limit):
-        if pos + i < 0:
-            continue
-        if i%3 == 0:
-            match[i] = 2 if seq._is_a(pos+i, strand=strand) else -3
-        else:
-            match[i] = 3 if seq._is_g(pos+i, strand=strand) else -2
-
-    # Find the maximally scoring motif
-    max_val = 0
-    for i in range(limit, 4, -1):
-        for j in range(limit+1-i):
-            cur_ctr = -2
-            mism = 0;
-            for k in range(j, j+i):
-                cur_ctr += match[k]
-                if match[k] < 0.0:
-                    mism += 1
-                    if k <= j+1 or k >= j+i-2:
-                      cur_ctr -= 10
-            if mism != 1:
-                continue
-            rdis = start - (pos + j + i)
-            if rdis < 5:
-                dis_flag = 1
-            elif rdis > 10 and rdis <= 12:
-                dis_flag = 2
-            elif rdis >= 13:
-                dis_flag = 3
-            else:
-                dis_flag = 0
-            if rdis > 15 or cur_ctr < 6:
-                continue
-
-            # Single-Matching RBS Motifs
-            if cur_ctr < 6:
-                cur_val = 0
-            elif cur_ctr == 6 and dis_flag == 3:
-                cur_val = 2
-            elif cur_ctr == 7 and dis_flag == 3:
-                cur_val = 2
-            elif cur_ctr == 9 and dis_flag == 3:
-                cur_val = 3
-            elif cur_ctr == 6 and dis_flag == 2:
-                cur_val = 4
-            elif cur_ctr == 6 and dis_flag == 1:
-                cur_val = 5
-            elif cur_ctr == 6 and dis_flag == 0:
-                cur_val = 9
-            elif cur_ctr == 7 and dis_flag == 2:
-                cur_val = 7
-            elif cur_ctr == 7 and dis_flag == 1:
-                cur_val = 8
-            elif cur_ctr == 7 and dis_flag == 0:
-                cur_val = 14
-            elif cur_ctr == 9 and dis_flag == 2:
-                cur_val = 17
-            elif cur_ctr == 9 and dis_flag == 1:
-                cur_val = 18
-            elif cur_ctr == 9 and dis_flag == 0:
-                cur_val = 19
-
-            if tinf.tinf.rbs_wt[cur_val] < tinf.tinf.rbs_wt[max_val]:
-                continue
-            if tinf.tinf.rbs_wt[cur_val] == tinf.tinf.rbs_wt[max_val] and cur_val < max_val:
-                continue
-            max_val = cur_val
-
-    return max_val
 
 cpdef void train_starts_sd(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil:
     cdef int phase

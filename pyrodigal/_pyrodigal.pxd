@@ -64,6 +64,9 @@ cdef class Sequence:
     cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
     cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
 
+    cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=*) nogil
+    cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=*) nogil
+
 
 # --- Connection Scorer ------------------------------------------------------
 
@@ -133,6 +136,7 @@ cdef class Nodes:
         int min_edge_gene=*
     ) nogil except -1
     cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1
+    cdef int _rbs_score(self, Sequence seq, _training* tinf) nogil except -1
     cdef int _reset_scores(self) nogil except 1
     cdef int _score(self, Sequence seq, TrainingInfo training_info, bint closed=*, bint is_meta=*) nogil except -1
     cdef int _sort(self) nogil except 1
@@ -254,9 +258,6 @@ cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
 cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer score, bint final=*) nogil
-cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
 cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil
-cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
-cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
 cpdef void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
 cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
