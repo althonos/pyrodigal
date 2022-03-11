@@ -36,7 +36,13 @@ jobs:
           image-tag: 2021-05-18-1e72e6c
         - python-version: pypy-3.7
           pyo3-python: /opt/pypy/pypy3.7-7.3.4/bin/python
-          image-tag: 2021-05-18-1e72e6c
+          image-tag: latest
+        - python-version: pypy-3.8
+          pyo3-python: /opt/pypy/pypy3.7-7.3.4/bin/python
+          image-tag: latest
+        - python-version: pypy-3.9
+          pyo3-python: /opt/pypy/pypy3.7-7.3.4/bin/python
+          image-tag: latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -72,8 +78,9 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
-        - pypy-3.6
         - pypy-3.7
+        - pypy-3.8
+        - pypy-3.9
     steps:
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -188,6 +195,8 @@ jobs:
         - 3.9
         - '3.10'
         - pypy-3.7
+        - pypy-3.8
+        - pypy-3.9
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -224,6 +233,8 @@ jobs:
         - 3.9
         - '3.10'
         - pypy-3.7
+        - pypy-3.8
+        - pypy-3.9
     steps:
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -251,8 +262,9 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
-        #- pypy-3.6
         - pypy-3.7
+        - pypy-3.8
+        - pypy-3.9
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -287,8 +299,9 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
-        #- pypy-3.6
         - pypy-3.7
+        - pypy-3.8
+        - pypy-3.9
     steps:
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
