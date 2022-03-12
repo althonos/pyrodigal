@@ -1083,7 +1083,39 @@ cdef class Node:
 
     """
 
+    # --- Magic methods ------------------------------------------------------
+
+    def __repr__(self):
+        ty = type(self)
+        return "<{}.{} index={!r} strand={:+} type={!r} edge={!r}>".format(
+            ty.__module__,
+            ty.__name__,
+            self.index,
+            self.strand,
+            self.type,
+            self.edge,
+        )
+
     # --- Properties ---------------------------------------------------------
+
+    @property
+    def index(self):
+        """`int`: The position of the node in the sequence.
+
+        .. versionadded:: 0.7.0
+
+        """
+        assert self.node != NULL
+        return self.node.ndx
+
+    @property
+    def strand(self):
+        """`int`: *-1* if the node is on the reverse strand, *+1* otherwise.
+
+        .. versionadded:: 0.7.0
+
+        """
+        return self.node.strand
 
     @property
     def type(self):
@@ -1126,6 +1158,42 @@ cdef class Node:
         """
         assert self.node != NULL
         return self.node.score
+
+    @property
+    def cscore(self):
+        """`float`: The coding score for this node.
+
+        .. versionadded:: 0.7.0
+
+        """
+        return self.node.cscore
+
+    @property
+    def rscore(self):
+        """`float`: The score for the RBS motif.
+
+        .. versionadded:: 0.7.0
+
+        """
+        return self.node.rscore
+
+    @property
+    def sscore(self):
+        """`float`: The score for the strength of the start codon.
+
+        .. versionadded:: 0.7.0
+
+        """
+        return self.node.sscore
+
+    @property
+    def tscore(self):
+        """`float`: The score for the codon kind (ATG/GTG/TTG).
+
+        .. versionadded:: 0.7.0
+
+        """
+        return self.node.tscore
 
     # --- C interface --------------------------------------------------------
 
@@ -2110,6 +2178,17 @@ cdef class Gene:
 
     """
 
+    # --- Magic methods ------------------------------------------------------
+
+    def __repr__(self):
+        ty = type(self)
+        return "<{}.{} begin={!r} end={!r}>".format(
+            ty.__module__,
+            ty.__name__,
+            self.begin,
+            self.end,
+        )
+
     # --- Properties ---------------------------------------------------------
 
     @property
@@ -2439,6 +2518,17 @@ cdef class TrainingInfo:
     def __dealloc__(self):
         if self.owned:
             PyMem_Free(self.tinf)
+
+    def __repr__(self):
+        ty = type(self)
+        return "<{}.{} gc={!r} start_weight={!r} translation_table={!r} uses_sd={!r}>".format(
+            ty.__module__,
+            ty.__name__,
+            self.gc,
+            self.start_weight,
+            self.translation_table,
+            self.uses_sd,
+        )
 
     # --- Properties -------------------------------------------------------
 
@@ -3144,6 +3234,19 @@ cdef class MetagenomicBin:
 
     """
 
+    # --- Magic methods ------------------------------------------------------
+
+    def __repr__(self):
+        ty = type(self)
+        return "<{}.{} index={!r} description={!r}>".format(
+            ty.__module__,
+            ty.__name__,
+            self.index,
+            self.description,
+        )
+
+    # --- Properties ---------------------------------------------------------
+
     @property
     def index(self):
         """`int`: The index of this metagenomic bin.
@@ -3209,6 +3312,23 @@ cdef list _NODE_TYPE = [
 cdef class Prediction:
     """A single predicted gene found by Prodigal.
     """
+
+    # --- Magic methods ------------------------------------------------------
+
+    def __repr__(self):
+        ty = type(self)
+        return "<{}.{} begin={!r} end={!r} strand={:+} start_type={!r} rbs_motif={!r} rbs_spacer={!r}>".format(
+            ty.__module__,
+            ty.__name__,
+            self.begin,
+            self.end,
+            self.strand,
+            self.start_type,
+            self.rbs_motif,
+            self.rbs_spacer,
+        )
+
+    # --- Properties ---------------------------------------------------------
 
     @property
     def _gene_data(self):
@@ -3357,6 +3477,8 @@ cdef class Prediction:
 
         """
         return self.owner.nodes.nodes[self.gene.gene.start_ndx].uscore
+
+    # --- Python interface ---------------------------------------------------
 
     cpdef double confidence(self):
         """confidence(self)\n--
@@ -3897,22 +4019,23 @@ cdef class OrfFinder:
         self.max_overlap = max_overlap
 
     def __repr__(self):
-        ty = type(self).__name__
-        if self.training_info is None:
-            return "{}(meta={}, closed={}, mask={})".format(
-                ty,
-                self.meta,
-                self.closed,
-                self.mask
-            )
-        else:
-            return "{}(meta={}, closed={}, mask={}, training_info={})".format(
-                ty,
-                self.meta,
-                self.closed,
-                self.mask,
-                self.training_info
-            )
+        cdef list template = []
+        if self.training_info is not None:
+            template.append(f"training_info={self.training_info!r}")
+        if self.meta:
+            template.append(f"meta={self.meta!r}")
+        if self.closed:
+            template.append(f"closed={self.closed!r}")
+        if self.mask:
+            template.append(f"mask={self.mask!r}")
+        if self.min_gene != MIN_GENE:
+            template.append(f"min_gene={self.min_gene!r}")
+        if self.min_edge_gene != MIN_EDGE_GENE:
+            template.append(f"min_edge_gene={self.min_edge_gene!r}")
+        if self.max_overlap != MAX_SAM_OVLP:
+            template.append(f"max_overlap={self.max_overlap!r}")
+        ty = type(self)
+        return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
     # --- C interface --------------------------------------------------------
 
