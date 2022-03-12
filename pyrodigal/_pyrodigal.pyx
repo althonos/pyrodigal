@@ -1386,12 +1386,7 @@ cdef class Nodes:
                     gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
                 else:
                     for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
-                        if j < seq.slen:
-                            gc[phase] += seq._is_gc(j)
-                        if j + 1 < seq.slen:
-                            gc[phase] += seq._is_gc(j+1)
-                        if j + 2 < seq.slen:
-                            gc[phase] += seq._is_gc(j+2)
+                        gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
@@ -1405,13 +1400,15 @@ cdef class Nodes:
                     last[phase] = j = self.nodes[i].ndx
                     gc[phase] = seq._is_gc(j) + seq._is_gc(j-1) + seq._is_gc(j-2)
                 else:
-                    for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                        if j < seq.slen:
+                    if self.nodes[i].edge:
+                        # NOTE: This fixes a bug in the original code where
+                        #       is_gc(...) is called for an index larger than
+                        #       the sequence length
+                        for j in range(last[phase] + 3, seq.slen):
                             gc[phase] += seq._is_gc(j)
-                        if j + 1 < seq.slen:
-                            gc[phase] += seq._is_gc(j+1)
-                        if j + 2 < seq.slen:
-                            gc[phase] += seq._is_gc(j+2)
+                    else:
+                        for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
+                            gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
