@@ -2649,6 +2649,45 @@ cdef class Genes:
         old_length, self.length = self.length, 0
         memset(self.genes, 0, old_length * sizeof(_gene))
 
+    cdef int _extract(self, Nodes nodes, int ipath) nogil except -1:
+        """Extract genes from the dynamic programming nodes.
+        """
+        cdef int  path      = ipath
+        cdef int  ng        = 0
+        cdef int  begin     = 0
+        cdef int  end       = 0
+        cdef int  start_ndx = 0
+        cdef int  stop_ndx  = 0
+
+        if path == -1:
+            return 0
+        while nodes.nodes[path].traceb != -1:
+            path = nodes.nodes[path].traceb
+        while path != -1:
+            if nodes.nodes[path].elim == 1:
+                pass
+            elif nodes.nodes[path].strand == 1:
+                if nodes.nodes[path].type != node_type.STOP:
+                    begin = nodes.nodes[path].ndx + 1
+                    start_ndx = path
+                else:
+                    end = nodes.nodes[path].ndx + 3
+                    stop_ndx = path
+                    self._add_gene(begin, end, start_ndx, stop_ndx)
+                    ng += 1
+            else:
+                if nodes.nodes[path].type != node_type.STOP:
+                    end = nodes.nodes[path].ndx + 1
+                    start_ndx = path
+                    self._add_gene(begin, end, start_ndx, stop_ndx)
+                    ng += 1
+                else:
+                    begin = nodes.nodes[path].ndx - 1
+                    stop_ndx = path
+            path = nodes.nodes[path].tracef
+
+        return ng
+
     cdef void _tweak_final_starts(
         self,
         Nodes nodes,
@@ -4088,7 +4127,7 @@ cdef class OrfFinder:
         if nodes.length > 0:
             dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
         # record genes
-        add_genes(genes, nodes, ipath)
+        genes._extract(nodes, ipath)
         genes._tweak_final_starts(nodes, tinf.tinf, self.max_overlap)
         gene.record_gene_data(
             genes.genes,
@@ -4157,7 +4196,7 @@ cdef class OrfFinder:
                 # clear the gene array
                 genes._clear()
                 # extract the genes from the dynamic programming array
-                add_genes(genes, nodes, ipath)
+                genes._extract(nodes, ipath)
                 genes._tweak_final_starts(nodes, tinf, self.max_overlap)
                 gene.record_gene_data(
                     genes.genes,
@@ -4360,45 +4399,6 @@ class Pyrodigal(OrfFinder):
 
 
 # --- C-level API reimplementation -------------------------------------------
-
-cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1:
-    """Adds genes to the gene list, based on the nodes.
-    """
-    cdef int  path      = ipath
-    cdef int  ng        = 0
-    cdef int  begin     = 0
-    cdef int  end       = 0
-    cdef int  start_ndx = 0
-    cdef int  stop_ndx  = 0
-
-    if path == -1:
-        return 0
-    while nodes.nodes[path].traceb != -1:
-        path = nodes.nodes[path].traceb
-    while path != -1:
-        if nodes.nodes[path].elim == 1:
-            pass
-        elif nodes.nodes[path].strand == 1:
-            if nodes.nodes[path].type != node_type.STOP:
-                begin = nodes.nodes[path].ndx + 1
-                start_ndx = path
-            else:
-                end = nodes.nodes[path].ndx + 3
-                stop_ndx = path
-                genes._add_gene(begin, end, start_ndx, stop_ndx)
-                ng += 1
-        else:
-            if nodes.nodes[path].type != node_type.STOP:
-                end = nodes.nodes[path].ndx + 1
-                start_ndx = path
-                genes._add_gene(begin, end, start_ndx, stop_ndx)
-                ng += 1
-            else:
-                begin = nodes.nodes[path].ndx - 1
-                stop_ndx = path
-        path = nodes.nodes[path].tracef
-
-    return ng
 
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
     cdef int  i

@@ -190,6 +190,7 @@ cdef class Genes:
         const int start_ndx,
         const int stop_ndx,
     ) nogil except NULL
+    cdef int _extract(self, Nodes nodes, int ipath) nogil except -1
     cdef void _tweak_final_starts(
         self,
         Nodes nodes,
@@ -276,5 +277,4 @@ cdef class OrfFinder:
 
 # --- C-level API reimplementation -------------------------------------------
 
-cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
