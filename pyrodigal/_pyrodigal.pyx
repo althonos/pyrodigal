@@ -4261,7 +4261,7 @@ cdef class OrfFinder:
                 to an usual nucleotide (not any of "ATGC") will be ignored.
 
         Returns:
-            `Predictions`: A collection of all the genes found in the input.
+            `~pyrodigal.Genes`: A list of all the genes found in the input.
 
         Raises:
             `MemoryError`: When allocation of an internal buffers fails.
@@ -4411,15 +4411,6 @@ cdef class OrfFinder:
             self.training_info = tinf
 
         return tinf
-
-class Pyrodigal(OrfFinder):
-    def __init__(self, meta=False, closed=False, mask=False, training_info=None):
-        warnings.warn(
-            "`pyrodigal.Pyrodigal` is deprecated and will be removed in"
-            " v0.7.0, use `pyrodigal.OrfFinder` instead",
-            DeprecationWarning
-        )
-        super(Pyrodigal, self).__init__(meta=meta, closed=closed, mask=mask, training_info=training_info)
 
 
 # --- C-level API reimplementation -------------------------------------------

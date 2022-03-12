@@ -14,7 +14,6 @@ from ._pyrodigal import (
     Node,
     Nodes,
     OrfFinder,
-    Pyrodigal,
     Sequence,
     TrainingInfo,
     MetagenomicBin,
@@ -29,7 +28,6 @@ __all__ = [
     "Node",
     "Nodes",
     "OrfFinder",
-    "Pyrodigal",
     "Sequence",
     "TrainingInfo",
     "MetagenomicBin"
