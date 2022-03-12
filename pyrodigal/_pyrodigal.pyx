@@ -2197,11 +2197,29 @@ cdef class Gene:
 
     @property
     def _gene_data(self):
-        return self.gene.gene_data.decode('ascii')
+        cdef size_t node_index = <size_t> (self.gene - &self.owner.genes[0])
+        return "ID={}_{};partial={}{};start_type={};rbs_motif={};rbs_spacer={};gc_cont={:.3f}".format(
+            self.owner._num_seq,
+            node_index + 1,
+            int(self.partial_begin),
+            int(self.partial_end),
+            self.start_type,
+            self.rbs_motif,
+            self.rbs_spacer,
+            self.gc_cont
+        )
 
     @property
     def _score_data(self):
-        return self.gene.score_data.decode('ascii')
+        return "conf={:.2f};score={:.2f};cscore={:.2f};sscore={:.2f};rscore={:.2f};uscore={:.2f};tscore={:.2f}".format(
+            self.confidence(),
+            self.cscore + self.sscore,
+            self.cscore,
+            self.sscore,
+            self.rscore,
+            self.uscore,
+            self.tscore,
+        )
 
     @property
     def begin(self):
@@ -2376,7 +2394,7 @@ cdef class Gene:
         return self.owner.nodes[self.gene.start_ndx]
 
     @property
-    def stop_ndx(self):
+    def stop_node(self):
         """`~pyrodigal.Node`: The stop node at the end of this gene.
         """
         return self.owner.nodes[self.gene.stop_ndx]
@@ -2554,7 +2572,6 @@ cdef class Gene:
         # return the string containing the protein sequence
         return protein
 
-
 cdef class Genes:
     """A list of raw genes found by Prodigal in a single sequence.
 
@@ -2587,6 +2604,7 @@ cdef class Genes:
         self.sequence = sequence
         self.training_info = training_info
         self.nodes = nodes
+        self._num_seq = 1
 
     def __dealloc__(self):
         PyMem_Free(self.genes)
@@ -2954,7 +2972,7 @@ cdef class Genes:
         return n
 
     cpdef ssize_t write_scores(self, object file, bint header=True) except -1:
-        """write_scores(self, file)\n--
+        """write_scores(self, file, header=True)\n--
 
         Write the start scores to ``file`` in tabular format.
 
@@ -4104,7 +4122,6 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-        int sequence_index
     ) nogil except -1:
         cdef int ipath
         # find all the potential starts and stops, and sort them
@@ -4129,13 +4146,9 @@ cdef class OrfFinder:
         # record genes
         genes._extract(nodes, ipath)
         genes._tweak_final_starts(nodes, tinf.tinf, self.max_overlap)
-        gene.record_gene_data(
-            genes.genes,
-            genes.length,
-            nodes.nodes,
-            tinf.tinf,
-            sequence_index
-        )
+        # NOTE: In the original Prodigal code, the gene data would be
+        #       recorded here, but since we build the gene data string
+        #       on request we don't have to pre-build them here.
         # return 0 on success
         return 0
 
@@ -4145,7 +4158,6 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-        int sequence_index
     ) nogil except -1:
         cdef int          i
         cdef double       low
@@ -4198,13 +4210,9 @@ cdef class OrfFinder:
                 # extract the genes from the dynamic programming array
                 genes._extract(nodes, ipath)
                 genes._tweak_final_starts(nodes, tinf, self.max_overlap)
-                gene.record_gene_data(
-                    genes.genes,
-                    genes.length,
-                    nodes.nodes,
-                    tinf,
-                    sequence_index
-                )
+                # NOTE: In the original Prodigal code, the gene data would be
+                #       recorded here, but since we build the gene data string
+                #       on request we don't have to pre-build them here.
 
         # recover the nodes corresponding to the best run
         tinf = _METAGENOMIC_BINS[max_phase].tinf
@@ -4268,13 +4276,13 @@ cdef class OrfFinder:
 
         # extract the current sequence index
         with self.lock:
-            n = self._num_seq
+            genes._num_seq = self._num_seq
             self._num_seq += 1
 
         # find genes with the right mode
         if self.meta:
             with nogil:
-                phase = self._find_genes_meta(seq, scorer, nodes, genes, n)
+                phase = self._find_genes_meta(seq, scorer, nodes, genes)
             tinf = METAGENOMIC_BINS[phase].training_info
         else:
             tinf = self.training_info
@@ -4285,7 +4293,6 @@ cdef class OrfFinder:
                     scorer,
                     nodes,
                     genes,
-                    n
                 )
 
         # return the predicted genes

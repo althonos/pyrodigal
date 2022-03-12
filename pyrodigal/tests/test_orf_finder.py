@@ -65,6 +65,21 @@ class _OrfFinderTestCase(object):
         for pred, gene in zip(predictions, genes):
             self.assertSequenceEqual(pred.sequence(), str(gene.seq))
 
+    def assertGeneDataEqual(self, predictions, proteins):
+        self.assertEqual(len(predictions), len(proteins))
+        for gene, protein in zip(predictions, proteins):
+            *_, gene_data = protein.description.split(" # ")
+            self.assertEqual(gene._gene_data, gene_data.strip())
+
+    def assertPredictionsEqual(self, predictions, proteins):
+        self.assertTranslationsEqual(predictions, proteins)
+        self.assertCoordinatesEqual(predictions, proteins)
+        self.assertRbsMotifsEqual(predictions, proteins)
+        self.assertStartTypesEqual(predictions, proteins)
+        self.assertRbsSpacersEqual(predictions, proteins)
+        self.assertGCContentEqual(predictions, proteins)
+        self.assertGeneDataEqual(predictions, proteins)
+
 
 class _TestMode(_OrfFinderTestCase):
 
@@ -74,13 +89,8 @@ class _TestMode(_OrfFinderTestCase):
         genes = load_genes("KK037166", self.mode)
 
         preds = self.find_genes(self.get_sequence(record))
-        self.assertTranslationsEqual(preds, proteins)
         self.assertGenesEqual(preds, genes)
-        self.assertCoordinatesEqual(preds, proteins)
-        self.assertRbsMotifsEqual(preds, proteins)
-        self.assertStartTypesEqual(preds, proteins)
-        self.assertRbsSpacersEqual(preds, proteins)
-        self.assertGCContentEqual(preds, proteins)
+        self.assertPredictionsEqual(preds, proteins)
 
     def test_find_genes_SRR492066(self):
         record = load_record("SRR492066")
@@ -88,13 +98,8 @@ class _TestMode(_OrfFinderTestCase):
         genes = load_genes("SRR492066", self.mode)
 
         preds = self.find_genes(self.get_sequence(record))
-        self.assertCoordinatesEqual(preds, proteins)
         self.assertGenesEqual(preds, genes)
-        self.assertTranslationsEqual(preds, proteins)
-        self.assertRbsMotifsEqual(preds, proteins)
-        self.assertStartTypesEqual(preds, proteins)
-        self.assertRbsSpacersEqual(preds, proteins)
-        self.assertGCContentEqual(preds, proteins)
+        self.assertPredictionsEqual(preds, proteins)
 
     def test_find_genes_MIIJ01000039(self):
         record = load_record("MIIJ01000039")
@@ -102,13 +107,8 @@ class _TestMode(_OrfFinderTestCase):
         genes = load_genes("MIIJ01000039", self.mode)
 
         preds = self.find_genes(self.get_sequence(record))
-        self.assertCoordinatesEqual(preds, proteins)
         self.assertGenesEqual(preds, genes)
-        self.assertRbsMotifsEqual(preds, proteins)
-        self.assertStartTypesEqual(preds, proteins)
-        self.assertRbsSpacersEqual(preds, proteins)
-        self.assertTranslationsEqual(preds, proteins)
-        self.assertGCContentEqual(preds, proteins)
+        self.assertPredictionsEqual(preds, proteins)
 
 
 class _TestBin(object):
@@ -221,13 +221,8 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         orf_finder = OrfFinder(meta=True, mask=True)
         preds = orf_finder.find_genes(record.seq)
         self.assertEqual(len(preds.sequence.masks), 1)
-        self.assertCoordinatesEqual(preds, proteins)
         self.assertGenesEqual(preds, genes)
-        self.assertRbsMotifsEqual(preds, proteins)
-        self.assertStartTypesEqual(preds, proteins)
-        self.assertRbsSpacersEqual(preds, proteins)
-        self.assertTranslationsEqual(preds, proteins)
-        self.assertGCContentEqual(preds, proteins)
+        self.assertPredictionsEqual(preds, proteins)
 
     def test_find_genes_large_minsize(self):
         record = load_record("KK037166")

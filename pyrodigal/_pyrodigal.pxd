@@ -178,7 +178,8 @@ cdef class Genes:
     cdef          _gene*        genes
     cdef          size_t       capacity
     cdef          size_t       length
-    # References to siource data
+    # References to source data
+    cdef          size_t       _num_seq
     cdef readonly Nodes        nodes
     cdef readonly Sequence     sequence
     cdef readonly TrainingInfo training_info
@@ -261,7 +262,6 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-        int sequence_index
     ) nogil except -1
     cdef int _find_genes_meta(
         self,
@@ -269,7 +269,6 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-        int sequence_index
     ) nogil except -1
 
     cpdef Genes find_genes(self, object sequence)
