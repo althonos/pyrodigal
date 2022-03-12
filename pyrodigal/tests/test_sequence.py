@@ -6,6 +6,11 @@ from .._pyrodigal import METAGENOMIC_BINS
 
 class TestSequence(unittest.TestCase):
 
+    def test_str(self):
+        s = "ATGCNNNNNNNNNNATGCNNNNNNNNTGC"
+        seq = Sequence.from_string(s, mask=False)
+        self.assertEqual(str(seq), s)
+
     def test_no_region_masking(self):
         seq = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=False)
         self.assertEqual(len(seq.masks), 0)

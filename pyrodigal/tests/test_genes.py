@@ -57,7 +57,6 @@ class TestGenes(unittest.TestCase):
         if sys.version_info >= (3, 6):
             self.assertIsInstance(self.genes, collections.abc.Reversible)
 
-    @unittest.skipIf(sys.implementation.name != 'cpython', 'numerical precision issues on PyPy')
     def test_write_scores(self):
 
         buffer = io.StringIO()

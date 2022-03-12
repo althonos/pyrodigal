@@ -379,6 +379,38 @@ cdef class Sequence:
     def __sizeof__(self):
         return self.slen * sizeof(uint8_t) + sizeof(self)
 
+    def __str__(self):
+        cdef int     i
+        cdef Py_UCS4 nuc
+
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+            cdef bytes dna
+            cdef void* data
+            # create an empty byte buffer that we can write to
+            dna = PyBytes_FromStringAndSize(NULL, self.slen)
+            data = <void*> PyBytes_AsString(dna)
+        ELSE:
+            cdef unicode dna
+            cdef int     kind
+            cdef void*   data
+            # create an empty string that we can write to
+            dna  = PyUnicode_New(self.slen, 0x7F)
+            kind = PyUnicode_KIND(dna)
+            data = PyUnicode_DATA(dna)
+
+        with nogil:
+            for i in range(self.slen):
+                nuc = _letters[self.digits[i]]
+                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                    (<char*> data)[i] = nuc
+                ELSE:
+                    PyUnicode_WRITE(kind, data, i, nuc)
+
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+            return dna.decode("ascii")
+        ELSE:
+            return dna
+
     # --- C interface -------------------------------------------------------
 
     cdef int _allocate(self, int slen) except 1:
@@ -2470,12 +2502,11 @@ cdef class Gene:
         # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
         #                the use of the PyUnicode API here, and will just not
         #                write any letter with PyUnicode_WRITE. The bug
-        #                doesn't seem to affect `Prediction.translate`, so
+        #                doesn't seem to affect `Gene.translate`, so
         #                I'm not sure what's going on, but in that case we
         #                can build an ASCII string and decode afterwards.
         IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             cdef bytes dna
-            cdef int   kind
             cdef void* data
             # create an empty byte buffer that we can write to
             dna = PyBytes_FromStringAndSize(NULL, length)
@@ -2499,7 +2530,6 @@ cdef class Gene:
                     (<char*> data)[i] = nuc
                 ELSE:
                     PyUnicode_WRITE(kind, data, i, nuc)
-                unk += strand
 
         IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             return dna.decode("ascii")
