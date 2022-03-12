@@ -24,7 +24,7 @@ cdef extern from "node.h" nogil:
 
     struct _node:
         int type
-        int edge
+        bint edge
         int ndx
         int strand
         int stop_val

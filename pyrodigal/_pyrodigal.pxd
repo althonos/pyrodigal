@@ -165,10 +165,23 @@ cdef class Gene:
     cdef Genes  owner
     cdef _gene* gene
 
+    cpdef double confidence(self)
+    cpdef unicode sequence(self)
+    cpdef unicode translate(
+        self,
+        object translation_table=?,
+        Py_UCS4 unknown_residue=*,
+    )
+
 cdef class Genes:
-    cdef _gene* genes
-    cdef size_t capacity
-    cdef size_t length
+    # Raw gene array
+    cdef          _gene*        genes
+    cdef          size_t       capacity
+    cdef          size_t       length
+    # References to siource data
+    cdef readonly Nodes        nodes
+    cdef readonly Sequence     sequence
+    cdef readonly TrainingInfo training_info
 
     cdef inline _gene* _add_gene(
         self,
@@ -183,8 +196,12 @@ cdef class Genes:
         _training* tinf,
         int max_sam_overlap=*,
     ) nogil
-
     cdef int _clear(self) nogil except 1
+
+    cpdef ssize_t write_gff(self, object file, str prefix=*) except -1
+    cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
+    cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
+    cpdef ssize_t write_scores(self, object file, bint header=*) except -1
 
 
 # --- Training Info ----------------------------------------------------------
@@ -212,31 +229,6 @@ cdef class MetagenomicBin:
 
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 
-
-# --- Predictions ------------------------------------------------------------
-
-cdef class Prediction:
-    cdef readonly Predictions owner
-    cdef readonly Gene        gene
-
-    cpdef double confidence(self)
-    cpdef unicode sequence(self)
-    cpdef unicode translate(
-        self,
-        object translation_table=?,
-        Py_UCS4 unknown_residue=*,
-    )
-
-cdef class Predictions:
-    cdef readonly Genes        genes
-    cdef readonly Nodes        nodes
-    cdef readonly Sequence     sequence
-    cdef readonly TrainingInfo training_info
-
-    cpdef ssize_t write_gff(self, object file, str prefix=*) except -1
-    cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
-    cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
-    cpdef ssize_t write_scores(self, object file, bint header=*) except -1
 
 # --- OrfFinder --------------------------------------------------------------
 
@@ -279,7 +271,7 @@ cdef class OrfFinder:
         int sequence_index
     ) nogil except -1
 
-    cpdef Predictions  find_genes(self, object sequence)
+    cpdef Genes find_genes(self, object sequence)
 
 
 # --- C-level API reimplementation -------------------------------------------

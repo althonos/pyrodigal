@@ -2182,14 +2182,26 @@ cdef class Gene:
 
     def __repr__(self):
         ty = type(self)
-        return "<{}.{} begin={!r} end={!r}>".format(
+        return "<{}.{} begin={!r} end={!r} strand={:+} start_type={!r} rbs_motif={!r} rbs_spacer={!r}>".format(
             ty.__module__,
             ty.__name__,
             self.begin,
             self.end,
+            self.strand,
+            self.start_type,
+            self.rbs_motif,
+            self.rbs_spacer,
         )
 
     # --- Properties ---------------------------------------------------------
+
+    @property
+    def _gene_data(self):
+        return self.gene.gene_data.decode('ascii')
+
+    @property
+    def _score_data(self):
+        return self.gene.score_data.decode('ascii')
 
     @property
     def begin(self):
@@ -2204,21 +2216,357 @@ cdef class Gene:
         return self.gene.end
 
     @property
-    def start_ndx(self):
-        """`int`: The index of the start node in the `Nodes` list.
+    def strand(self):
+        """`int`: *-1* if the gene is on the reverse strand, *+1* otherwise.
         """
-        return self.gene.start_ndx
+        return self.owner.nodes.nodes[self.gene.start_ndx].strand
+
+    @property
+    def partial_begin(self):
+        """`bool`: whether the gene overlaps with the start of the sequence.
+        """
+        if self.strand == 1:
+            return self.owner.nodes.nodes[self.gene.start_ndx].edge == 1
+        else:
+            return self.owner.nodes.nodes[self.gene.stop_ndx].edge == 1
+
+    @property
+    def partial_end(self):
+        """`bool`: whether the gene overlaps with the end of the sequence.
+        """
+        if self.strand == 1:
+            return self.owner.nodes.nodes[self.gene.stop_ndx].edge == 1
+        else:
+            return self.owner.nodes.nodes[self.gene.start_ndx].edge == 1
+
+    @property
+    def start_type(self):
+        """`str`: The start codon of this gene.
+
+        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if the
+        `OrfFinder` has been initialized in open ends mode and the gene
+        starts right at the beginning of the input sequence.
+
+        """
+        node = self.owner.nodes.nodes[self.gene.start_ndx]
+        start_type = 3 if node.edge else node.type
+        return _NODE_TYPE[start_type]
+
+    @property
+    def rbs_motif(self):
+        """``str``, optional: The motif of the Ribosome Binding Site.
+
+        Possible non-`None` values are ``GGA/GAG/AGG``, ``3Base/5BMM``,
+        ``4Base/6BMM``, ``AGxAG``, ``GGxGG``, ``AGGAG(G)/GGAGG``, ``AGGA``,
+        ``AGGA/GGAG/GAGG``, ``GGAG/GAGG``, ``AGGAG/GGAGG``, ``AGGAG``,
+        ``GGAGG`` or ``AGGAGG``.
+
+        """
+        assert self.owner is not None
+        assert self.owner.nodes is not None
+        assert self.owner.nodes.nodes != NULL
+
+        cdef char[10]   qt
+        cdef _node*     node = &self.owner.nodes.nodes[self.gene.start_ndx]
+        cdef _training* tinf = self.owner.training_info.tinf
+        cdef double     rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+        cdef double     rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+
+        if tinf.uses_sd:
+            return _RBS_MOTIF[node.rbs[0 if rbs1 > rbs2 else 1]]
+        elif tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+            return _RBS_MOTIF[node.rbs[0]]
+        elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+            return _RBS_MOTIF[node.rbs[1]]
+        elif node.mot.len == 0:
+            return None
+        else:
+            sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
+            return qt.decode('ascii')
+
+    @property
+    def rbs_spacer(self):
+        """`str`, optional: The number of bases between the RBS and the CDS.
+
+        Possible non-`None` values are ``3-4bp``, ``5-10bp``, ``11-12bp`` or
+        ``13-15bp``.
+
+        """
+        assert self.owner is not None
+        assert self.owner.nodes is not None
+        assert self.owner.nodes.nodes != NULL
+
+        cdef _node*     node = &self.owner.nodes.nodes[self.gene.start_ndx]
+        cdef _training* tinf = self.owner.training_info.tinf
+        cdef double     rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+        cdef double     rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+
+        if tinf.uses_sd:
+            return _RBS_SPACER[node.rbs[0 if rbs1 > rbs2 else 1]]
+        elif tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+            return _RBS_SPACER[node.rbs[0]]
+        elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+            return _RBS_SPACER[node.rbs[1]]
+        elif node.mot.len == 0:
+            return None
+        else:
+            return f"{node.mot.spacer}bp"
+
+    @property
+    def gc_cont(self):
+        """`float`: The GC content of the gene (between *0* and *1*).
+        """
+        return self.owner.nodes.nodes[self.gene.start_ndx].gc_cont
+
+    @property
+    def translation_table(self):
+        """`int`: The translation table used to find the gene.
+        """
+        return self.owner.training_info.translation_table
+
+    @property
+    def cscore(self):
+        """`float`: The coding score for the start node, based on 6-mer usage.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.start_ndx].cscore
+
+    @property
+    def rscore(self):
+        """`float`: The score for the RBS motif.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.start_ndx].rscore
+
+    @property
+    def sscore(self):
+        """`float`: The score for the strength of the start codon.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.start_ndx].sscore
+
+    @property
+    def tscore(self):
+        """`float`: The score for the codon kind (ATG/GTG/TTG).
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.start_ndx].tscore
+
+    @property
+    def uscore(self):
+        """`float`: The score for the upstream regions.
+
+        .. versionadded:: 0.5.1
+
+        """
+        return self.owner.nodes.nodes[self.gene.start_ndx].uscore
+
+    @property
+    def start_node(self):
+        """`~pyrodigal.Node`: The start node at the beginning of this gene.
+        """
+        return self.owner.nodes[self.gene.start_ndx]
 
     @property
     def stop_ndx(self):
-        """`int`: The index of the stop node in the `Nodes` list.
+        """`~pyrodigal.Node`: The stop node at the end of this gene.
         """
-        return self.gene.stop_ndx
+        return self.owner.nodes[self.gene.stop_ndx]
+
+    # --- Python interface ---------------------------------------------------
+
+    cpdef double confidence(self):
+        """confidence(self)\n--
+
+        Estimate the confidence of the prediction.
+
+        Returns:
+            `float`: A confidence percentage between *0* and *100*.
+
+        """
+        cdef int ndx = self.gene.start_ndx
+        return gene.calculate_confidence(
+            self.owner.nodes.nodes[ndx].cscore + self.owner.nodes.nodes[ndx].sscore,
+            self.owner.training_info.tinf.st_wt
+        )
+
+    cpdef unicode sequence(self):
+        """sequence(self)\n--
+
+        Build the nucleotide sequence of this predicted gene.
+
+        .. versionadded:: 0.5.4
+
+        """
+
+        cdef size_t   i
+        cdef size_t   j
+        cdef size_t   begin
+        cdef size_t   end
+        cdef size_t   unk
+        cdef size_t   length
+        cdef Py_UCS4  nuc
+        cdef _gene*   gene   = self.gene
+        cdef int      slen   = self.owner.sequence.slen
+        cdef int      strand = self.owner.nodes.nodes[gene.start_ndx].strand
+        cdef uint8_t* digits   = self.owner.sequence.digits
+
+        # compute the right length to hold the nucleotides
+        length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
+
+        # compute the offsets in the sequence bitmap
+        if strand == 1:
+            begin = gene.begin - 1
+            end = gene.end
+            unk = gene.begin - 1
+        else:
+            begin = slen - gene.end
+            end = slen + 1 - gene.begin
+            unk = gene.end - 1
+
+        # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
+        #                the use of the PyUnicode API here, and will just not
+        #                write any letter with PyUnicode_WRITE. The bug
+        #                doesn't seem to affect `Prediction.translate`, so
+        #                I'm not sure what's going on, but in that case we
+        #                can build an ASCII string and decode afterwards.
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+            cdef bytes dna
+            cdef int   kind
+            cdef void* data
+            # create an empty byte buffer that we can write to
+            dna = PyBytes_FromStringAndSize(NULL, length)
+            data = <void*> PyBytes_AsString(dna)
+        ELSE:
+            cdef unicode  dna
+            cdef int      kind
+            cdef void*    data
+            # create an empty string that we can write to
+            dna  = PyUnicode_New(length, 0x7F)
+            kind = PyUnicode_KIND(dna)
+            data = PyUnicode_DATA(dna)
+
+        with nogil:
+            for i, j in enumerate(range(begin, end)):
+                if strand == 1:
+                    nuc = _letters[digits[j]]
+                else:
+                    nuc = _letters[_complement[digits[slen - 1 - j]]]
+                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                    (<char*> data)[i] = nuc
+                ELSE:
+                    PyUnicode_WRITE(kind, data, i, nuc)
+                unk += strand
+
+        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+            return dna.decode("ascii")
+        ELSE:
+            return dna
+
+    cpdef unicode translate(
+        self,
+        object translation_table=None,
+        Py_UCS4 unknown_residue=u"X",
+    ):
+        """translate(self, translation_table=None, unknown_residue="X")\n--
+
+        Translate the predicted gene into a protein sequence.
+
+        Arguments:
+            translation_table (`int`, optional): An alternative translation
+                table to use to translate the gene. Use ``None`` (the
+                default) to translate using the translation table this gene
+                was found with.
+            unknown_residue (`str`): A single character to use for residues
+                translated from codons with unknown nucleotides.
+
+        Returns:
+            `str`: The proteins sequence as a string using the right
+            translation table and the standard single letter alphabet for
+            proteins.
+
+        Raises:
+            `ValueError`: when ``translation_table`` is not a valid
+                genetic code number.
+
+        """
+
+        cdef size_t         nucl_length
+        cdef size_t         prot_length
+        cdef size_t         i
+        cdef size_t         j
+        cdef int            tt
+        cdef object         protein
+        cdef int            kind
+        cdef void*          data
+        cdef Py_UCS4        aa
+        cdef _gene*         gene        = self.gene
+        cdef int            slen        = self.owner.sequence.slen
+        cdef int            edge        = self.owner.nodes.nodes[gene.start_ndx].edge
+        cdef int            strand      = self.owner.nodes.nodes[gene.start_ndx].strand
+        cdef bitmap_t       seq
+        cdef size_t         begin
+        cdef size_t         end
+        cdef size_t         unk
+
+        # HACK: support changing the translation table (without allocating a
+        #       new a training info structure) by manipulating where the
+        #       table would be read from in the fields of the struct
+        if translation_table is None:
+            tt = self.owner.training_info.tinf.trans_table
+        elif translation_table not in TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
+        else:
+            tt = translation_table
+
+        # compute the right length to hold the protein
+        nucl_length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
+        prot_length = nucl_length//3
+        # create an empty protein string that we can write to
+        # with the appropriate functions
+        protein = PyUnicode_New(prot_length, 0x7F)
+        kind    = PyUnicode_KIND(protein)
+        data    = PyUnicode_DATA(protein)
+
+        # compute the offsets in the sequence bitmaps:
+        # - begin is the coordinates of the first nucleotide in the gene
+        # - unk is the coordinate of the first nucleotide in the useq bitmap
+        if strand == 1:
+            begin = gene.begin - 1
+            end = gene.end - 1
+        else:
+            begin = slen - gene.end
+            end = slen - gene.begin
+
+        with nogil:
+            for i, j in enumerate(range(begin, end, 3)):
+                aa = self.owner.sequence._amino(j, tt, strand=strand, is_init=i==0 and not edge)
+                PyUnicode_WRITE(kind, data, i, aa)
+
+        # return the string containing the protein sequence
+        return protein
+
 
 cdef class Genes:
     """A list of raw genes found by Prodigal in a single sequence.
 
     .. versionadded:: 0.5.4
+
+    Attributes:
+        sequence (`pyrodigal.Sequence`): The compressed input sequence for
+            which the gene predictions were made.
+        training_info (`pyrodigal.TrainingInfo`): A reference to the
+            training info these predictions were obtained with.
+        nodes (`pyrodigal.Nodes`): A collection of raw nodes found in the
+            input sequence.
 
     """
 
@@ -2229,11 +2577,11 @@ cdef class Genes:
         self.capacity = 0
         self.length = 0
 
-    def __init__(self):
-        self._clear()
-
     def __dealloc__(self):
         PyMem_Free(self.genes)
+
+    def __bool__(self):
+        return self.length > 0
 
     def __len__(self):
         return self.length
@@ -2429,6 +2777,241 @@ cdef class Genes:
         """
         with nogil:
             self._clear()
+
+    cpdef ssize_t write_gff(self, object file, str prefix="gene_") except -1:
+        """write_gff(self, file, prefix="gene_", width=60)\n--
+
+        Write the genes to ``file`` in General Feature Format.
+
+        Arguments:
+           file (`io.TextIOBase`): A file open in text mode where to write
+               the features.
+           prefix (`str`): The prefix to use to make identifiers for each
+               predicted gene.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        """
+        cdef Gene    gene
+        cdef int     i
+        cdef ssize_t n    = 0
+
+        for i, gene in enumerate(self):
+            n += file.write(prefix)
+            n += file.write(str(i+1))
+            n += file.write("\t")
+            n += file.write("pyrodigal_v")
+            n += file.write(__version__)
+            n += file.write("\t")
+            n += file.write("CDS")
+            n += file.write("\t")
+            n += file.write(str(gene.begin))
+            n += file.write("\t")
+            n += file.write(str(gene.end))
+            n += file.write("\t")
+            n += file.write("{:.1f}".format(gene.sscore + gene.cscore))
+            n += file.write("\t")
+            n += file.write("+" if gene.strand > 0 else "-")
+            n += file.write("\t")
+            n += file.write("0")
+            n += file.write("\t")
+            n += file.write(gene._gene_data)
+            n += file.write(";")
+            n += file.write(gene._score_data)
+            n += file.write("\n")
+
+        return n
+
+    cpdef ssize_t write_genes(self, object file, str prefix="gene_", object width=70) except -1:
+        """write_genes(self, file, prefix="gene_", width=70)\n--
+
+         Write nucleotide sequences of genes to ``file`` in FASTA format.
+
+         Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the nucleotide sequences.
+            prefix (`str`): The prefix to use to make identifiers for each
+                predicted gene.
+            width (`int`): The width to use to wrap sequence lines. Prodigal
+                uses 70 for nucleotide sequences.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        """
+        cdef Gene    gene
+        cdef int     i
+        cdef ssize_t n    = 0
+
+        for i, gene in enumerate(self):
+            n += file.write(">")
+            n += file.write(prefix)
+            n += file.write(str(i+1))
+            n += file.write(" # ")
+            n += file.write(str(gene.begin))
+            n += file.write(" # ")
+            n += file.write(str(gene.end))
+            n += file.write(" # ")
+            n += file.write(str(gene.strand))
+            n += file.write(" # ")
+            n += file.write(gene._gene_data)
+            n += file.write("\n")
+            for line in textwrap.wrap(gene.sequence(), width=width):
+                n += file.write(line)
+                n += file.write("\n")
+
+        return n
+
+    cpdef ssize_t write_translations(self, object file, str prefix="gene_", object width=60, object translation_table=None) except -1:
+        """write_translations(self, file, prefix="gene_", width=60, translation_table=None)\n--
+
+         Write protein sequences of genes to ``file`` in FASTA format.
+
+         Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the protein sequences.
+            prefix (`str`): The prefix to use to make identifiers for each
+                predicted gene.
+            width (`int`): The width to use to wrap sequence lines. Prodigal
+                uses 60 for protein sequences.
+            translation_table (`int`, optional): A different translation to
+                use to translation the genes. If `None` given, use the one
+                from the training info.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        """
+        cdef Gene    gene
+        cdef int     i
+        cdef ssize_t n    = 0
+
+        if translation_table is not None and translation_table not in TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
+
+        for i, gene in enumerate(self):
+            n += file.write(">")
+            n += file.write(prefix)
+            n += file.write(str(i+1))
+            n += file.write(" # ")
+            n += file.write(str(gene.begin))
+            n += file.write(" # ")
+            n += file.write(str(gene.end))
+            n += file.write(" # ")
+            n += file.write(str(gene.strand))
+            n += file.write(" # ")
+            n += file.write(gene._gene_data)
+            n += file.write("\n")
+            for line in textwrap.wrap(gene.translate(translation_table), width=width):
+                n += file.write(line)
+                n += file.write("\n")
+
+        return n
+
+    cpdef ssize_t write_scores(self, object file, bint header=True) except -1:
+        """write_scores(self, file)\n--
+
+        Write the start scores to ``file`` in tabular format.
+
+        Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the features.
+            header (`bool`): `True` to write a header line, `False` otherwise.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        .. versionadded:: 0.7.0
+
+        """
+        cdef size_t     i
+        cdef int        rbs_index
+        cdef _node*     node
+        cdef int        st_type
+        cdef ssize_t    n           = 0
+        cdef int        prev_stop   = -1
+        cdef int        prev_strand = 0
+        cdef _training* tinf        = self.training_info.tinf
+
+        cdef char      qt[10]
+        cdef double    rbs1
+        cdef double    rbs2
+
+        try:
+            # Sort and groupd nodes by STOP codon position
+            qsort(self.nodes.nodes, self.nodes.length, sizeof(_node), stopcmp_nodes)
+            # Write headers if requested
+            if header:
+                # FIXME: missing some header data
+                # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
+                # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
+                n += file.write(f"# Sequence Data: seqlen={len(self.sequence)}\n")
+                n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
+                # write column names
+                n += file.write(
+                    "Beg\t" "End\t" "Std\t" "Total\t" "CodPot\t" "StrtSc\t"
+                    "Codon\t" "RBSMot\t" "Spacer\t" "RBSScr\t" "UpsScr\t"
+                    "TypeScr\t" "GCCont\n"
+                )
+            # Write a line for each start codon, grouped by STOP codon
+            for i in range(self.nodes.length):
+                node = &self.nodes.nodes[i]
+                if node.type == node_type.STOP:
+                    continue
+
+                st_type = node_type.STOP if node.edge else node.type
+                if node.stop_val != prev_stop or node.strand != prev_strand:
+                    prev_stop = node.stop_val
+                    prev_strand = node.strand
+                    n += file.write("\n")
+
+                if node.strand == 1:
+                    n += file.write(f"{node.ndx + 1:d}\t")
+                    n += file.write(f"{node.stop_val+3:d}\t")
+                    n += file.write("+\t")
+                else:
+                    n += file.write(f"{node.stop_val - 1:d}\t")
+                    n += file.write(f"{node.ndx + 1:d}\t")
+                    n += file.write("-\t")
+
+                n += file.write(f"{node.cscore + node.sscore:.2f}\t")
+                n += file.write(f"{node.cscore:.2f}\t")
+                n += file.write(f"{node.sscore:.2f}\t")
+                n += file.write(f"{_NODE_TYPE[st_type]}\t")
+
+                rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+                rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+                if tinf.uses_sd:
+                    rbs_index = 0 if rbs1 > rbs2 else 1
+                    n += file.write(f"{_RBS_MOTIF[node.rbs[rbs_index]]}\t")
+                    n += file.write(f"{_RBS_SPACER[node.rbs[rbs_index]]}\t")
+                    n += file.write(f"{node.rscore:.2f}\t")
+                else:
+                    if tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+                        n += file.write(f"{_RBS_MOTIF[node.rbs[0]]}\t")
+                        n += file.write(f"{_RBS_SPACER[node.rbs[0]]}\t")
+                        n += file.write(f"{node.rscore:.2f}\t")
+                    elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+                        n += file.write(f"{_RBS_MOTIF[node.rbs[1]]}\t")
+                        n += file.write(f"{_RBS_SPACER[node.rbs[1]]}\t")
+                        n += file.write(f"{node.rscore:.2f}\t")
+                    else:
+                        if node.mot.len == 0:
+                            n += file.write(f"None\tNone\t{node.rscore:.2f}\t")
+                        else:
+                            sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
+                            n += file.write(f"{qt.decode('ascii')}\t{node.mot.spacer:d}bp\t{node.rscore:.2f}\t")
+
+                n += file.write(f"{node.uscore:.2f}\t")
+                n += file.write(f"{node.tscore:.2f}\t")
+                n += file.write(f"{node.gc_cont:.3f}\n")
+            # Write final line and return number of bytes written
+            n += file.write("\n")
+            return n
+        finally:
+            # Revert back original node order
+            qsort(self.nodes.nodes, self.nodes.length, sizeof(_node), compare_nodes)
 
 
 # --- Training Info ----------------------------------------------------------
@@ -3309,647 +3892,6 @@ cdef list _NODE_TYPE = [
     "ATG", "GTG", "TTG" , "Edge",
 ]
 
-cdef class Prediction:
-    """A single predicted gene found by Prodigal.
-    """
-
-    # --- Magic methods ------------------------------------------------------
-
-    def __repr__(self):
-        ty = type(self)
-        return "<{}.{} begin={!r} end={!r} strand={:+} start_type={!r} rbs_motif={!r} rbs_spacer={!r}>".format(
-            ty.__module__,
-            ty.__name__,
-            self.begin,
-            self.end,
-            self.strand,
-            self.start_type,
-            self.rbs_motif,
-            self.rbs_spacer,
-        )
-
-    # --- Properties ---------------------------------------------------------
-
-    @property
-    def _gene_data(self):
-        return self.gene.gene.gene_data.decode('ascii')
-
-    @property
-    def _score_data(self):
-        return self.gene.gene.score_data.decode('ascii')
-
-    @property
-    def begin(self):
-        """`int`: The coordinate at which the gene begins.
-        """
-        return self.gene.begin
-
-    @property
-    def end(self):
-        """`int`: The coordinate at which the gene ends.
-        """
-        return self.gene.end
-
-    @property
-    def strand(self):
-        """`int`: *-1* if the gene is on the reverse strand, *+1* otherwise.
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].strand
-
-    @property
-    def partial_begin(self):
-        """`bool`: whether the gene overlaps with the start of the sequence.
-        """
-        if self.strand == 1:
-            return self.owner.nodes.nodes[self.gene.gene.start_ndx].edge == 1
-        else:
-            return self.owner.nodes.nodes[self.gene.gene.stop_ndx].edge == 1
-
-    @property
-    def partial_end(self):
-        """`bool`: whether the gene overlaps with the end of the sequence.
-        """
-        if self.strand == 1:
-            return self.owner.nodes.nodes[self.gene.gene.stop_ndx].edge == 1
-        else:
-            return self.owner.nodes.nodes[self.gene.gene.start_ndx].edge == 1
-
-    @property
-    def start_type(self):
-        """`str`: The start codon of this gene.
-
-        Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if the
-        `OrfFinder` has been initialized in open ends mode and the gene
-        starts right at the beginning of the input sequence.
-
-        """
-        node = self.owner.nodes.nodes[self.gene.gene.start_ndx]
-        start_type = 3 if node.edge else node.type
-        return _NODE_TYPE[start_type]
-
-    @property
-    def rbs_motif(self):
-        """``str``, optional: The motif of the Ribosome Binding Site.
-
-        Possible non-`None` values are ``GGA/GAG/AGG``, ``3Base/5BMM``,
-        ``4Base/6BMM``, ``AGxAG``, ``GGxGG``, ``AGGAG(G)/GGAGG``, ``AGGA``,
-        ``AGGA/GGAG/GAGG``, ``GGAG/GAGG``, ``AGGAG/GGAGG``, ``AGGAG``,
-        ``GGAGG`` or ``AGGAGG``.
-
-        """
-        assert self.owner is not None
-        assert self.owner.nodes is not None
-        assert self.owner.nodes.nodes != NULL
-
-        cdef char[10]   qt
-        cdef _node*     node = &self.owner.nodes.nodes[self.gene.gene.start_ndx]
-        cdef _training* tinf = self.owner.training_info.tinf
-        cdef double     rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
-        cdef double     rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
-
-        if tinf.uses_sd:
-            return _RBS_MOTIF[node.rbs[0 if rbs1 > rbs2 else 1]]
-        elif tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
-            return _RBS_MOTIF[node.rbs[0]]
-        elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
-            return _RBS_MOTIF[node.rbs[1]]
-        elif node.mot.len == 0:
-            return None
-        else:
-            sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
-            return qt.decode('ascii')
-
-    @property
-    def rbs_spacer(self):
-        """`str`, optional: The number of bases between the RBS and the CDS.
-
-        Possible non-`None` values are ``3-4bp``, ``5-10bp``, ``11-12bp`` or
-        ``13-15bp``.
-
-        """
-        assert self.owner is not None
-        assert self.owner.nodes is not None
-        assert self.owner.nodes.nodes != NULL
-
-        cdef _node*     node = &self.owner.nodes.nodes[self.gene.gene.start_ndx]
-        cdef _training* tinf = self.owner.training_info.tinf
-        cdef double     rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
-        cdef double     rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
-
-        if tinf.uses_sd:
-            return _RBS_SPACER[node.rbs[0 if rbs1 > rbs2 else 1]]
-        elif tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
-            return _RBS_SPACER[node.rbs[0]]
-        elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
-            return _RBS_SPACER[node.rbs[1]]
-        elif node.mot.len == 0:
-            return None
-        else:
-            return f"{node.mot.spacer}bp"
-
-    @property
-    def gc_cont(self):
-        """`float`: The GC content of the gene (between *0* and *1*).
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].gc_cont
-
-    @property
-    def translation_table(self):
-        """`int`: The translation table used to find the gene.
-        """
-        return self.owner.training_info.translation_table
-
-    @property
-    def cscore(self):
-        """`float`: The coding score for the start node, based on 6-mer usage.
-
-        .. versionadded:: 0.5.1
-
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].cscore
-
-    @property
-    def rscore(self):
-        """`float`: The score for the RBS motif.
-
-        .. versionadded:: 0.5.1
-
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].rscore
-
-    @property
-    def sscore(self):
-        """`float`: The score for the strength of the start codon.
-
-        .. versionadded:: 0.5.1
-
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].sscore
-
-    @property
-    def tscore(self):
-        """`float`: The score for the codon kind (ATG/GTG/TTG).
-
-        .. versionadded:: 0.5.1
-
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].tscore
-
-    @property
-    def uscore(self):
-        """`float`: The score for the upstream regions.
-
-        .. versionadded:: 0.5.1
-
-        """
-        return self.owner.nodes.nodes[self.gene.gene.start_ndx].uscore
-
-    # --- Python interface ---------------------------------------------------
-
-    cpdef double confidence(self):
-        """confidence(self)\n--
-
-        Estimate the confidence of the prediction.
-
-        Returns:
-            `float`: A confidence percentage between *0* and *100*.
-
-        """
-        cdef int ndx = self.gene.gene.start_ndx
-        return gene.calculate_confidence(
-            self.nodes.nodes[ndx].cscore + self.nodes.nodes[ndx].sscore,
-            self.owner.training_info.tinf.st_wt
-        )
-
-    cpdef unicode sequence(self):
-        """sequence(self)\n--
-
-        Build the nucleotide sequence of this predicted gene.
-
-        .. versionadded:: 0.5.4
-
-        """
-
-        cdef size_t   i
-        cdef size_t   j
-        cdef size_t   begin
-        cdef size_t   end
-        cdef size_t   unk
-        cdef size_t   length
-        cdef Py_UCS4  nuc
-        cdef _gene*   gene   = self.gene.gene
-        cdef int      slen   = self.owner.sequence.slen
-        cdef int      strand = self.owner.nodes.nodes[gene.start_ndx].strand
-        cdef uint8_t* digits   = self.owner.sequence.digits
-
-        # compute the right length to hold the nucleotides
-        length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
-
-        # compute the offsets in the sequence bitmap
-        if strand == 1:
-            begin = gene.begin - 1
-            end = gene.end
-            unk = gene.begin - 1
-        else:
-            begin = slen - gene.end
-            end = slen + 1 - gene.begin
-            unk = gene.end - 1
-
-        # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
-        #                the use of the PyUnicode API here, and will just not
-        #                write any letter with PyUnicode_WRITE. The bug
-        #                doesn't seem to affect `Prediction.translate`, so
-        #                I'm not sure what's going on, but in that case we
-        #                can build an ASCII string and decode afterwards.
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-            cdef bytes dna
-            cdef int   kind
-            cdef void* data
-            # create an empty byte buffer that we can write to
-            dna = PyBytes_FromStringAndSize(NULL, length)
-            data = <void*> PyBytes_AsString(dna)
-        ELSE:
-            cdef unicode  dna
-            cdef int      kind
-            cdef void*    data
-            # create an empty string that we can write to
-            dna  = PyUnicode_New(length, 0x7F)
-            kind = PyUnicode_KIND(dna)
-            data = PyUnicode_DATA(dna)
-
-        with nogil:
-            for i, j in enumerate(range(begin, end)):
-                if strand == 1:
-                    nuc = _letters[digits[j]]
-                else:
-                    nuc = _letters[_complement[digits[slen - 1 - j]]]
-                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-                    (<char*> data)[i] = nuc
-                ELSE:
-                    PyUnicode_WRITE(kind, data, i, nuc)
-                unk += strand
-
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-            return dna.decode("ascii")
-        ELSE:
-            return dna
-
-    cpdef unicode translate(
-        self,
-        object translation_table=None,
-        Py_UCS4 unknown_residue=u"X",
-    ):
-        """translate(self, translation_table=None, unknown_residue="X")\n--
-
-        Translate the predicted gene into a protein sequence.
-
-        Arguments:
-            translation_table (`int`, optional): An alternative translation
-                table to use to translate the gene. Use ``None`` (the
-                default) to translate using the translation table this gene
-                was found with.
-            unknown_residue (`str`): A single character to use for residues
-                translated from codons with unknown nucleotides.
-
-        Returns:
-            `str`: The proteins sequence as a string using the right
-            translation table and the standard single letter alphabet for
-            proteins.
-
-        Raises:
-            `ValueError`: when ``translation_table`` is not a valid
-                genetic code number.
-
-        """
-
-        cdef size_t         nucl_length
-        cdef size_t         prot_length
-        cdef size_t         i
-        cdef size_t         j
-        cdef int            tt
-        cdef object         protein
-        cdef int            kind
-        cdef void*          data
-        cdef Py_UCS4        aa
-        cdef _gene*         gene        = self.gene.gene
-        cdef int            slen        = self.owner.sequence.slen
-        cdef int            edge        = self.owner.nodes.nodes[gene.start_ndx].edge
-        cdef int            strand      = self.owner.nodes.nodes[gene.start_ndx].strand
-        cdef bitmap_t       seq
-        cdef size_t         begin
-        cdef size_t         end
-        cdef size_t         unk
-
-        # HACK: support changing the translation table (without allocating a
-        #       new a training info structure) by manipulating where the
-        #       table would be read from in the fields of the struct
-        if translation_table is None:
-            tt = self.owner.training_info.tinf.trans_table
-        elif translation_table not in TRANSLATION_TABLES:
-            raise ValueError(f"{translation_table} is not a valid translation table index")
-        else:
-            tt = translation_table
-
-        # compute the right length to hold the protein
-        nucl_length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
-        prot_length = nucl_length//3
-        # create an empty protein string that we can write to
-        # with the appropriate functions
-        protein = PyUnicode_New(prot_length, 0x7F)
-        kind    = PyUnicode_KIND(protein)
-        data    = PyUnicode_DATA(protein)
-
-        # compute the offsets in the sequence bitmaps:
-        # - begin is the coordinates of the first nucleotide in the gene
-        # - unk is the coordinate of the first nucleotide in the useq bitmap
-        if strand == 1:
-            begin = gene.begin - 1
-            end = gene.end - 1
-        else:
-            begin = slen - gene.end
-            end = slen - gene.begin
-
-        with nogil:
-            for i, j in enumerate(range(begin, end, 3)):
-                aa = self.owner.sequence._amino(j, tt, strand=strand, is_init=i==0 and not edge)
-                PyUnicode_WRITE(kind, data, i, aa)
-
-        # return the string containing the protein sequence
-        return protein
-
-cdef class Predictions:
-    """A list of predictions made by Prodigal on a single sequence.
-
-    Attributes:
-        sequence (`pyrodigal.Sequence`): The compressed input sequence for
-            which the predictions were obtained.
-        training_info (`pyrodigal.TrainingInfo`): A reference to the
-            training info these predictions were obtained with.
-        genes (`pyrodigal.Genes`): A list to the predicted genes in the
-            input sequence.
-        nodes (`pyrodigal.Nodes`): A list to the raw nodes found in the
-            input sequence.
-
-    """
-
-    def __init__(self, Genes genes, Nodes nodes, Sequence sequence, TrainingInfo training_info):
-        self.genes = genes
-        self.nodes = nodes
-        self.sequence = sequence
-        self.training_info = training_info
-
-    def __bool__(self):
-        return self.genes.length > 0
-
-    def __len__(self):
-        return self.genes.length
-
-    def __getitem__(self, ssize_t index):
-        cdef Prediction pred
-        if index < 0:
-            index += <ssize_t> self.genes.length
-        if index >= <ssize_t> self.genes.length or index < 0:
-            raise IndexError("list index out of range")
-        pred = Prediction.__new__(Prediction)
-        pred.owner = self
-        pred.gene = self.genes[index]
-        return pred
-
-    cpdef ssize_t write_gff(self, object file, str prefix="gene_") except -1:
-        """write_gff(self, file, prefix="gene_", width=60)\n--
-
-        Write the predictions to ``file`` in General Feature Format.
-
-        Arguments:
-           file (`io.TextIOBase`): A file open in text mode where to write
-               the features.
-           prefix (`str`): The prefix to use to make identifiers for each
-               predicted gene.
-
-        Returns:
-            `int`: The number of bytes written to the file.
-
-        """
-        cdef Prediction pred
-        cdef int        i
-        cdef ssize_t    n    = 0
-
-        for i, pred in enumerate(self):
-            n += file.write(prefix)
-            n += file.write(str(i+1))
-            n += file.write("\t")
-            n += file.write("pyrodigal_v")
-            n += file.write(__version__)
-            n += file.write("\t")
-            n += file.write("CDS")
-            n += file.write("\t")
-            n += file.write(str(pred.begin))
-            n += file.write("\t")
-            n += file.write(str(pred.end))
-            n += file.write("\t")
-            n += file.write("{:.1f}".format(pred.sscore + pred.cscore))
-            n += file.write("\t")
-            n += file.write("+" if pred.strand > 0 else "-")
-            n += file.write("\t")
-            n += file.write("0")
-            n += file.write("\t")
-            n += file.write(pred._gene_data)
-            n += file.write(";")
-            n += file.write(pred._score_data)
-            n += file.write("\n")
-
-        return n
-
-    cpdef ssize_t write_genes(self, object file, str prefix="gene_", object width=70) except -1:
-        """write_genes(self, file, prefix="gene_", width=70)\n--
-
-         Write nucleotide sequences of genes to ``file`` in FASTA format.
-
-         Arguments:
-            file (`io.TextIOBase`): A file open in text mode where to write
-                the nucleotide sequences.
-            prefix (`str`): The prefix to use to make identifiers for each
-                predicted gene.
-            width (`int`): The width to use to wrap sequence lines. Prodigal
-                uses 70 for nucleotide sequences.
-
-        Returns:
-            `int`: The number of bytes written to the file.
-
-        """
-        cdef Prediction pred
-        cdef int        i
-        cdef ssize_t    n    = 0
-
-        for i, pred in enumerate(self):
-            n += file.write(">")
-            n += file.write(prefix)
-            n += file.write(str(i+1))
-            n += file.write(" # ")
-            n += file.write(str(pred.begin))
-            n += file.write(" # ")
-            n += file.write(str(pred.end))
-            n += file.write(" # ")
-            n += file.write(str(pred.strand))
-            n += file.write(" # ")
-            n += file.write(pred._gene_data)
-            n += file.write("\n")
-            for line in textwrap.wrap(pred.sequence(), width=width):
-                n += file.write(line)
-                n += file.write("\n")
-
-        return n
-
-    cpdef ssize_t write_translations(self, object file, str prefix="gene_", object width=60, object translation_table=None) except -1:
-        """write_translations(self, file, prefix="gene_", width=60)\n--
-
-         Write protein sequences of genes to ``file`` in FASTA format.
-
-         Arguments:
-            file (`io.TextIOBase`): A file open in text mode where to write
-                the protein sequences.
-            prefix (`str`): The prefix to use to make identifiers for each
-                predicted gene.
-            width (`int`): The width to use to wrap sequence lines. Prodigal
-                uses 60 for protein sequences.
-            translation_table (`int`, optional): A different translation to
-                use to translation the genes. If `None` given, use the one
-                from the training info.
-
-        Returns:
-            `int`: The number of bytes written to the file.
-
-        """
-        cdef Prediction pred
-        cdef int        i
-        cdef ssize_t    n    = 0
-
-        if translation_table is not None and translation_table not in TRANSLATION_TABLES:
-            raise ValueError(f"{translation_table} is not a valid translation table index")
-
-        for i, pred in enumerate(self):
-            n += file.write(">")
-            n += file.write(prefix)
-            n += file.write(str(i+1))
-            n += file.write(" # ")
-            n += file.write(str(pred.begin))
-            n += file.write(" # ")
-            n += file.write(str(pred.end))
-            n += file.write(" # ")
-            n += file.write(str(pred.strand))
-            n += file.write(" # ")
-            n += file.write(pred._gene_data)
-            n += file.write("\n")
-            for line in textwrap.wrap(pred.translate(translation_table), width=width):
-                n += file.write(line)
-                n += file.write("\n")
-
-        return n
-
-    cpdef ssize_t write_scores(self, object file, bint header=True) except -1:
-        """write_scores(self, file)\n--
-
-        Write the start scores to ``file`` in tabular format.
-
-        Arguments:
-            file (`io.TextIOBase`): A file open in text mode where to write
-                the features.
-            header (`bool`): `True` to write a header line, `False` otherwise.
-
-        Returns:
-            `int`: The number of bytes written to the file.
-
-        .. versionadded:: 0.7.0
-
-        """
-        cdef size_t     i
-        cdef int        rbs_index
-        cdef _node*     node
-        cdef int        st_type
-        cdef ssize_t    n           = 0
-        cdef int        prev_stop   = -1
-        cdef int        prev_strand = 0
-        cdef _training* tinf        = self.training_info.tinf
-
-        cdef char      qt[10]
-        cdef double    rbs1
-        cdef double    rbs2
-
-        try:
-            # Sort and groupd nodes by STOP codon position
-            qsort(self.nodes.nodes, self.nodes.length, sizeof(_node), stopcmp_nodes)
-            # Write headers if requested
-            if header:
-                # FIXME: missing some header data
-                # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
-                # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
-                n += file.write(f"# Sequence Data: seqlen={len(self.sequence)}\n")
-                n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
-                # write column names
-                n += file.write(
-                    "Beg\t" "End\t" "Std\t" "Total\t" "CodPot\t" "StrtSc\t"
-                    "Codon\t" "RBSMot\t" "Spacer\t" "RBSScr\t" "UpsScr\t"
-                    "TypeScr\t" "GCCont\n"
-                )
-            # Write a line for each start codon, grouped by STOP codon
-            for i in range(self.nodes.length):
-                node = &self.nodes.nodes[i]
-                if node.type == node_type.STOP:
-                    continue
-
-                st_type = node_type.STOP if node.edge else node.type
-                if node.stop_val != prev_stop or node.strand != prev_strand:
-                    prev_stop = node.stop_val
-                    prev_strand = node.strand
-                    n += file.write("\n")
-
-                if node.strand == 1:
-                    n += file.write(f"{node.ndx + 1:d}\t")
-                    n += file.write(f"{node.stop_val+3:d}\t")
-                    n += file.write("+\t")
-                else:
-                    n += file.write(f"{node.stop_val - 1:d}\t")
-                    n += file.write(f"{node.ndx + 1:d}\t")
-                    n += file.write("-\t")
-
-                n += file.write(f"{node.cscore + node.sscore:.2f}\t")
-                n += file.write(f"{node.cscore:.2f}\t")
-                n += file.write(f"{node.sscore:.2f}\t")
-                n += file.write(f"{_NODE_TYPE[st_type]}\t")
-
-                rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
-                rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
-                if tinf.uses_sd:
-                    rbs_index = 0 if rbs1 > rbs2 else 1
-                    n += file.write(f"{_RBS_MOTIF[node.rbs[rbs_index]]}\t")
-                    n += file.write(f"{_RBS_SPACER[node.rbs[rbs_index]]}\t")
-                    n += file.write(f"{node.rscore:.2f}\t")
-                else:
-                    if tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
-                        n += file.write(f"{_RBS_MOTIF[node.rbs[0]]}\t")
-                        n += file.write(f"{_RBS_SPACER[node.rbs[0]]}\t")
-                        n += file.write(f"{node.rscore:.2f}\t")
-                    elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
-                        n += file.write(f"{_RBS_MOTIF[node.rbs[1]]}\t")
-                        n += file.write(f"{_RBS_SPACER[node.rbs[1]]}\t")
-                        n += file.write(f"{node.rscore:.2f}\t")
-                    else:
-                        if node.mot.len == 0:
-                            n += file.write(f"None\tNone\t{node.rscore:.2f}\t")
-                        else:
-                            sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
-                            n += file.write(f"{qt.decode('ascii')}\t{node.mot.spacer:d}bp\t{node.rscore:.2f}\t")
-
-                n += file.write(f"{node.uscore:.2f}\t")
-                n += file.write(f"{node.tscore:.2f}\t")
-                n += file.write(f"{node.gc_cont:.3f}\n")
-            # Write final line and return number of bytes written
-            n += file.write("\n")
-            return n
-        finally:
-            # Revert back original node order
-            qsort(self.nodes.nodes, self.nodes.length, sizeof(_node), compare_nodes)
-
 
 # --- OrfFinder --------------------------------------------------------------
 
@@ -4238,7 +4180,7 @@ cdef class OrfFinder:
 
     # --- Python interface ---------------------------------------------------
 
-    cpdef Predictions find_genes(self, object sequence):
+    cpdef Genes find_genes(self, object sequence):
         """find_genes(self, sequence)\n--
 
         Find all the genes in the input DNA sequence.
@@ -4263,7 +4205,6 @@ cdef class OrfFinder:
         cdef int              n
         cdef int              phase
         cdef Sequence         seq
-        cdef Predictions      preds
         cdef TrainingInfo     tinf
         cdef Genes            genes  = Genes()
         cdef Nodes            nodes  = Nodes()
@@ -4303,7 +4244,11 @@ cdef class OrfFinder:
                     n
                 )
 
-        return Predictions(genes, nodes, seq, tinf)
+        # record references and return genes
+        genes.sequence = seq
+        genes.training_info = tinf
+        genes.nodes = nodes
+        return genes
 
     def train(
         self,

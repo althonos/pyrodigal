@@ -14,8 +14,6 @@ from ._pyrodigal import (
     Node,
     Nodes,
     OrfFinder,
-    Prediction,
-    Predictions,
     Pyrodigal,
     Sequence,
     TrainingInfo,
@@ -31,8 +29,6 @@ __all__ = [
     "Node",
     "Nodes",
     "OrfFinder",
-    "Prediction",
-    "Predictions",
     "Pyrodigal",
     "Sequence",
     "TrainingInfo",
@@ -46,7 +42,6 @@ _Sized.register(Sequence)
 _Sequence.register(Genes)
 _Sequence.register(Masks)
 _Sequence.register(Nodes)
-_Sequence.register(Predictions)
 
 # Small addition to the docstring: we want to show a link redirecting to the
 # rendered version of the documentation, but this can only work when Python
