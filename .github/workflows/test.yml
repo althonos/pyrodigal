@@ -12,6 +12,7 @@ jobs:
     env:
       OS: Linux
     strategy:
+      fail-fast: false
       matrix:
         include:
         - python-version: 3.5
@@ -87,6 +88,7 @@ jobs:
     env:
       OS: OSX
     strategy:
+      fail-fast: false
       matrix:
         include:
         - python-version: 3.5
@@ -158,6 +160,7 @@ jobs:
     env:
       OS: Windows
     strategy:
+      fail-fast: false
       matrix:
         include:
         - python-version: 3.5

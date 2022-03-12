@@ -1386,7 +1386,12 @@ cdef class Nodes:
                     gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
                 else:
                     for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
-                        gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                        if j < seq.slen:
+                            gc[phase] += seq._is_gc(j)
+                        if j + 1 < seq.slen:
+                            gc[phase] += seq._is_gc(j+1)
+                        if j + 2 < seq.slen:
+                            gc[phase] += seq._is_gc(j+2)
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
@@ -1401,7 +1406,12 @@ cdef class Nodes:
                     gc[phase] = seq._is_gc(j) + seq._is_gc(j-1) + seq._is_gc(j-2)
                 else:
                     for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                        gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                        if j < seq.slen:
+                            gc[phase] += seq._is_gc(j)
+                        if j + 1 < seq.slen:
+                            gc[phase] += seq._is_gc(j+1)
+                        if j + 2 < seq.slen:
+                            gc[phase] += seq._is_gc(j+2)
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
