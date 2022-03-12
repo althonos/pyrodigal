@@ -6,7 +6,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.6.4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.0...HEAD
+
+
+## [v0.7.0] - 2022-03-12
+[v0.7.0]: https://github.com/althonos/pyrodigal/compare/v0.6.4...v0.7.0
+
+### Added
+- Support for setting a custom minimum gene length in `pyrodigal.OrfFinder`.
+- `Genes.write_scores` method to write the node scores to a file.
+- `Gene.__repr__` and `Node.__repr__` methods to display some useful attributes.
+- `Sequence.__str__` method to get back a nucleotide string from a `Sequence` object.
+
+### Changed
+- Use a more compact data structure to store `Gene` data.
+
+### Fixed
+- `Nodes._calc_orf_gc` reading nucleotides after the sequence end when computing GC content for edge nodes.
+
+### Removed
+- `pyrodigal.Pyrodigal` class (use `pyrodigal.OrfFinder` instead).
+- `pyrodigal.Predictions` class (functionality merged into `pyrodigal.Genes`).
 
 
 ## [v0.6.4] - 2021-12-23
