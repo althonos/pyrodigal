@@ -1191,15 +1191,6 @@ cdef class Node:
         return self.node.score
 
     @property
-    def cscore(self):
-        """`float`: The coding score for this node.
-
-        .. versionadded:: 0.7.0
-
-        """
-        return self.node.cscore
-
-    @property
     def rscore(self):
         """`float`: The score for the RBS motif.
 
