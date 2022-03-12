@@ -6,7 +6,6 @@
 from libc.stdint cimport int8_t, uint8_t
 
 from pyrodigal.prodigal.bitmap cimport bitmap_t
-from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin
 from pyrodigal.prodigal.node cimport _node, _motif
 from pyrodigal.prodigal.sequence cimport _mask
@@ -160,6 +159,12 @@ cdef class Nodes:
 
 
 # --- Genes ------------------------------------------------------------------
+
+cdef struct _gene:
+    int begin
+    int end
+    int start_ndx
+    int stop_ndx
 
 cdef class Gene:
     cdef Genes  owner

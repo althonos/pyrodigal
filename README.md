@@ -81,6 +81,8 @@ Pyrodigal makes two changes compared to the original Prodigal command line:
 * Node arrays are dynamically allocated and grow exponentially instead of
   being pre-allocated with a large size. On small sequences, this leads to
   Pyrodigal using about 30% less memory.
+* Genes are stored in a more compact data structure than in Prodigal (which
+  reserves a buffer to store string data), saving around 1KiB per gene.
 
 
 ### 🧶 Thread-safety

@@ -62,7 +62,6 @@ from libc.string cimport memcpy, memchr, memset, strstr
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.bitmap cimport bitmap_t
-from pyrodigal.prodigal.gene cimport _gene
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask, compare_nodes, stopcmp_nodes
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
@@ -1947,7 +1946,7 @@ cdef class Nodes:
                 # RBS Motif Score
                 rbs1 = tinf.rbs_wt[self.nodes[i].rbs[0]];
                 rbs2 = tinf.rbs_wt[self.nodes[i].rbs[1]];
-                sd_score = node.dmax(rbs1, rbs2) * tinf.st_wt
+                sd_score = fmax(rbs1, rbs2) * tinf.st_wt
                 if tinf.uses_sd:
                     self.nodes[i].rscore = sd_score
                 else:
@@ -2007,7 +2006,7 @@ cdef class Nodes:
                 and edge_gene == 0
                 and (self.nodes[i].cscore < 5.0 or orf_length < 120)
             ):
-                self.nodes[i].cscore -= node.META_PEN * node.dmax(0, (3000.0 - seq.slen) / 2700.0)
+                self.nodes[i].cscore -= node.META_PEN * fmax(0, (3000.0 - seq.slen) / 2700.0)
 
             # Base Start Score
             self.nodes[i].sscore = self.nodes[i].tscore + self.nodes[i].rscore + self.nodes[i].uscore
@@ -2171,6 +2170,17 @@ cdef class Nodes:
 
 # --- Genes ------------------------------------------------------------------
 
+# NOTE: Use a custom structure to store the gene data instead of the one
+#       declared in `gene.h` to save some memory; in Prodigal, gene structures
+#       each allocated 1,000 bytes of string data for each gene. In Pyrodigal,
+#       we build these on request through a property, so we don't have to
+#       reserve extract memory for anymore.
+cdef struct _gene:
+    int begin
+    int end
+    int start_ndx
+    int stop_ndx
+
 cdef class Gene:
     """A single raw gene found by Prodigal within a DNA sequence.
 
@@ -2206,7 +2216,7 @@ cdef class Gene:
             self.start_type,
             self.rbs_motif,
             self.rbs_spacer,
-            self.gc_cont
+            self.owner.nodes.nodes[self.gene.start_ndx].gc_cont
         )
 
     @property
