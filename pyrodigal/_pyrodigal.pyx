@@ -2577,6 +2577,17 @@ cdef class Genes:
         self.capacity = 0
         self.length = 0
 
+    def __init__(
+        self,
+        Sequence sequence not None,
+        TrainingInfo training_info not None,
+        Nodes nodes not None
+    ):
+        self._clear()
+        self.sequence = sequence
+        self.training_info = training_info
+        self.nodes = nodes
+
     def __dealloc__(self):
         PyMem_Free(self.genes)
 
@@ -2771,12 +2782,6 @@ cdef class Genes:
                 self.genes[i].end = nodes.nodes[maxndx[mndx]].ndx+1
 
     # --- Python interface ---------------------------------------------------
-
-    def clear(self):
-        """Remove all genes from the vector.
-        """
-        with nogil:
-            self._clear()
 
     cpdef ssize_t write_gff(self, object file, str prefix="gene_") except -1:
         """write_gff(self, file, prefix="gene_", width=60)\n--
@@ -4206,9 +4211,9 @@ cdef class OrfFinder:
         cdef int              phase
         cdef Sequence         seq
         cdef TrainingInfo     tinf
-        cdef Genes            genes  = Genes()
-        cdef Nodes            nodes  = Nodes()
         cdef ConnectionScorer scorer = ConnectionScorer()
+        cdef Genes            genes  = Genes.__new__(Genes)
+        cdef Nodes            nodes  = Nodes.__new__(Nodes)
 
         # check argument values
         if not self.meta and self.training_info is None:
@@ -4244,10 +4249,10 @@ cdef class OrfFinder:
                     n
                 )
 
-        # record references and return genes
+        # return the predicted genes
         genes.sequence = seq
-        genes.training_info = tinf
         genes.nodes = nodes
+        genes.training_info = tinf
         return genes
 
     def train(
