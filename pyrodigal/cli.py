@@ -22,11 +22,12 @@ def argument_parser():
     parser.add_argument("-i", metavar="input_file", required=True, help="Specify FASTA input file.")
     parser.add_argument("-m", action="store_true", help="Treat runs of N as masked sequence; don't build genes across them.", default=False)
     parser.add_argument("-n", action="store_true", help="Bypass Shine-Dalgarno trainer and force a full motif scan.", default=False)
-    parser.add_argument("-p", required=False, metavar="mode", help="Select procedure.", choices={"single", "meta"}, default="single")
-    parser.add_argument("-t", required=False, metavar="training_file", help="Write a training file (if none exists); otherwise, read and use the specified training file.")
-    parser.add_argument("-V", "--version", help="Show version number and exit.", action="version", version="{} v{}".format(__name__, __version__))
     parser.add_argument("-o", metavar="output_file", required=False, help="Specify output file.")
+    parser.add_argument("-p", required=False, metavar="mode", help="Select procedure.", choices={"single", "meta"}, default="single")
+    parser.add_argument("-s", required=False, metavar="start_file", help="Write all potential genes (with scores) to the selected file.")
+    parser.add_argument("-t", required=False, metavar="training_file", help="Write a training file (if none exists); otherwise, read and use the specified training file.")
     parser.add_argument("-h", "--help", action="help", help="Show this help message and exit.")
+    parser.add_argument("-V", "--version", help="Show version number and exit.", action="version", version="{} v{}".format(__name__, __version__))
     return parser
 
 def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
@@ -37,6 +38,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
         # open output files if required
         nuc_file = None if args.d is None else ctx.enter_context(open(args.d, "w"))
         prot_file = None if args.a is None else ctx.enter_context(open(args.a, "w"))
+        scores_file = None if args.s is None else ctx.enter_context(open(args.s, "w"))
         out_file = stdout if args.o is None else ctx.enter_context(open(args.o, "w"))
 
         # load training info
@@ -72,12 +74,15 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
             preds = pyrodigal.find_genes(seq.seq)
             # write output in GFF format
             if args.f == "gff":
-                preds.write_gff(out_file, prefix="{}_".format(seq.id), tool="{}_v{}".format(__name__, __version__))
+                preds.write_gff(out_file, prefix="{}_".format(seq.id))
             # if asked, write nucleotide sequences of genes
             if nuc_file is not None:
                 preds.write_genes(nuc_file, prefix="{}_".format(seq.id))
             # if asked, write amino acide sequences of proteins
             if prot_file is not None:
                 preds.write_translations(prot_file, prefix="{}_".format(seq.id))
+            # if asked, write scores
+            if scores_file is not None:
+                preds.write_scores(scores_file, prefix="{}_".format(seq.id))
 
     return 0
