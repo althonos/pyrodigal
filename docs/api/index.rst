@@ -6,7 +6,6 @@ API Reference
 
    orf_finder <orf_finder>
    training_info <training_info>
-   predictions <predictions>
    genes <genes>
    nodes <nodes>
    sequence <sequence>
@@ -35,15 +34,6 @@ API Reference
        pyrodigal.TrainingInfo
        pyrodigal.MetagenomicBin
 
-
-    Predictions
-    -----------
-
-    .. autosummary::
-       :nosignatures:
-
-       pyrodigal.Predictions
-       pyrodigal.Prediction
 
     Genes
     -----
