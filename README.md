@@ -42,17 +42,32 @@ internals, which has the following advantages:
 
 ### 📋 Features
 
-The library now features everything needed to run Prodigal in single or
-metagenomic mode. It is still missing some features of the CLI:
+The library now features everything from the original Prodigal CLI:
 
-**Roadmap**:
+- **run mode selection**: Choose between *single* mode, using a training
+  sequence to count nucleotide hexamers, or *metagenomic* mode, using
+  pre-trained data from different organisms (`prodigal -p`).
+- **region masking**: Prevent genes from being predicted across regions
+  containing unknown nucleotides  (`prodigal -m`).
+- **closed ends**: Genes will be identified as running over edges if they
+  are larger than a certain size, but this can be disabled (`prodigal -c`).
+- **training configuration**: During the training process, a custom
+  translation table can be given (`prodigal -g`), and the Shine-Dalgarno motif
+  search can be forcefully bypassed (`prodigal -n`)
+- **output files**: Output files can be written in a format mostly
+  compatible with the Prodigal binary, including the protein translations
+  in FASTA format (`prodigal -a`), the gene sequences in FASTA format
+  (`prodigal -d`), or the potential gene scores in tabular format
+  (`prodigal -s`).
+- **training data persistence**: Getting training data from a sequence and
+  using it for other sequences is supported; in addition, a training data
+  file can be saved and loaded transparently (`prodigal -t`).
 
-- ✔️ Metagenomic mode
-- ✔️ Single mode
-- ✔️ Region masking (`-m` flag)
-- ✔️ External training file support (`-t` flag)
-- ✔️ Shine-Dalgarno motif bypass (`-n` flag)
-- ❌ Writing scores of all potential genes (`-s` flag)
+In addition, the **new** features are available:
+
+- **custom gene size threshold**: While Prodigal uses a minimum gene size
+  of 90 nucleotides (60 if on edge), Pyrodigal allows to customize this
+  threshold, allowing for smaller ORFs to be identified if needed.
 
 ### 🐏 Memory
 

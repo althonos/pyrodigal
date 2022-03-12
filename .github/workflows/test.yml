@@ -38,6 +38,12 @@ jobs:
         - python-version: pypy-3.7
           python-release: v3.7
           python-impl: PyPy
+        - python-version: pypy-3.8
+          python-release: v3.8
+          python-impl: PyPy
+        - python-version: pypy-3.9
+          python-release: v3.9
+          python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -53,8 +59,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: build
-        key: ${{ runner.os }}-build-${{ matrix.python-version }}
-        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}
+        key: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
+        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -104,6 +110,12 @@ jobs:
         - python-version: pypy-3.7
           python-release: v3.7
           python-impl: PyPy
+        - python-version: pypy-3.8
+          python-release: v3.8
+          python-impl: PyPy
+        - python-version: pypy-3.9
+          python-release: v3.9
+          python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -119,8 +131,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: build
-        key: ${{ runner.os }}-build-${{ matrix.python-version }}
-        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}
+        key: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
+        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -169,6 +181,12 @@ jobs:
         - python-version: pypy-3.7
           python-release: v3.7
           python-impl: PyPy
+        - python-version: pypy-3.8
+          python-release: v3.8
+          python-impl: PyPy
+        - python-version: pypy-3.9
+          python-release: v3.9
+          python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -178,8 +196,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: build
-        key: ${{ runner.os }}-build-${{ matrix.python-version }}
-        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}
+        key: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
+        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:

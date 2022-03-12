@@ -41,6 +41,7 @@ cdef class Masks:
     cpdef Masks copy(self)
     cdef int _clear(self) nogil except 1
 
+
 # --- Input sequence ---------------------------------------------------------
 
 cdef class Sequence:
@@ -63,6 +64,12 @@ cdef class Sequence:
     cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
     cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
 
+    cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=*) nogil
+    cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=*) nogil
+
+    cpdef int shine_dalgarno(self, int pos, int start, TrainingInfo training_info, int strand=*, bint exact=*) except -1
+
+
 # --- Connection Scorer ------------------------------------------------------
 
 cdef class ConnectionScorer:
@@ -84,8 +91,9 @@ cdef class ConnectionScorer:
     cdef uint8_t* node_frames_raw
 
     cdef int _index(self, Nodes nodes) nogil except 1
-    cdef int _compute_skippable(self, int min, int i) nogil except 1
-    cdef int _score_connections(self, Nodes nodes, int min, int i, TrainingInfo tinf, bint final=*) nogil except 1
+    cdef int _compute_skippable(self, int min, int i) nogil
+    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=*) nogil
+
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -96,6 +104,20 @@ cdef class Motif:
 cdef class Node:
     cdef Nodes  owner
     cdef _node* node
+
+    @staticmethod
+    cdef void _find_best_upstream_motif(
+        _node* node,
+        Sequence seq,
+        _training* tinf,
+        int stage
+    ) nogil
+    @staticmethod
+    cdef void _score_upstream_composition(
+        _node* node,
+        Sequence seq,
+        _training* tinf,
+    ) nogil
 
 cdef class Nodes:
     # contiguous array of nodes, with capacity and length
@@ -111,10 +133,31 @@ cdef class Nodes:
         const int  stop_val,
         const bint edge,
     ) nogil except NULL
+    cdef int _calc_orf_gc(self, Sequence seq) nogil except -1
+    cdef int _clear(self) nogil except 1
+    cdef int _dynamic_programming(self, _training* tinf, ConnectionScorer scorer, bint final=*) nogil
+    cdef int _extract(
+        self,
+        Sequence sequence,
+        int translation_table,
+        bint closed=*,
+        int min_gene=*,
+        int min_edge_gene=*
+    ) nogil except -1
+    cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1
+    cdef int _rbs_score(self, Sequence seq, _training* tinf) nogil except -1
+    cdef void _record_overlapping_starts(
+        self,
+        _training* tinf,
+        int flag,
+        int max_sam_overlap=*,
+    ) nogil
+    cdef int _reset_scores(self) nogil except 1
+    cdef int _score(self, Sequence seq, _training* tinf, bint closed=*, bint is_meta=*) nogil except -1
+    cdef int _sort(self) nogil except 1
 
     cpdef Nodes copy(self)
-    cdef int _clear(self) nogil except 1
-    cdef int _sort(self) nogil except 1
+
 
 # --- Genes ------------------------------------------------------------------
 
@@ -134,8 +177,15 @@ cdef class Genes:
         const int start_ndx,
         const int stop_ndx,
     ) nogil except NULL
+    cdef void _tweak_final_starts(
+        self,
+        Nodes nodes,
+        _training* tinf,
+        int max_sam_overlap=*,
+    ) nogil
 
     cdef int _clear(self) nogil except 1
+
 
 # --- Training Info ----------------------------------------------------------
 
@@ -143,7 +193,16 @@ cdef class TrainingInfo:
     cdef bint       owned
     cdef _training* tinf
 
+    @staticmethod
+    cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
+
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) nogil
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil
+
     cpdef object dump(self, object fp)
+
 
 # --- Metagenomic Bins -------------------------------------------------------
 
@@ -152,6 +211,7 @@ cdef class MetagenomicBin:
     cdef readonly TrainingInfo      training_info
 
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
+
 
 # --- Predictions ------------------------------------------------------------
 
@@ -173,9 +233,10 @@ cdef class Predictions:
     cdef readonly Sequence     sequence
     cdef readonly TrainingInfo training_info
 
-    cpdef ssize_t write_gff(self, object file, str prefix=*, str tool=*) except -1
+    cpdef ssize_t write_gff(self, object file, str prefix=*) except -1
     cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
+    cpdef ssize_t write_scores(self, object file, bint header=*) except -1
 
 # --- OrfFinder --------------------------------------------------------------
 
@@ -185,40 +246,43 @@ cdef class OrfFinder:
     cdef readonly object       lock
     cdef readonly bint         meta
     cdef readonly bint         mask
+    cdef readonly int          min_gene
+    cdef readonly int          min_edge_gene
+    cdef readonly int          max_overlap
     cdef readonly TrainingInfo training_info
 
+    cdef int _train(
+        self,
+        Sequence sequence,
+        Nodes nodes,
+        ConnectionScorer scorer,
+        TrainingInfo tinf,
+        bint force_nonsd=*,
+        double start_weight=*,
+        int translation_table=*,
+    ) nogil except -1
+    cdef int _find_genes_single(
+        self,
+        Sequence sequence,
+        TrainingInfo tinf,
+        ConnectionScorer scorer,
+        Nodes nodes,
+        Genes genes,
+        int sequence_index
+    ) nogil except -1
+    cdef int _find_genes_meta(
+        self,
+        Sequence sequence,
+        ConnectionScorer scorer,
+        Nodes nodes,
+        Genes genes,
+        int sequence_index
+    ) nogil except -1
+
     cpdef Predictions  find_genes(self, object sequence)
-    cpdef TrainingInfo train(self, object sequence, bint force_nonsd=*, double st_wt=*, int translation_table=*)
+
 
 # --- C-level API reimplementation -------------------------------------------
 
-cpdef int add_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*) nogil except -1
 cpdef int add_genes(Genes genes, Nodes nodes, int ipath) nogil except -1
-cpdef void calc_dicodon_gene(TrainingInfo tinf, Sequence sequence, Nodes nodes, int ipath) nogil
 cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL
-cpdef int calc_orf_gc(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil except -1
-cpdef int dynamic_programming(Nodes nodes, TrainingInfo tinf, ConnectionScorer score, bint final=*) nogil
-cpdef int find_best_upstream_motif(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf, int stage) nogil except -1
-cpdef void raw_coding_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
-cpdef void rbs_score(Nodes nodes, Sequence seq, TrainingInfo tinf) nogil
-cpdef void score_nodes(Nodes nodes, Sequence seq, TrainingInfo tinf, bint closed=*, bint is_meta=*) nogil
-cpdef void score_upstream_composition(Nodes nodes, int ni, Sequence seq, TrainingInfo tinf) nogil
-cpdef int shine_dalgarno_exact(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
-cpdef int shine_dalgarno_mm(Sequence seq, int pos, int start, TrainingInfo tinf, int strand=*) nogil
-cpdef void train_starts_nonsd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
-cpdef void train_starts_sd(Nodes nodes, Sequence sequence, TrainingInfo tinf) nogil
-
-# --- Wrappers ---------------------------------------------------------------
-
-cpdef void reset_node_scores(Nodes nodes) nogil
-cpdef void record_overlapping_starts(Nodes nodes, TrainingInfo tinf, bint is_meta=*) nogil
-cpdef void eliminate_bad_genes(Nodes nodes, int ipath, TrainingInfo tinf) nogil
-cpdef void tweak_final_starts(Genes genes, Nodes nodes, TrainingInfo tinf) nogil
-cpdef void record_gene_data(Genes genes, Nodes nodes, TrainingInfo tinf, int sequence_index) nogil
-cpdef void determine_sd_usage(TrainingInfo tinf) nogil
-
-# --- Main functions ---------------------------------------------------------
-
-cpdef TrainingInfo train(Sequence sequence, bint closed=*, bint force_nonsd=*, double start_weight=*, int translation_table=*)
-cpdef Predictions find_genes_single(Sequence sequence, TrainingInfo tinf, bint closed=*, int sequence_index=*)
-cpdef Predictions find_genes_meta(Sequence seq, bint closed=*, int sequence_index=*)

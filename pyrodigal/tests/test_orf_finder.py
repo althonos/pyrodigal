@@ -158,6 +158,16 @@ class TestSingleBin(_TestSingle, _TestBin, _TestMode, unittest.TestCase):
     pass
 
 
+class TestOrfFinder(_OrfFinderTestCase, unittest.TestCase):
+
+    def test_invalid_overlap(self):
+        self.assertRaises(ValueError, OrfFinder, min_gene=10, max_overlap=100)
+        self.assertRaises(ValueError, OrfFinder, max_overlap=-1)
+
+    def test_invalid_min_gene(self):
+        self.assertRaises(ValueError, OrfFinder, min_gene=-1)
+
+
 class TestMeta(_OrfFinderTestCase, unittest.TestCase):
 
     def test_train(self):
@@ -218,6 +228,23 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         self.assertRbsSpacersEqual(preds, proteins)
         self.assertTranslationsEqual(preds, proteins)
         self.assertGCContentEqual(preds, proteins)
+
+    def test_find_genes_large_minsize(self):
+        record = load_record("KK037166")
+        genes = load_genes("KK037166", "meta+mask")
+        large_genes = [gene for gene in genes if len(gene.seq) >= 200]
+
+        orf_finder = OrfFinder(meta=True, min_gene=200, min_edge_gene=200, mask=True)
+        preds = orf_finder.find_genes(record.seq)
+        self.assertEqual(len(preds), len(large_genes))
+
+    def test_find_genes_small_minsize(self):
+        record = load_record("KK037166")
+        genes = load_genes("KK037166", "meta+mask")
+
+        orf_finder = OrfFinder(meta=True, min_gene=30, min_edge_gene=20, max_overlap=20, mask=True)
+        preds = orf_finder.find_genes(record.seq)
+        self.assertGreaterEqual(len(preds), len(genes))
 
 
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
