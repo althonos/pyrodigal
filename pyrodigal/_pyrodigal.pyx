@@ -3289,7 +3289,7 @@ METAGENOMIC_BINS = _m
 # --- Predictions ------------------------------------------------------------
 
 cdef list _RBS_MOTIF = [
-    "None", "GGA/GAG/AGG", "3Base/5BMM", "4Base/6BMM", "AGxAG", "AGxAG",
+    None, "GGA/GAG/AGG", "3Base/5BMM", "4Base/6BMM", "AGxAG", "AGxAG",
     "GGA/GAG/AGG", "GGxGG", "GGxGG", "AGxAG", "AGGAG(G)/GGAGG",
     "AGGA/GGAG/GAGG", "AGGA/GGAG/GAGG", "GGA/GAG/AGG", "GGxGG",
     "AGGA", "GGAG/GAGG", "AGxAGG/AGGxGG", "AGxAGG/AGGxGG",
@@ -3298,7 +3298,7 @@ cdef list _RBS_MOTIF = [
 ]
 
 cdef list _RBS_SPACER = [
-    "None", "3-4bp", "13-15bp", "13-15bp", "11-12bp", "3-4bp",
+    None, "3-4bp", "13-15bp", "13-15bp", "11-12bp", "3-4bp",
     "11-12bp", "11-12bp", "3-4bp", "5-10bp", "13-15bp", "3-4bp",
     "11-12bp", "5-10bp", "5-10bp", "5-10bp", "5-10bp", "11-12bp",
     "3-4bp", "5-10bp", "11-12bp", "3-4bp", "5-10bp", "3-4bp",
@@ -3397,13 +3397,27 @@ cdef class Prediction:
         ``GGAGG`` or ``AGGAGG``.
 
         """
-        cdef char* data = self.gene.gene.gene_data
-        cdef char* i = strstr(data, "rbs_motif")
-        cdef char* j = <char*> memchr(i, b';', 30)
-        cdef size_t length = j - i
-        if i[10:length] == b"None":
+        assert self.owner is not None
+        assert self.owner.nodes is not None
+        assert self.owner.nodes.nodes != NULL
+
+        cdef char[10]   qt
+        cdef _node*     node = &self.owner.nodes.nodes[self.gene.gene.start_ndx]
+        cdef _training* tinf = self.owner.training_info.tinf
+        cdef double     rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+        cdef double     rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+
+        if tinf.uses_sd:
+            return _RBS_MOTIF[node.rbs[0 if rbs1 > rbs2 else 1]]
+        elif tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+            return _RBS_MOTIF[node.rbs[0]]
+        elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+            return _RBS_MOTIF[node.rbs[1]]
+        elif node.mot.len == 0:
             return None
-        return i[10:length].decode("ascii")
+        else:
+            sequence.mer_text(&qt[0], node.mot.len, node.mot.ndx)
+            return qt.decode('ascii')
 
     @property
     def rbs_spacer(self):
@@ -3413,13 +3427,25 @@ cdef class Prediction:
         ``13-15bp``.
 
         """
-        cdef char* data = self.gene.gene.gene_data
-        cdef char* i = strstr(data, "rbs_spacer")
-        cdef char* j = <char*> memchr(i, b';', 30)
-        cdef size_t length = j - i
-        if i[11:length] == b"None":
+        assert self.owner is not None
+        assert self.owner.nodes is not None
+        assert self.owner.nodes.nodes != NULL
+
+        cdef _node*     node = &self.owner.nodes.nodes[self.gene.gene.start_ndx]
+        cdef _training* tinf = self.owner.training_info.tinf
+        cdef double     rbs1 = tinf.rbs_wt[node.rbs[0]] * tinf.st_wt
+        cdef double     rbs2 = tinf.rbs_wt[node.rbs[1]] * tinf.st_wt
+
+        if tinf.uses_sd:
+            return _RBS_SPACER[node.rbs[0 if rbs1 > rbs2 else 1]]
+        elif tinf.no_mot > -0.5 and rbs1 > rbs2 and rbs1 > node.mot.score * tinf.st_wt:
+            return _RBS_SPACER[node.rbs[0]]
+        elif tinf.no_mot > -0.5 and rbs2 >= rbs1 and rbs2 > node.mot.score * tinf.st_wt:
+            return _RBS_SPACER[node.rbs[1]]
+        elif node.mot.len == 0:
             return None
-        return i[11:length].decode("ascii")
+        else:
+            return f"{node.mot.spacer}bp"
 
     @property
     def gc_cont(self):
