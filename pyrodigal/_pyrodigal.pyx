@@ -1118,7 +1118,7 @@ cdef class Node:
 
     @property
     def type(self):
-        """`str`: The node type (ATG, GTG, TTG, or Stop).
+        """`str`: The node type (``ATG``, ``GTG``, ``TTG``, or ``Stop``).
         """
         assert self.node != NULL
         return ["ATG", "GTG", "TTG" , "Stop"][self.node.type]
@@ -1187,7 +1187,7 @@ cdef class Node:
 
     @property
     def tscore(self):
-        """`float`: The score for the codon kind (ATG/GTG/TTG).
+        """`float`: The score for the codon kind (``ATG``/``GTG``/``TTG``).
 
         .. versionadded:: 0.7.0
 
@@ -2388,7 +2388,7 @@ cdef class Gene:
 
     @property
     def tscore(self):
-        """`float`: The score for the codon kind (ATG/GTG/TTG).
+        """`float`: The score for the codon kind (``ATG``/``GTG``/``TTG``).
 
         .. versionadded:: 0.5.1
 
@@ -2905,9 +2905,9 @@ cdef class Genes:
     cpdef ssize_t write_genes(self, object file, str prefix="gene_", object width=70) except -1:
         """write_genes(self, file, prefix="gene_", width=70)\n--
 
-         Write nucleotide sequences of genes to ``file`` in FASTA format.
+        Write nucleotide sequences of genes to ``file`` in FASTA format.
 
-         Arguments:
+        Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
                 the nucleotide sequences.
             prefix (`str`): The prefix to use to make identifiers for each
@@ -2945,9 +2945,9 @@ cdef class Genes:
     cpdef ssize_t write_translations(self, object file, str prefix="gene_", object width=60, object translation_table=None) except -1:
         """write_translations(self, file, prefix="gene_", width=60, translation_table=None)\n--
 
-         Write protein sequences of genes to ``file`` in FASTA format.
+        Write protein sequences of genes to ``file`` in FASTA format.
 
-         Arguments:
+        Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
                 the protein sequences.
             prefix (`str`): The prefix to use to make identifiers for each
@@ -3234,7 +3234,7 @@ cdef class TrainingInfo:
 
     @property
     def type_weights(self):
-        """`tuple` of `float`: The weights for the ATG, GTG and TTG codons.
+        """`tuple` of `float`: The weights for ``ATG``, ``GTG`` and ``TTG``.
         """
         assert self.tinf != NULL
         return tuple(self.tinf.type_wt)
@@ -4011,7 +4011,7 @@ cdef class OrfFinder:
         int min_edge_gene=MIN_EDGE_GENE,
         int max_overlap=MAX_SAM_OVLP,
     ):
-        """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60)\n--
+        """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60, max_overlap=60)\n--
 
         Instantiate and configure a new ORF finder.
 
