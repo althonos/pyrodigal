@@ -91,8 +91,8 @@ cdef class ConnectionScorer:
     cdef uint8_t* node_frames_raw
 
     cdef int _index(self, Nodes nodes) nogil except 1
-    cdef int _compute_skippable(self, int min, int i) nogil except 1
-    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=*) nogil except 1
+    cdef int _compute_skippable(self, int min, int i) nogil
+    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=*) nogil
 
 
 # --- Nodes ------------------------------------------------------------------

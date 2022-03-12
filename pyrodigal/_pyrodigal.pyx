@@ -1036,7 +1036,7 @@ cdef class ConnectionScorer:
         with nogil:
             self._index(nodes)
 
-    cdef int _compute_skippable(self, int min, int i) nogil except 1:
+    cdef int _compute_skippable(self, int min, int i) nogil:
         if self.backend != simd_backend.NONE:
             memset(&self.skip_connection[min], 0, sizeof(uint8_t) * (i - min))
         IF AVX2_BUILD_SUPPORT:
@@ -1057,7 +1057,7 @@ cdef class ConnectionScorer:
         with nogil:
             self._compute_skippable(min, i)
 
-    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=False) nogil except 1:
+    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=False) nogil:
         cdef int j
 
         for j in range(min, i):
