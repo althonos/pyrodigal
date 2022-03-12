@@ -67,6 +67,8 @@ cdef class Sequence:
     cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=*) nogil
     cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=*) nogil
 
+    cpdef int shine_dalgarno(self, int pos, int start, TrainingInfo training_info, int strand=*, bint exact=*) except -1
+
 
 # --- Connection Scorer ------------------------------------------------------
 

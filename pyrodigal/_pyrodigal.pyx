@@ -848,6 +848,61 @@ cdef class Sequence:
 
         return max_val
 
+    # --- Python interface ---------------------------------------------------
+
+    cpdef int shine_dalgarno(
+        self,
+        int pos,
+        int start,
+        TrainingInfo training_info,
+        int strand=1,
+        bint exact=True
+    ) except -1:
+        """shine_dalgarno(self, pos, start, training_info, strand=1, exact=True)\n--
+
+        Find the highest scoring Shine-Dalgarno motif upstream of ``start``.
+
+        Arguments:
+            pos (`int`): The position where to look for the Shine-Dalgarno
+                motif. Must be upstream of ``start`` (before or after,
+                depending on the strand).
+            start (`int`): The position of the start codon being considered.
+            training_info (`~pyrodigal.TrainingInfo`): The training info
+                containing the weights for the different ribosome weights.
+
+        Keyword Arguments:
+            strand (`int`): The strand to scan.
+            exact (`bool`): `True` to score Shine-Dalgarno motifs matching
+                exactly *AGGAGG*, `False` to allow one base mismatch.
+
+        Returns:
+            `int`: The index of the highest scoring Shine-Dalgarno motif.
+
+        Raises:
+            `ValueError`: On invalid `strand`, `pos` or `start` values.
+
+        """
+        if strand != 1 and strand != -1:
+            raise ValueError(f"Invalid strand: {strand!r} (must be +1 or -1)")
+        if pos < 0:
+            raise ValueError(f"`pos` must be positive")
+        if start < 0:
+            raise ValueError(f"`start` must be positive")
+
+        if strand == 1 and pos > start - 5:
+            raise ValueError(f"`pos` is too close to `start` (must be at most `start` - 5)")
+        elif strand == -1 and pos < start + 6:
+            raise ValueError(f"`pos` is too close to `start` (must be at most `start + 6`)")
+
+        cdef int phase
+        with nogil:
+            if exact:
+                phase = self._shine_dalgarno_exact(pos, start, training_info.tinf, strand)
+            else:
+                phase = self._shine_dalgarno_mm(pos, start, training_info.tinf, strand)
+
+        return phase
+
 
 # --- Connection Scorer ------------------------------------------------------
 
