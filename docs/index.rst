@@ -7,7 +7,7 @@ Pyrodigal |Stars|
 *Cython bindings and Python interface to* `Prodigal <https://github.com/hyattpd/Prodigal/>`_,
 *an ORF finder for genomes and metagenomes*. **Now with SIMD!**
 
-|Actions| |Coverage| |PyPI| |Bioconda| |Wheel| |Versions| |Implementations| |License| |Source| |Mirror| |Issues| |Docs| |Changelog| |Downloads| |DOI|
+|Actions| |Coverage| |PyPI| |Bioconda| |AUR| |Wheel| |Versions| |Implementations| |License| |Source| |Mirror| |Issues| |Docs| |Changelog| |Downloads| |DOI|
 
 .. |Actions| image:: https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/main?logo=github&style=flat-square&maxAge=300
    :target: https://github.com/althonos/pyrodigal/actions
@@ -23,6 +23,9 @@ Pyrodigal |Stars|
 
 .. |Bioconda| image:: https://img.shields.io/conda/vn/bioconda/pyrodigal?style=flat-square&maxAge=3600
    :target: https://anaconda.org/bioconda/pyrodigal
+
+.. |AUR| image:: https://img.shields.io/aur/version/python-pyrodigal?logo=archlinux&style=flat-square&maxAge=3600
+   :target: https://aur.archlinux.org/packages/python-pyrodigal
 
 .. |Wheel| image:: https://img.shields.io/pypi/wheel/pyrodigal?style=flat-square&maxAge=3600
    :target: https://pypi.org/project/pyrodigal/#files
