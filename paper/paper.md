@@ -129,8 +129,9 @@ the heuristic filter in Pyrodigal saves about half of the time needed to score
 connections between all the nodes of a sequence.
 
 ![Evaluation of the connection scoring performance with different heuristic
-filter SIMD backends (SSE2 or AVX2) or without enabling the filter (None).
-*Each sequence was processed 10 times on a quiet i7-8550U CPU @ 1.80GHz*. \label{fig:benchmark}](figure2.svg){width=100%}
+filter SIMD backends (SSE2 or AVX2), with a generic backend (Generic) or without enabling 
+the filter (None).
+*Each sequence was processed 10 times on a quiet i7-10710U CPU @ 1.10GHz*. \label{fig:benchmark}](figure2.svg){width=100%}
 
 
 # Availability
