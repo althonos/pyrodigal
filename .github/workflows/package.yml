@@ -379,3 +379,41 @@ jobs:
       uses: rasmus-saks/release-a-changelog-action@v1.0.1
       with:
         github-token: '${{ secrets.GITHUB_TOKEN }}'
+
+  aur:
+    environment: Arch Linux User Repository
+    runs-on: ubuntu-latest
+    name: Update AUR package
+    needs:
+    - sdist
+    - upload
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+    - name: Download built wheels
+      uses: actions/download-artifact@v2
+      with:
+          name: dist
+          path: dist
+    - name: Extract package version
+      run: echo PKGVER=$(python setup.py --version) >> $GITHUB_ENV
+    - name: Compute SHA256 of source distribution 
+      run: echo SHA256=$(sha256sum dist/pyrodigal-${{ env.PKGVER }}.tar.gz | cut -f1 -d' ') >> $GITHUB_ENV
+    - name: Generate PKGBUILD
+      run: sed -e "s/%pkgver/${{ env.PKGVER }}/g" -e "s/%sha256sum/${{ env.SHA256 }}/g" pkg/aur/PKGBUILD.in > pkg/aur/PKGBUILD
+    - name: Update package
+      uses: KSXGitHub/github-actions-deploy-aur@v2.2.5
+      with:
+        pkgname: python-pyrodigal
+        pkgbuild: pkg/aur/PKGBUILD
+        commit_username: ${{ secrets.AUR_USER }}
+        commit_email: ${{ secrets.AUR_EMAIL }}
+        ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        commit_message: ${{ github.event.head_commit.message }}
+        ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
