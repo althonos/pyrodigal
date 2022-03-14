@@ -128,7 +128,7 @@ class build_ext(_build_ext):
                     return (x == 1) ? 0 : 1;
                 }}
             """.format(header, vector, set, op, extract))
-            
+
         try:
             self.mkpath(self.build_temp)
             objects = self.compiler.compile([testfile], extra_preargs=flags)
@@ -230,12 +230,12 @@ class build_ext(_build_ext):
     def build_extension(self, ext):
         # show the compiler being used
         _eprint("building", ext.name, "with", self.compiler.compiler_type, "compiler")
-        # add debug flags if we are building in debug mode
+        # add debug symbols if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
-                ext.extra_compile_args.append("-O0")
+                ext.extra_compile_args.append("-g")
             elif self.compiler.compiler_type == "msvc":
-                ext.extra_compile_args.append("/Od")
+                ext.extra_compile_args.append("/Z7")
             if sys.implementation.name == "cpython":
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
         else:
@@ -436,9 +436,9 @@ class build_clib(_build_clib):
         # add debug flags if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
-                library.extra_compile_args.append("-O0")
+                library.extra_compile_args.append("-g")
             elif self.compiler.compiler_type == "msvc":
-                library.extra_compile_args.append("/Od")
+                library.extra_compile_args.append("/Z7")
 
         # store compile args
         compile_args = (
