@@ -22,3 +22,5 @@ cdef extern from "_sequence.h" nogil:
     cdef bint _is_atg(const uint8_t* digits, const int slen, const int i, const int strand)
     cdef bint _is_gtg(const uint8_t* digits, const int slen, const int i, const int strand)
     cdef bint _is_ttg(const uint8_t* digits, const int slen, const int i, const int strand)
+
+    cdef int _mer_ndx(const uint8_t* digits, const int slen, const int i, const int length, const int strand)

@@ -77,6 +77,7 @@ from pyrodigal._sequence cimport (
     _is_atg,
     _is_ttg,
     _is_gtg,
+    _mer_ndx,
     _letters,
     _complement
 )
@@ -418,23 +419,6 @@ cdef class Sequence:
         with nogil:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
-
-    cdef inline int _mer_ndx(self, int i, int length, int strand = 1) nogil:
-        cdef int     j
-        cdef int     k
-        cdef uint8_t x
-        cdef int     ndx = 0
-
-        if strand == 1:
-            for j, k in enumerate(range(i, i+length)):
-                x = self.digits[k]
-                ndx |= (x & 0b11) << 2*j
-        else:
-            for j, k in enumerate(range(self.slen - 1 - i, self.slen - 1 - i - length, -1)):
-                x = self.digits[k]
-                ndx |= (_complement[x] & 0b11) << 2*j
-
-        return ndx
 
     cdef char _amino(self, int i, int tt, int strand = 1, bint is_init = False) nogil:
         cdef uint8_t x0
@@ -1117,7 +1101,7 @@ cdef class Node:
                 else:
                     spacendx = 0
 
-                index = seq._mer_ndx(j, length=i+3, strand=node.strand)
+                index = _mer_ndx(seq.digits, seq.slen, j, i+3, node.strand)
                 score = tinf.mot_wt[i][spacendx][index]
                 if score > max_sc:
                     max_sc = score
@@ -1610,7 +1594,7 @@ cdef class Nodes:
                     score[phase] = 0.0
                 else:
                     for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
-                        score[phase] += tinf.gene_dc[seq._mer_ndx(j, length=6, strand=1)];
+                        score[phase] += tinf.gene_dc[_mer_ndx(seq.digits, seq.slen, j, 6, 1)];
                     self.nodes[i].cscore = score[phase]
                     last[phase] = self.nodes[i].ndx
         score[0] = score[1] = score[2] = 0.0
@@ -1622,7 +1606,7 @@ cdef class Nodes:
                     score[phase] = 0.0
                 else:
                     for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                        score[phase] += tinf.gene_dc[seq._mer_ndx(seq.slen-1-j, length=6, strand=-1)]
+                        score[phase] += tinf.gene_dc[_mer_ndx(seq.digits, seq.slen, seq.slen-1-j, 6, -1)]
                     self.nodes[i].cscore = score[phase]
                     last[phase] = self.nodes[i].ndx
 
@@ -3194,7 +3178,7 @@ cdef class TrainingInfo:
                     else:
                         spacendx = 0
                     for k in range(4):
-                        mcnt[i][k][seq._mer_ndx(j, length=i+3, strand=nod.strand)] += 1.0
+                        mcnt[i][k][_mer_ndx(seq.digits, seq.slen, j, i+3, nod.strand)] += 1.0
         # Stage 1:  Count only the best motif, but also count all its sub-motifs.
         elif stage == 1:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0;
@@ -3210,7 +3194,7 @@ cdef class TrainingInfo:
                         spacendx = 1
                     else:
                         spacendx = 0
-                    mcnt[i][spacendx][seq._mer_ndx(j, length=i+3, strand=nod.strand)] += 1.0
+                    mcnt[i][spacendx][_mer_ndx(seq.digits, seq.slen, j, i+3, nod.strand)] += 1.0
         # Stage 2:  Only count the highest scoring motif.
         elif stage == 2:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
@@ -3240,8 +3224,8 @@ cdef class TrainingInfo:
         glob = 0
         memset(counts, 0, 4096*sizeof(int))
         for i in range(seq.slen - 5):
-            counts[seq._mer_ndx(i, length=6, strand=+1)] += 1
-            counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
+            counts[_mer_ndx(seq.digits, seq.slen, i, 6,  1)] += 1
+            counts[_mer_ndx(seq.digits, seq.slen, i, 6, -1)] += 1
             glob += 2
         for i in range(4096):
             bg[i] = (<double> counts[i]) / (<double> glob)
@@ -3257,7 +3241,7 @@ cdef class TrainingInfo:
                 elif in_gene == 1:
                     left = nodes[path].ndx
                     for i in range(left, right-5, 3):
-                        counts[seq._mer_ndx(i, length=6, strand=1)] += 1
+                        counts[_mer_ndx(seq.digits, seq.slen, i, 6, 1)] += 1
                         glob += 1
                     in_gene = 0
             else:
@@ -3267,7 +3251,7 @@ cdef class TrainingInfo:
                 elif in_gene == -1:
                     right = seq.slen - nodes[path].ndx + 1
                     for i in range(left, right-5, 3):
-                        counts[seq._mer_ndx(i, length=6, strand=-1)] += 1
+                        counts[_mer_ndx(seq.digits, seq.slen, i, 6, -1)] += 1
                         glob += 1
                     in_gene = 0
             path = nodes[path].traceb

@@ -147,3 +147,18 @@ inline int _is_ttg(const uint8_t* digits, const int slen, const int i, const int
 
     return (x0 == T) && (x1 == T) && (x2 == G);
 }
+
+inline int _mer_ndx(const uint8_t* digits, const int slen, const int i, const int length, const int strand) {
+    int j, k;
+    int ndx = 0;
+    if (strand == 1) {
+        for (j = 0, k = i; j < length; k++, j++) {
+            ndx |= (digits[k] & 0b11) << 2*j;
+        }
+    } else {
+        for (j = 0, k = slen - 1 - i; j < length; k--, j++) {
+            ndx |= (_complement[digits[k]] & 0b11) << 2*j;
+        }
+    }
+  return ndx;
+}

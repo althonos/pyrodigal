@@ -50,7 +50,6 @@ cdef class Sequence:
     cdef readonly Masks    masks
 
     cdef int _allocate(self, int slen) except 1
-    cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
     cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
 
     cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=*) nogil
