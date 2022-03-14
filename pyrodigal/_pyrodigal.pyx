@@ -1,5 +1,5 @@
 # coding: utf-8
-# cython: language_level=3, linetrace=True, embedsignature=True
+# cython: language_level=3, linetrace=True
 
 """Bindings to Prodigal, an ORF finder for genomes and metagenomes.
 

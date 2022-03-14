@@ -280,7 +280,6 @@ class build_ext(_build_ext):
             cython_args["force"] = True
         if self.debug:
             cython_args["annotate"] = True
-            # cython_args["compiler_directives"]["overflowcheck"] = True
             cython_args["compiler_directives"]["cdivision_warnings"] = True
             cython_args["compiler_directives"]["warn.undeclared"] = True
             cython_args["compiler_directives"]["warn.unreachable"] = True
