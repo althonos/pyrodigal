@@ -261,7 +261,10 @@ class build_ext(_build_ext):
         # use debug directives with Cython if building in debug mode
         cython_args = {
             "include_path": ["include"],
-            "compiler_directives": {},
+            "compiler_directives": {
+                "cdivision": True,
+                "nonecheck": False,
+            },
             "compile_time_env": {
                 "SYS_IMPLEMENTATION_NAME": sys.implementation.name,
                 "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
@@ -277,6 +280,8 @@ class build_ext(_build_ext):
             cython_args["force"] = True
         if self.debug:
             cython_args["annotate"] = True
+            # cython_args["compiler_directives"]["overflowcheck"] = True
+            cython_args["compiler_directives"]["cdivision_warnings"] = True
             cython_args["compiler_directives"]["warn.undeclared"] = True
             cython_args["compiler_directives"]["warn.unreachable"] = True
             cython_args["compiler_directives"]["warn.maybe_uninitialized"] = True
@@ -287,7 +292,6 @@ class build_ext(_build_ext):
         else:
             cython_args["compiler_directives"]["boundscheck"] = False
             cython_args["compiler_directives"]["wraparound"] = False
-            cython_args["compiler_directives"]["cdivision"] = True
 
         # compile the C library
         if not self.distribution.have_run.get("build_clib", False):
