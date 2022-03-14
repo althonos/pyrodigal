@@ -222,13 +222,6 @@ cdef class Masks:
 
 # --- Input sequence ---------------------------------------------------------
 
-cdef enum:
-    A = 0b000
-    G = 0b001
-    C = 0b010
-    T = 0b011
-    N = 0b110  # use 6 so that N & 0x3 == C
-
 cdef class Sequence:
     """A digitized input sequence.
 
@@ -269,24 +262,24 @@ cdef class Sequence:
             for i in range(seq.slen):
                 letter = sequence[i]
                 if letter == b'A' or letter == b'a':
-                    seq.digits[i] = A
+                    seq.digits[i] = nucleotide.A
                 elif letter == b'T' or letter == b't':
-                    seq.digits[i] = T
+                    seq.digits[i] = nucleotide.T
                 elif letter == b'G' or letter == b'g':
-                    seq.digits[i] = G
+                    seq.digits[i] = nucleotide.G
                     gc_count += 1
                 elif letter == b'C' or letter == b'c':
-                    seq.digits[i] = C
+                    seq.digits[i] = nucleotide.C
                     gc_count += 1
                 else:
-                    seq.digits[i] = N
+                    seq.digits[i] = nucleotide.N
 
             if seq.slen > 0:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
 
             if mask:
                 for i in range(seq.slen):
-                    if seq.digits[i] == N:
+                    if seq.digits[i] == nucleotide.N:
                         if mask_begin == -1:
                             mask_begin = i
                     else:
@@ -333,24 +326,24 @@ cdef class Sequence:
             for i, j in enumerate(range(0, seq.slen * 2, 2)):
                 letter = PyUnicode_READ(kind, data, i)
                 if letter == u'A' or letter == u'a':
-                    seq.digits[i] = A
+                    seq.digits[i] = nucleotide.A
                 elif letter == u'T' or letter == u't':
-                    seq.digits[i] = T
+                    seq.digits[i] = nucleotide.T
                 elif letter == u'G' or letter == u'g':
-                    seq.digits[i] = G
+                    seq.digits[i] = nucleotide.G
                     gc_count += 1
                 elif letter == u'C' or letter == u'c':
-                    seq.digits[i] = C
+                    seq.digits[i] = nucleotide.C
                     gc_count += 1
                 else:
-                    seq.digits[i] = N
+                    seq.digits[i] = nucleotide.N
 
             if seq.slen > 0:
                 seq.gc = (<double> gc_count) / (<double> seq.slen)
 
             if mask:
                 for i in range(seq.slen):
-                    if seq.digits[i] == N:
+                    if seq.digits[i] == nucleotide.N:
                         if mask_begin == -1:
                             mask_begin = i
                     else:
@@ -439,71 +432,71 @@ cdef class Sequence:
             x1 = _complement[self.digits[self.slen - 2 - i]]
             x2 = _complement[self.digits[self.slen - 3 - i]]
 
-        if x0 == T and x1 == T and (x2 == T or x2 == C):
+        if x0 == nucleotide.T and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"F"
-        if x0 == T and x1 == T and (x2 == A or x2 == G):
+        if x0 == nucleotide.T and x1 == nucleotide.T and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"L"
-        if x0 == T and x1 == C and x2 != N:
+        if x0 == nucleotide.T and x1 == nucleotide.C and x2 != nucleotide.N:
             return b"S"
-        if x0 == T and x1 == A and x2 == T:
+        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.T:
             return b"Y"
-        if x0 == T and x1 == A and x2 == C:
+        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.C:
             return b"Y"
-        if x0 == T and x1 == A and x2 == A:
+        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.A:
             if tt == 6:
                 return b"Q"
             elif tt == 14:
                 return b"Y"
-        if x0 == T and x1 == A and x2 == G:
+        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.G:
             if tt == 6 or tt == 15:
                 return b"Q"
             elif tt == 22:
                 return b"L"
-        if x0 == T and x1 == G and (x2 == T or x2 == C):
+        if x0 == nucleotide.T and x1 == nucleotide.G and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"C"
-        if x0 == T and x1 == G and x2 == A:
+        if x0 == nucleotide.T and x1 == nucleotide.G and x2 == nucleotide.A:
             return b"G" if tt == 25 else b"W"
-        if x0 == T and x1 == G and x2 == G:
+        if x0 == nucleotide.T and x1 == nucleotide.G and x2 == nucleotide.G:
             return b"W"
-        if x0 == C and x1 == T and (x2 == T or x2 == C or x2 == A):
+        if x0 == nucleotide.C and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C or x2 == nucleotide.A):
             return b"T" if tt == 3 else b"L"
-        if x0 == C and x1 == T and x2 == G:
+        if x0 == nucleotide.C and x1 == nucleotide.T and x2 == nucleotide.G:
             return b"T" if tt == 3 else b"S" if tt == 12 else b"L"
-        if x0 == C and x1 == C and x2 != N:
+        if x0 == nucleotide.C and x1 == nucleotide.C and x2 != nucleotide.N:
             return b"P"
-        if x0 == C and x1 == A and (x2 == T or x2 == C):
+        if x0 == nucleotide.C and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"H"
-        if x0 == C and x1 == A and (x2 == A or x2 == G):
+        if x0 == nucleotide.C and x1 == nucleotide.A and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"Q"
-        if x0 == C and x1 == G and x2 != N:
+        if x0 == nucleotide.C and x1 == nucleotide.G and x2 != nucleotide.N:
             return b"R"
-        if x0 == A and x1 == T and (x2 == T or x2 == C):
+        if x0 == nucleotide.A and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"I"
-        if x0 == A and x1 == T and x2 == A:
+        if x0 == nucleotide.A and x1 == nucleotide.T and x2 == nucleotide.A:
             return b"M" if tt == 2 or tt == 3 or tt == 5 or tt == 13 or tt == 22 else b"I"
-        if x0 == A and x1 == T and x2 == G:
+        if x0 == nucleotide.A and x1 == nucleotide.T and x2 == nucleotide.G:
             return b"M"
-        if x0 == A and x1 == C and x2 != N:
+        if x0 == nucleotide.A and x1 == nucleotide.C and x2 != nucleotide.N:
             return b"T"
-        if x0 == A and x1 == A and (x2 == T or x2 == C):
+        if x0 == nucleotide.A and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"N"
-        if x0 == A and x1 == A and x2 == A:
+        if x0 == nucleotide.A and x1 == nucleotide.A and x2 == nucleotide.A:
             return b"N" if tt == 9 or tt == 14 or tt == 21 else b"K"
-        if x0 == A and x1 == A and x2 == G:
+        if x0 == nucleotide.A and x1 == nucleotide.A and x2 == nucleotide.G:
             return b"K"
-        if x0 == A and x1 == G and (x2 == T or x2 == C):
+        if x0 == nucleotide.A and x1 == nucleotide.G and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"S"
-        if x0 == A and x1 == G and (x2 == A or x2 == G):
+        if x0 == nucleotide.A and x1 == nucleotide.G and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"G" if tt == 13 else b"S" if tt == 5 or tt == 9 or tt == 14 or tt == 21 else b"R"
-        if x0 == G and x1 == T and x2 != N:
+        if x0 == nucleotide.G and x1 == nucleotide.T and x2 != nucleotide.N:
             return b"V"
-        if x0 == G and x1 == C and x2 != N:
+        if x0 == nucleotide.G and x1 == nucleotide.C and x2 != nucleotide.N:
             return b"A"
-        if x0 == G and x1 == A and (x2 == T or x2 == C):
+        if x0 == nucleotide.G and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"D"
-        if x0 == G and x1 == A and (x2 == A or x2 == G):
+        if x0 == nucleotide.G and x1 == nucleotide.A and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"E"
-        if x0 == G and x1 == G and x2 != N:
+        if x0 == nucleotide.G and x1 == nucleotide.G and x2 != nucleotide.N:
             return b"G"
 
         return b'X'
