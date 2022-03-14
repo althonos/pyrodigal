@@ -6,7 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.1...HEAD
+
+
+## [v0.7.1] - 2022-03-14
+[v0.7.1]: https://github.com/althonos/pyrodigal/compare/v0.7.0...v0.7.1
+
+### Changed
+- Rewrite internal `Sequence` code using inlined functions to increase performance when the strand is known.
+
+### Fixed
+- `Nodes.copy` potentially failing on empty collections after trying to allocate 0 bytes.
+- `TestGenes.test_write_scores` failing on some machines because of float rounding issues.
+- `Gene.translate` ignoring the `unknown_residue` argument value and always using `"X"`.
+- Memory leak in `Pyrodigal.train` cause by memory not being freed after building the GC frame plot.
 
 
 ## [v0.7.0] - 2022-03-12
