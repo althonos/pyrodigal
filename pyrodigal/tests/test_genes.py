@@ -1,4 +1,5 @@
 import collections.abc
+import csv
 import gzip
 import io
 import os
@@ -58,7 +59,6 @@ class TestGenes(unittest.TestCase):
         if sys.version_info >= (3, 6):
             self.assertIsInstance(self.genes, collections.abc.Reversible)
 
-    @unittest.skipUnless(platform.machine() == "x86_64", 'numerical precision issues on Aarch64')
     def test_write_scores(self):
         buffer = io.StringIO()
         self.genes.write_scores(buffer)
@@ -79,5 +79,18 @@ class TestGenes(unittest.TestCase):
                 and line.strip()
             ]
 
-        for l1, l2 in zip(actual, expected):
-            self.assertEqual(l1, l2)
+        r1 = csv.reader(actual, dialect="excel-tab")
+        r2 = csv.reader(expected, dialect="excel-tab")
+        for row1, row2 in zip(r1, r2):
+            self.assertEqual(row1[0], row2[0], "begin coordinates differ")
+            self.assertEqual(row1[1], row2[1], "end coordinates differ")
+            self.assertEqual(row1[2], row2[2], "strands differ")
+            self.assertEqual(row1[6], row2[6], "codons differ")
+            self.assertEqual(row1[7], row2[7], "RBS motifs differ")
+            self.assertEqual(row1[8], row2[8], "RBS spacers differ")
+
+        # NOTE(@althonos): This is rather convulated but unfortunately we cannot
+        #                  compare lines directly because of rounding issues that
+        #                  can occur between different platforms: for instance,
+        #                  depending on the compilation flags, the score
+        #                  `-32.2550` may be rounded as `-32.25` or `-32.26`.
