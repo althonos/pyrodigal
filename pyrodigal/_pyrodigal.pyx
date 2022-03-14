@@ -4292,6 +4292,7 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
     tot = <int*> malloc(seq.slen*sizeof(int));
     if fwd == NULL or bwd == NULL or gp == NULL or tot == NULL:
         free(gp)
+        free(fwd)
         free(bwd)
         free(tot)
         with gil:
@@ -4316,11 +4317,12 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
             tot[i] -= fwd[i-WINDOW//2]
         if i + WINDOW//2 < seq.slen:
             tot[i] -= bwd[i+WINDOW//2]
-    free(bwd);
+    free(fwd)
+    free(bwd)
     for i in range(0, slen-2, 3):
         win = sequence.max_fr(tot[i], tot[i+1], tot[i+2])
         for j in range(3):
             gp[i+j] = win
-    free(tot);
+    free(tot)
 
     return gp;
