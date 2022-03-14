@@ -1,3 +1,5 @@
+#ifndef _PYRODIGAL_SEQUENCE_H
+#define _PYRODIGAL_SEQUENCE_H
 #include <stdint.h>
 
 enum nucleotide {
@@ -11,15 +13,15 @@ enum nucleotide {
 const uint8_t _complement [N+1] = {   T,   C,   G,   A,   N,   N,   N };
 const char    _letters    [N+1] = { 'A', 'G', 'C', 'T', 'N', 'N', 'N' };
 
-inline int _is_a(const uint8_t* digits, const int slen, const int i, const int strand) {
+int _is_a(const uint8_t* digits, const int slen, const int i, const int strand) {
     return (strand == 1) ? digits[i] == A : digits[slen - 1 - i] == T;
 }
 
-inline int _is_g(const uint8_t* digits, const int slen, const int i, const int strand) {
+int _is_g(const uint8_t* digits, const int slen, const int i, const int strand) {
     return (strand == 1) ? digits[i] == G : digits[slen - 1 - i] == C;
 }
 
-inline int _is_gc(const uint8_t* digits, const int slen, const int i, const int strand) {
+int _is_gc(const uint8_t* digits, const int slen, const int i, const int strand) {
     // NB(@althonos): In the original Prodigal implementation, any unknown
     //                character gets encoded as a C, so it gets counted
     //                when computing the GC percent. We reproduce this
@@ -29,7 +31,7 @@ inline int _is_gc(const uint8_t* digits, const int slen, const int i, const int 
     return nuc == C || nuc == G || nuc == N;
 }
 
-inline int _is_start(const uint8_t* digits, const int slen, const int i, const int tt, const int strand) {
+int _is_start(const uint8_t* digits, const int slen, const int i, const int tt, const int strand) {
     uint_fast8_t x0, x1, x2;
 
     if (strand == 1) {
@@ -59,7 +61,7 @@ inline int _is_start(const uint8_t* digits, const int slen, const int i, const i
     return 0;
 }
 
-inline int _is_stop(const uint8_t* digits, const int slen, const int i, const int tt, const int strand) {
+int _is_stop(const uint8_t* digits, const int slen, const int i, const int tt, const int strand) {
     uint_fast8_t x0, x1, x2;
 
     if (strand == 1) {
@@ -100,7 +102,7 @@ inline int _is_stop(const uint8_t* digits, const int slen, const int i, const in
     return 0;
 }
 
-inline int _is_atg(const uint8_t* digits, const int slen, const int i, const int strand) {
+int _is_atg(const uint8_t* digits, const int slen, const int i, const int strand) {
     uint_fast8_t x0, x1, x2;
 
     if (strand == 1) {
@@ -116,7 +118,7 @@ inline int _is_atg(const uint8_t* digits, const int slen, const int i, const int
     return (x0 == A) && (x1 == T) && (x2 == G);
 }
 
-inline int _is_gtg(const uint8_t* digits, const int slen, const int i, const int strand) {
+int _is_gtg(const uint8_t* digits, const int slen, const int i, const int strand) {
     uint_fast8_t x0, x1, x2;
 
     if (strand == 1) {
@@ -132,7 +134,7 @@ inline int _is_gtg(const uint8_t* digits, const int slen, const int i, const int
     return (x0 == G) && (x1 == T) && (x2 == G);
 }
 
-inline int _is_ttg(const uint8_t* digits, const int slen, const int i, const int strand) {
+int _is_ttg(const uint8_t* digits, const int slen, const int i, const int strand) {
     uint_fast8_t x0, x1, x2;
 
     if (strand == 1) {
@@ -148,7 +150,7 @@ inline int _is_ttg(const uint8_t* digits, const int slen, const int i, const int
     return (x0 == T) && (x1 == T) && (x2 == G);
 }
 
-inline int _mer_ndx(const uint8_t* digits, const int slen, const int i, const int length, const int strand) {
+int _mer_ndx(const uint8_t* digits, const int slen, const int i, const int length, const int strand) {
     int j, k;
     int ndx = 0;
     if (strand == 1) {
@@ -162,3 +164,4 @@ inline int _mer_ndx(const uint8_t* digits, const int slen, const int i, const in
     }
   return ndx;
 }
+#endif
