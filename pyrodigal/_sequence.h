@@ -37,9 +37,9 @@ inline int _is_start(const uint8_t* digits, const int slen, const int i, const i
         x1 = digits[i+1];
         x2 = digits[i+2];
     } else {
-        x0 = _complement[digits[slen - 1 - i]];
-        x1 = _complement[digits[slen - 2 - i]];
-        x2 = _complement[digits[slen - 3 - i]];
+        x0 = digits[slen - 1 - i] ^ 0b11;
+        x1 = digits[slen - 2 - i] ^ 0b11;
+        x2 = digits[slen - 3 - i] ^ 0b11;
     }
 
     // ATG
@@ -67,9 +67,9 @@ inline int _is_stop(const uint8_t* digits, const int slen, const int i, const in
         x1 = digits[i+1];
         x2 = digits[i+2];
     } else {
-        x0 = _complement[digits[slen - 1 - i]];
-        x1 = _complement[digits[slen - 2 - i]];
-        x2 = _complement[digits[slen - 3 - i]];
+        x0 = digits[slen - 1 - i] ^ 0b11;
+        x1 = digits[slen - 2 - i] ^ 0b11;
+        x2 = digits[slen - 3 - i] ^ 0b11;
     }
 
     // TAG
@@ -108,9 +108,9 @@ inline int _is_atg(const uint8_t* digits, const int slen, const int i, const int
         x1 = digits[i+1];
         x2 = digits[i+2];
     } else {
-        x0 = _complement[digits[slen - 1 - i]];
-        x1 = _complement[digits[slen - 2 - i]];
-        x2 = _complement[digits[slen - 3 - i]];
+        x0 = digits[slen - 1 - i] ^ 0b11;
+        x1 = digits[slen - 2 - i] ^ 0b11;
+        x2 = digits[slen - 3 - i] ^ 0b11;
     }
 
     return (x0 == A) && (x1 == T) && (x2 == G);
@@ -124,9 +124,9 @@ inline int _is_gtg(const uint8_t* digits, const int slen, const int i, const int
         x1 = digits[i+1];
         x2 = digits[i+2];
     } else {
-        x0 = _complement[digits[slen - 1 - i]];
-        x1 = _complement[digits[slen - 2 - i]];
-        x2 = _complement[digits[slen - 3 - i]];
+        x0 = digits[slen - 1 - i] ^ 0b11;
+        x1 = digits[slen - 2 - i] ^ 0b11;
+        x2 = digits[slen - 3 - i] ^ 0b11;
     }
 
     return (x0 == G) && (x1 == T) && (x2 == G);
@@ -140,9 +140,9 @@ inline int _is_ttg(const uint8_t* digits, const int slen, const int i, const int
         x1 = digits[i+1];
         x2 = digits[i+2];
     } else {
-        x0 = _complement[digits[slen - 1 - i]];
-        x1 = _complement[digits[slen - 2 - i]];
-        x2 = _complement[digits[slen - 3 - i]];
+        x0 = digits[slen - 1 - i] ^ 0b11;
+        x1 = digits[slen - 2 - i] ^ 0b11;
+        x2 = digits[slen - 3 - i] ^ 0b11;
     }
 
     return (x0 == T) && (x1 == T) && (x2 == G);

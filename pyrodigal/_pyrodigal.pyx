@@ -1146,14 +1146,9 @@ cdef class Node:
         for i in range(1, 45):
             if i > 2 and i < 15:
                 continue
-            if start < i:
+            if i > start:
                 continue
-
-            if strand == 1:
-                mer = seq.digits[start - i] & 0b11
-            else:
-                mer = _complement[seq.digits[seq.slen - 1 - start + i]] & 0b11
-
+            mer = _mer_ndx(seq.digits, seq.slen, start - i, 1, strand=strand)
             node.uscore += 0.4 * tinf.st_wt * tinf.ups_comp[count][mer]
             count += 1
 
