@@ -2,8 +2,8 @@
 # Added manually
 
 ### Cython ###
-pyrodigal/*.c
-pyrodigal/*.h
+pyrodigal/_pyrodigal.c
+pyrodigal/_pyrodigal.h
 pyrodigal/*.html
 pyrodigal/*.BAK
 

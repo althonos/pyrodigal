@@ -67,6 +67,19 @@ from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._unicode cimport *
+from pyrodigal._sequence cimport (
+    nucleotide,
+    _is_a,
+    _is_g,
+    _is_gc,
+    _is_stop,
+    _is_start,
+    _is_atg,
+    _is_ttg,
+    _is_gtg,
+    _letters,
+    _complement
+)
 
 IF TARGET_CPU == "x86":
     from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
@@ -214,22 +227,6 @@ cdef enum:
     C = 0b010
     T = 0b011
     N = 0b110  # use 6 so that N & 0x3 == C
-
-cdef uint8_t _complement[N+1]
-for i in range(N+1):
-    _complement[i] = N
-_complement[A] = T
-_complement[T] = A
-_complement[C] = G
-_complement[G] = C
-
-cdef Py_UCS4 _letters[N+1]
-for i in range(N+1):
-    _letters[i] = "N"
-_letters[A] = "A"
-_letters[T] = "T"
-_letters[C] = "C"
-_letters[G] = "G"
 
 cdef class Sequence:
     """A digitized input sequence.
@@ -422,149 +419,7 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
-    cdef inline bint _is_a(self, int i, int strand = 1) nogil:
-        cdef uint8_t x
-
-        if strand == 1:
-            return self.digits[i] == A
-        else:
-            return self.digits[self.slen - 1 - i] == T
-
-    cdef inline bint _is_g(self, int i, int strand = 1) nogil:
-        cdef uint8_t x
-
-        if strand == 1:
-            return self.digits[i] == G
-        else:
-            return self.digits[self.slen - 1 - i] == C
-
-    cdef inline bint _is_gc(self, int i, int strand = 1) nogil:
-        cdef uint8_t x
-
-        if strand == 1:
-            x = self.digits[i]
-        else:
-            x = self.digits[self.slen - 1 - i]
-
-        # NB(@althonos): In the original Prodigal implementation, any unknown
-        #                character gets encoded as a C, so it gets counted
-        #                when computing the GC percent. We reproduce this
-        #                behaviour here, but a better solution would be to
-        #                count only known letters.
-        return x == C or x == G or x == N
-
-    cdef inline bint _is_start(self, int i, int tt, int strand = 1) nogil:
-        cdef uint8_t x0
-        cdef uint8_t x1
-        cdef uint8_t x2
-
-        if strand == 1:
-            x0 = self.digits[i]
-            x1 = self.digits[i+1]
-            x2 = self.digits[i+2]
-        else:
-            x0 = _complement[self.digits[self.slen - 1 - i]]
-            x1 = _complement[self.digits[self.slen - 2 - i]]
-            x2 = _complement[self.digits[self.slen - 3 - i]]
-
-        # ATG
-        if x0 == A and x1 == T and x2 == G:
-            return True
-        # Codes that only use ATG
-        if tt == 6 or tt == 10 or tt == 14 or tt == 15 or tt == 16 or tt == 2:
-            return False
-        # GTG
-        if x0 == G and x1 == T and x2 == G:
-            return not (tt == 1 or tt == 3 or tt == 12 or tt == 2)
-        # TTG
-        if x0 == T and x1 == T and x2 == G:
-            return not (tt < 4 or tt == 9 or (tt >= 21 and tt < 25))
-        # other codons
-        return False
-
-    cdef inline bint _is_stop(self, int i, int tt, int strand = 1) nogil:
-        cdef uint8_t x0
-        cdef uint8_t x1
-        cdef uint8_t x2
-
-        if strand == 1:
-            x0 = self.digits[i]
-            x1 = self.digits[i+1]
-            x2 = self.digits[i+2]
-        else:
-            x0 = _complement[self.digits[self.slen - 1 - i]]
-            x1 = _complement[self.digits[self.slen - 2 - i]]
-            x2 = _complement[self.digits[self.slen - 3 - i]]
-
-        # TAG
-        if x0 == T and x1 == A and x2 == G:
-            return not (tt == 6 or tt == 15 or tt == 16 or tt == 22)
-        # TGA
-        if x0 == T and x1 == G and x2 == A:
-            return not (
-                    tt == 2 or tt == 3 or tt == 4 or tt == 5
-                 or tt == 9 or tt == 10 or tt == 13 or tt == 14
-                 or tt == 21 or tt == 25
-            )
-        # TAA
-        if x0 == T and x1 == A and x2 == A:
-            return not (tt == 6 or tt == 14)
-        # Code 2
-        if tt == 2:
-            return x0 == A and x1 == G and (x2 == A or x2 == G)
-        # Code 22
-        elif tt == 22:
-            return x0 == T and x1 == C and x2 == A
-        # Code 23
-        elif tt == 23:
-            return x0 == T and x1 == T and x2 == A
-        # other codons
-        return False
-
-    cdef inline bint _is_atg(self, int i, int strand = 1) nogil:
-        cdef uint8_t x0
-        cdef uint8_t x1
-        cdef uint8_t x2
-        if strand == 1:
-            x0 = self.digits[i]
-            x1 = self.digits[i+1]
-            x2 = self.digits[i+2]
-        else:
-            x0 = _complement[self.digits[self.slen - 1 - i]]
-            x1 = _complement[self.digits[self.slen - 2 - i]]
-            x2 = _complement[self.digits[self.slen - 3 - i]]
-        return x0 == A and x1 == T and x2 == G
-
-    cdef inline bint _is_gtg(self, int i, int strand = 1) nogil:
-        cdef uint8_t x0
-        cdef uint8_t x1
-        cdef uint8_t x2
-        if strand == 1:
-            x0 = self.digits[i]
-            x1 = self.digits[i+1]
-            x2 = self.digits[i+2]
-        else:
-            x0 = _complement[self.digits[self.slen - 1 - i]]
-            x1 = _complement[self.digits[self.slen - 2 - i]]
-            x2 = _complement[self.digits[self.slen - 3 - i]]
-        return x0 == G and x1 == T and x2 == G
-
-    cdef inline bint _is_ttg(self, int i, int strand = 1) nogil:
-        cdef uint8_t x0
-        cdef uint8_t x1
-        cdef uint8_t x2
-        if strand == 1:
-            x0 = self.digits[i]
-            x1 = self.digits[i+1]
-            x2 = self.digits[i+2]
-        else:
-            x0 = _complement[self.digits[self.slen - 1 - i]]
-            x1 = _complement[self.digits[self.slen - 2 - i]]
-            x2 = _complement[self.digits[self.slen - 3 - i]]
-        return x0 == T and x1 == T and x2 == G
-
     cdef inline int _mer_ndx(self, int i, int length, int strand = 1) nogil:
-
         cdef int     j
         cdef int     k
         cdef uint8_t x
@@ -582,10 +437,14 @@ cdef class Sequence:
         return ndx
 
     cdef char _amino(self, int i, int tt, int strand = 1, bint is_init = False) nogil:
-
         cdef uint8_t x0
         cdef uint8_t x1
         cdef uint8_t x2
+
+        if _is_stop(self.digits, self.slen, i, tt, strand):
+            return b"*"
+        if _is_start(self.digits, self.slen, i, tt, strand) and is_init:
+            return b"M"
 
         if strand == 1:
             x0 = self.digits[i]
@@ -596,10 +455,6 @@ cdef class Sequence:
             x1 = _complement[self.digits[self.slen - 2 - i]]
             x2 = _complement[self.digits[self.slen - 3 - i]]
 
-        if self._is_stop(i, tt, strand=strand):
-            return b"*"
-        if self._is_start(i, tt, strand=strand) and is_init:
-            return b"M"
         if x0 == T and x1 == T and (x2 == T or x2 == C):
             return b"F"
         if x0 == T and x1 == T and (x2 == A or x2 == G):
@@ -693,9 +548,9 @@ cdef class Sequence:
         for i in range(limit):
             if pos + i < 0:
                 continue
-            if i%3 == 0 and self._is_a(pos+i, strand=strand):
+            if i%3 == 0 and _is_a(self.digits, self.slen, pos+i, strand):
                 match[i] = 2
-            elif i%3 != 0 and self._is_g(pos+i, strand=strand):
+            elif i%3 != 0 and _is_g(self.digits, self.slen, pos+i, strand):
                 match[i] = 3
             else:
                 match[i] = -10
@@ -813,9 +668,9 @@ cdef class Sequence:
             if pos + i < 0:
                 continue
             if i%3 == 0:
-                match[i] = 2 if self._is_a(pos+i, strand=strand) else -3
+                match[i] = 2 if _is_a(self.digits, self.slen, pos+i, strand) else -3
             else:
-                match[i] = 3 if self._is_g(pos+i, strand=strand) else -2
+                match[i] = 3 if _is_g(self.digits, self.slen, pos+i, strand) else -2
 
         # Find the maximally scoring motif
         max_val = 0
@@ -1406,10 +1261,18 @@ cdef class Nodes:
                 phase = self.nodes[i].ndx %3
                 if self.nodes[i].type == node_type.STOP:
                     last[phase] = j = self.nodes[i].ndx
-                    gc[phase] = seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                    gc[phase] = (
+                        _is_gc(seq.digits, seq.slen, j,   1)
+                      + _is_gc(seq.digits, seq.slen, j+1, 1)
+                      + _is_gc(seq.digits, seq.slen, j+2, 1)
+                    )
                 else:
                     for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
-                        gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                        gc[phase] += (
+                            _is_gc(seq.digits, seq.slen, j,   1)
+                          + _is_gc(seq.digits, seq.slen, j+1, 1)
+                          + _is_gc(seq.digits, seq.slen, j+2, 1)
+                        )
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
@@ -1421,17 +1284,25 @@ cdef class Nodes:
                 phase = self.nodes[i].ndx % 3
                 if self.nodes[i].type == node_type.STOP:
                     last[phase] = j = self.nodes[i].ndx
-                    gc[phase] = seq._is_gc(j) + seq._is_gc(j-1) + seq._is_gc(j-2)
+                    gc[phase] = (
+                        _is_gc(seq.digits, seq.slen, j,   1)
+                      + _is_gc(seq.digits, seq.slen, j-1, 1)
+                      + _is_gc(seq.digits, seq.slen, j-2, 1)
+                    )
                 else:
                     if self.nodes[i].edge:
                         # NOTE: This fixes a bug in the original code where
                         #       is_gc(...) is called for an index larger than
                         #       the sequence length
                         for j in range(last[phase] + 3, seq.slen):
-                            gc[phase] += seq._is_gc(j)
+                            gc[phase] += _is_gc(seq.digits, seq.slen, j, 1)
                     else:
                         for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                            gc[phase] += seq._is_gc(j) + seq._is_gc(j+1) + seq._is_gc(j+2)
+                            gc[phase] += (
+                                _is_gc(seq.digits, seq.slen, j,   1)
+                              + _is_gc(seq.digits, seq.slen, j+1, 1)
+                              + _is_gc(seq.digits, seq.slen, j+2, 1)
+                            )
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
@@ -1561,14 +1432,14 @@ cdef class Nodes:
                 while last[(i+slmod)%3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
-            if sequence._is_stop(i, tt):
+            if _is_stop(sequence.digits, sequence.slen, i, tt, 1):
                 if saw_start[i%3]:
                     self._add_node(
                         ndx = last[i%3],
                         type = node_type.STOP,
                         strand = 1,
                         stop_val = i,
-                        edge = not sequence._is_stop(last[i%3], tt),
+                        edge = not _is_stop(sequence.digits, sequence.slen, last[i%3], tt, 1),
                     )
                     nn += 1
                 min_dist[i%3] = min_gene
@@ -1578,8 +1449,8 @@ cdef class Nodes:
             if last[i%3] >= sequence.slen:
                 continue
             if not cross_mask(i, last[i%3], mlist, nm):
-                if last[i%3] - i + 3 >= min_dist[i%3] and sequence._is_start(i, tt):
-                    if sequence._is_atg(i):
+                if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, 1):
+                    if _is_atg(sequence.digits, sequence.slen, i, 1):
                         saw_start[i%3] = True
                         self._add_node(
                             ndx = i,
@@ -1589,7 +1460,7 @@ cdef class Nodes:
                             edge = False
                         )
                         nn += 1
-                    elif sequence._is_ttg(i):
+                    elif _is_ttg(sequence.digits, sequence.slen, i, 1):
                         saw_start[i%3] = True
                         self._add_node(
                             ndx = i,
@@ -1599,7 +1470,7 @@ cdef class Nodes:
                             edge = False
                         )
                         nn += 1
-                    elif sequence._is_gtg(i):
+                    elif _is_gtg(sequence.digits, sequence.slen, i, 1):
                         saw_start[i%3] = True
                         self._add_node(
                             ndx = i,
@@ -1626,7 +1497,7 @@ cdef class Nodes:
                     type = node_type.STOP,
                     strand = 1,
                     stop_val = i - 6,
-                    edge = not sequence._is_stop(last[i%3], tt)
+                    edge = not _is_stop(sequence.digits, sequence.slen, last[i%3], tt, 1)
                 )
                 nn += 1
         # Reverse strand nodes
@@ -1638,14 +1509,14 @@ cdef class Nodes:
                 while last[(i+slmod) % 3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
-            if sequence._is_stop(i, tt, strand=-1):
+            if _is_stop(sequence.digits, sequence.slen, i, tt, -1):
                 if saw_start[i%3]:
                     self._add_node(
                         ndx = sequence.slen - last[i%3] - 1,
                         type = node_type.STOP,
                         strand = -1,
                         stop_val = sequence.slen - i - 1,
-                        edge = not sequence._is_stop(last[i%3], tt, strand=-1)
+                        edge = not _is_stop(sequence.digits, sequence.slen, last[i%3], tt, -1)
                     )
                     nn += 1
                 min_dist[i%3] = min_gene
@@ -1655,8 +1526,8 @@ cdef class Nodes:
             if last[i%3] >= sequence.slen:
                 continue
             if not cross_mask(sequence.slen-last[i%3]-1, sequence.slen-i-1, mlist, nm):
-                if last[i%3] - i + 3 >= min_dist[i%3] and sequence._is_start(i, tt, strand=-1):
-                    if sequence._is_atg(i, strand=-1):
+                if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, -1):
+                    if _is_atg(sequence.digits, sequence.slen, i, -1):
                         saw_start[i%3] = True
                         self._add_node(
                             ndx = sequence.slen - i - 1,
@@ -1666,7 +1537,7 @@ cdef class Nodes:
                             edge = False
                         )
                         nn += 1
-                    elif sequence._is_gtg(i, strand=-1):
+                    elif _is_gtg(sequence.digits, sequence.slen, i, -1):
                         saw_start[i%3] = True
                         self._add_node(
                             ndx = sequence.slen - i - 1,
@@ -1676,7 +1547,7 @@ cdef class Nodes:
                             edge = False
                         )
                         nn += 1
-                    elif sequence._is_ttg(i, strand=-1):
+                    elif _is_ttg(sequence.digits, sequence.slen, i, -1):
                         saw_start[i%3] = 1
                         self._add_node(
                             ndx = sequence.slen - i - 1,
@@ -1703,7 +1574,7 @@ cdef class Nodes:
                     type = node_type.STOP,
                     strand = -1,
                     stop_val = sequence.slen - i + 5,
-                    edge = not sequence._is_stop(last[i%3], tt, strand=-1),
+                    edge = not _is_stop(sequence.digits, sequence.slen, last[i%3], tt, -1),
                 )
                 nn += 1
 
@@ -1959,8 +1830,8 @@ cdef class Nodes:
             if self.nodes[i].edge:
                 edge_gene += 1
             if (
-                    self.nodes[i].strand == 1 and not seq._is_stop(self.nodes[i].stop_val, tinf.trans_table)
-                or  self.nodes[i].strand == -1 and not seq._is_stop(seq.slen - 1 - self.nodes[i].stop_val, tinf.trans_table, strand=-1)
+                    self.nodes[i].strand == 1 and not _is_stop(seq.digits, seq.slen, self.nodes[i].stop_val, tinf.trans_table, 1)
+                or  self.nodes[i].strand == -1 and not _is_stop(seq.digits, seq.slen, seq.slen - 1 - self.nodes[i].stop_val, tinf.trans_table, -1)
             ):
                 edge_gene += 1
 
@@ -4462,13 +4333,13 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
 
     for j in range(0, slen):
         if j < 3:
-            fwd[j] = seq._is_gc(j)
-            bwd[seq.slen-j-1] = seq._is_gc(seq.slen-j-1)
+            fwd[j] = _is_gc(seq.digits, seq.slen, j, 1)
+            bwd[seq.slen-j-1] = _is_gc(seq.digits, seq.slen, j, -1)
         else:
-            fwd[j] = fwd[j-3] + seq._is_gc(j)
-            bwd[slen-j-1] = bwd[slen-j+2] + seq._is_gc(slen-j-1)
+            fwd[j] = fwd[j-3] + _is_gc(seq.digits, seq.slen, j, 1)
+            bwd[slen-j-1] = bwd[slen-j+2] + _is_gc(seq.digits, seq.slen, j, -1)
     for i in range(slen):
-        tot[i] = fwd[i] + bwd[i] - seq._is_gc(i);
+        tot[i] = fwd[i] + bwd[i] - _is_gc(seq.digits, seq.slen, i, 1);
         if i >= WINDOW//2:
             tot[i] -= fwd[i-WINDOW//2]
         if i + WINDOW//2 < seq.slen:

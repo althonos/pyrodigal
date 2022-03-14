@@ -50,16 +50,6 @@ cdef class Sequence:
     cdef readonly Masks    masks
 
     cdef int _allocate(self, int slen) except 1
-
-    cdef bint _is_a(self, int i, int strand=*) nogil
-    cdef bint _is_g(self, int i, int strand=*) nogil
-    cdef bint _is_gc(self, int i, int strand=*) nogil
-    cdef bint _is_stop(self, int i, int tt, int strand=*) nogil
-    cdef bint _is_start(self, int i, int tt, int strand=*) nogil
-    cdef bint _is_atg(self, int i, int strand=*) nogil
-    cdef bint _is_gtg(self, int i, int strand=*) nogil
-    cdef bint _is_ttg(self, int i, int strand=*) nogil
-
     cdef int _mer_ndx(self, int i, int length, int strand=*) nogil
     cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
 
