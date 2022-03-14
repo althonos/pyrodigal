@@ -40,3 +40,9 @@ class TestNodes(unittest.TestCase):
         nodes2 = nodes1.copy()
         for n1, n2 in zip(nodes1, nodes2):
             self.assertEqual(n1.type, n2.type)
+
+    def test_copy_empty(self):
+        nodes = Nodes()
+        copy = nodes.copy()
+        self.assertEqual(len(nodes), 0)
+        self.assertEqual(len(copy), 0)

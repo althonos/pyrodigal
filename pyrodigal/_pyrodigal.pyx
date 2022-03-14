@@ -2087,14 +2087,14 @@ cdef class Nodes:
         Create a copy of the `Nodes` object.
 
         """
-        assert self.nodes != NULL
         cdef Nodes new = Nodes.__new__(Nodes)
         new.capacity = self.capacity
         new.length = self.length
-        new.nodes = <_node*> PyMem_Malloc(new.capacity * sizeof(_node))
-        if new.nodes == NULL:
-            raise MemoryError("Failed to reallocate node array")
-        memcpy(new.nodes, self.nodes, new.capacity * sizeof(_node))
+        if self.capacity > 0:
+            new.nodes = <_node*> PyMem_Malloc(new.capacity * sizeof(_node))
+            if new.nodes == NULL:
+                raise MemoryError("Failed to reallocate node array")
+            memcpy(new.nodes, self.nodes, new.length * sizeof(_node))
         return new
 
     def clear(self):
@@ -2145,10 +2145,7 @@ cdef class Nodes:
             the ``node.c`` file of the Prodigal source code.
 
         """
-        assert self.nodes != NULL
-
         cdef int nn
-
         with nogil:
             nn = self._extract(
                 sequence,
