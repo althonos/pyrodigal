@@ -230,18 +230,6 @@ jobs:
         - python-version: '3.10'
           python-release: v3.10
           python-impl: CPython
-        - python-version: pypy-3.6
-          python-release: v3.6
-          python-impl: PyPy
-        - python-version: pypy-3.7
-          python-release: v3.7
-          python-impl: PyPy
-        - python-version: pypy-3.8
-          python-release: v3.8
-          python-impl: PyPy
-        - python-version: pypy-3.9
-          python-release: v3.9
-          python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -271,6 +259,8 @@ jobs:
       run: python setup.py build_ext --inplace --debug
     - name: Test with coverage
       run: python -m coverage run -m unittest discover -vv
+    - name: Report coverage
+      run: python -m coverage report
     - name: Upload to Codecov
       uses: codecov/codecov-action@v1
       with:
