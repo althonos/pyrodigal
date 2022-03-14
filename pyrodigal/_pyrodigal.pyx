@@ -1,5 +1,5 @@
 # coding: utf-8
-# cython: language_level=3, linetrace=True
+# cython: language_level=3, linetrace=True, embedsignature=True
 
 """Bindings to Prodigal, an ORF finder for genomes and metagenomes.
 
@@ -95,11 +95,11 @@ ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
         from pyrodigal.impl.neon cimport skippable_neon
 
 IF SYS_IMPLEMENTATION_NAME == "pypy":
-    MVIEW_READ = PyBUF_READ | PyBUF_WRITE
-    MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
+    cdef int MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
+    cdef int MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
 ELSE:
-    MVIEW_READ = PyBUF_READ
-    MVIEW_WRITE = PyBUF_WRITE
+    cdef int MVIEW_READ  = PyBUF_READ
+    cdef int MVIEW_WRITE = PyBUF_WRITE
 
 # ----------------------------------------------------------------------------
 
@@ -413,7 +413,7 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
-    cdef char _amino(self, int i, int tt, int strand = 1, bint is_init = False) nogil:
+    cdef char _amino(self, int i, int tt, int strand = 1, bint is_init = False, char unknown_residue = b"X") nogil:
         cdef uint8_t x0
         cdef uint8_t x1
         cdef uint8_t x2
@@ -499,7 +499,7 @@ cdef class Sequence:
         if x0 == nucleotide.G and x1 == nucleotide.G and x2 != nucleotide.N:
             return b"G"
 
-        return b'X'
+        return unknown_residue
 
     cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=1) nogil:
         cdef int i
@@ -806,7 +806,7 @@ cdef class ConnectionScorer:
         self.node_strands    = self.node_strands_raw    = NULL
         self.node_frames     = self.node_frames_raw     = NULL
 
-    def __init__(self, unicode backend="detect"):
+    def __init__(self, str backend="detect"):
         IF TARGET_CPU == "x86":
             if backend =="detect":
                 self.backend = simd_backend.NONE
@@ -2296,7 +2296,7 @@ cdef class Gene:
             self.owner.training_info.tinf.st_wt
         )
 
-    cpdef unicode sequence(self):
+    cpdef str sequence(self):
         """sequence(self)\n--
 
         Build the nucleotide sequence of this predicted gene.
@@ -2367,10 +2367,10 @@ cdef class Gene:
         ELSE:
             return dna
 
-    cpdef unicode translate(
+    cpdef str translate(
         self,
         object translation_table=None,
-        Py_UCS4 unknown_residue=u"X",
+        char unknown_residue=b"X",
     ):
         """translate(self, translation_table=None, unknown_residue="X")\n--
 
@@ -2395,23 +2395,21 @@ cdef class Gene:
 
         """
 
-        cdef size_t         nucl_length
-        cdef size_t         prot_length
-        cdef size_t         i
-        cdef size_t         j
-        cdef int            tt
-        cdef object         protein
-        cdef int            kind
-        cdef void*          data
-        cdef Py_UCS4        aa
-        cdef _gene*         gene        = self.gene
-        cdef int            slen        = self.owner.sequence.slen
-        cdef int            edge        = self.owner.nodes.nodes[gene.start_ndx].edge
-        cdef int            strand      = self.owner.nodes.nodes[gene.start_ndx].strand
-        cdef bitmap_t       seq
-        cdef size_t         begin
-        cdef size_t         end
-        cdef size_t         unk
+        cdef size_t nucl_length
+        cdef size_t prot_length
+        cdef size_t i
+        cdef size_t j
+        cdef int    tt
+        cdef object protein
+        cdef int    kind
+        cdef void*  data
+        cdef size_t begin
+        cdef size_t end
+        cdef char   aa
+        cdef _gene* gene        = self.gene
+        cdef int    slen        = self.owner.sequence.slen
+        cdef int    edge        = self.owner.nodes.nodes[gene.start_ndx].edge
+        cdef int    strand      = self.owner.nodes.nodes[gene.start_ndx].strand
 
         # HACK: support changing the translation table (without allocating a
         #       new a training info structure) by manipulating where the
@@ -2432,9 +2430,7 @@ cdef class Gene:
         kind    = PyUnicode_KIND(protein)
         data    = PyUnicode_DATA(protein)
 
-        # compute the offsets in the sequence bitmaps:
-        # - begin is the coordinates of the first nucleotide in the gene
-        # - unk is the coordinate of the first nucleotide in the useq bitmap
+        # compute the offsets in the sequence
         if strand == 1:
             begin = gene.begin - 1
             end = gene.end - 1
@@ -2444,7 +2440,13 @@ cdef class Gene:
 
         with nogil:
             for i, j in enumerate(range(begin, end, 3)):
-                aa = self.owner.sequence._amino(j, tt, strand=strand, is_init=i==0 and not edge)
+                aa = self.owner.sequence._amino(
+                    j,
+                    tt,
+                    strand=strand,
+                    is_init=i==0 and not edge,
+                    unknown_residue=unknown_residue
+                )
                 PyUnicode_WRITE(kind, data, i, aa)
 
         # return the string containing the protein sequence
@@ -2700,7 +2702,7 @@ cdef class Genes:
                 else:
                     maxsc[j] = -1000.0
 
-            # Change the gene coordinates to the new maximum. */
+            # Change the gene coordinates to the new maximum.
             mndx = -1;
             for j in range(2):
                 if maxndx[j] == -1:
@@ -3953,10 +3955,10 @@ cdef class OrfFinder:
         Nodes nodes,
         ConnectionScorer scorer,
         TrainingInfo tinf,
-        bint force_nonsd=False,
-        double start_weight=4.35,
-        int translation_table=11,
+        bint force_nonsd,
     ) nogil except -1:
+        cdef int* gc_frame
+        cdef int  ipath
         # find all the potential starts and stops
         nodes._extract(
             sequence,
@@ -4261,9 +4263,7 @@ cdef class OrfFinder:
                 nodes,
                 scorer,
                 tinf,
-                force_nonsd=force_nonsd,
-                start_weight=start_weight,
-                translation_table=translation_table,
+                force_nonsd,
             )
 
         # store it, using a lock to avoid race condition if there is

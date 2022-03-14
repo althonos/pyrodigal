@@ -50,7 +50,7 @@ cdef class Sequence:
     cdef readonly Masks    masks
 
     cdef int _allocate(self, int slen) except 1
-    cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*) nogil
+    cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*, char unknown_residue=*) nogil
 
     cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=*) nogil
     cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=*) nogil
@@ -160,11 +160,11 @@ cdef class Gene:
     cdef _gene* gene
 
     cpdef double confidence(self)
-    cpdef unicode sequence(self)
-    cpdef unicode translate(
+    cpdef str sequence(self)
+    cpdef str translate(
         self,
         object translation_table=?,
-        Py_UCS4 unknown_residue=*,
+        char unknown_residue=*,
     )
 
 cdef class Genes:
@@ -245,9 +245,7 @@ cdef class OrfFinder:
         Nodes nodes,
         ConnectionScorer scorer,
         TrainingInfo tinf,
-        bint force_nonsd=*,
-        double start_weight=*,
-        int translation_table=*,
+        bint force_nonsd,
     ) nogil except -1
     cdef int _find_genes_single(
         self,
