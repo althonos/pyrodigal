@@ -104,11 +104,19 @@ cdef class ConnectionScorer:
     cdef uint8_t* node_frames
     cdef uint8_t* node_frames_raw
 
-    cdef int _index(self, Nodes nodes) nogil except 1
+    cdef int _index(self, Nodes nodes) nogil except -1
     cdef int _compute_skippable(
         self,
-        int min,
-        int i
+        const int min,
+        const int i
+    ) nogil
+    @staticmethod
+    cdef void _score_connection(
+        Nodes nodes,
+        const int j,
+        const int i,
+        const _training* tinf,
+        const bint flag
     ) nogil
     cdef int _score_connections(
         self,
@@ -130,6 +138,12 @@ cdef class Node:
     cdef Nodes  owner
     cdef _node* node
 
+    @staticmethod
+    cdef float _intergenic_mod(
+        const _node* n1,
+        const _node* n2,
+        const double start_weight
+    ) nogil
     @staticmethod
     cdef float _intergenic_mod_same(
         const _node* n1,
