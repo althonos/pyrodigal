@@ -6,7 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.2...HEAD
+
+
+## [v0.7.2] - 2022-03-15
+[v0.7.2]: https://github.com/althonos/pyrodigal/compare/v0.7.1...v0.7.2
+
+### Changed
+- Improve performance of `mer_ndx` and `score_connection` using dedicated implementations with better branch prediction.
+- Mark arguments as `const` in C code where possible.
+
+### Fixed
+- Signatures of Cython classes not displaying properly because of the `embedsignature` directive.
+- `_sequence.h` functions not being inlined as expected.
 
 
 ## [v0.7.1] - 2022-03-14
