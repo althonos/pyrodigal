@@ -43,9 +43,9 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
     add_nodes(nodes, seq, tinf)
 
     # run connection scoring
-    for backend in ["avx", "sse", None]:
+    for backend in ["avx", "sse", "generic", None]:
         times = []
-        for run in tqdm.tqdm(range(args.runs), leave=False):
+        for run in tqdm.tqdm(range(args.runs), description=str(backend), leave=False):
             # initialize scorer
             scorer = ConnectionScorer(backend=backend)
             scorer_nodes = nodes.copy()
