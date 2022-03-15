@@ -823,7 +823,7 @@ cdef class ConnectionScorer:
     def __init__(self, str backend="detect"):
         IF TARGET_CPU == "x86":
             if backend =="detect":
-                self.backend = simd_backend.GENERIC
+                self.backend = simd_backend.NONE
                 IF SSE2_BUILD_SUPPORT:
                     if _SSE2_RUNTIME_SUPPORT:
                         self.backend = simd_backend.SSE2
@@ -852,7 +852,7 @@ cdef class ConnectionScorer:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
         ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             if backend =="detect":
-                self.backend = simd_backend.GENERIC
+                self.backend = simd_backend.NONE
                 IF NEON_BUILD_SUPPORT:
                     if _NEON_RUNTIME_SUPPORT:
                         self.backend = simd_backend.NEON
@@ -870,6 +870,8 @@ cdef class ConnectionScorer:
             else:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
         ELSE:
+            if backend == "detect":
+                self.backend = simd_backend.NONE
             if backend == "generic":
                 self.backend = simd_backend.GENERIC
             elif backend is None:
@@ -1140,8 +1142,8 @@ cdef class ConnectionScorer:
             self._index(nodes)
 
     def compute_skippable(self, int min, int i):
-        assert self.skip_connection != NULL
-        assert i < <int> self.capacity
+        assert self.skip_connection != NULL or self.backend == simd_backend.NONE
+        assert i < <int> self.capacity or self.backend == simd_backend.NONE
         assert min <= i
         with nogil:
             self._compute_skippable(min, i)
@@ -1154,8 +1156,8 @@ cdef class ConnectionScorer:
         TrainingInfo tinf not None,
         bint final=False
     ):
-        assert self.skip_connection != NULL
-        assert i < <int> nodes.length
+        assert self.skip_connection != NULL or self.backend == simd_backend.NONE
+        assert i < <int> nodes.length or self.backend == simd_backend.NONE
         assert min <= i
         with nogil:
             self._score_connections(nodes, min, i, tinf.tinf, final)
