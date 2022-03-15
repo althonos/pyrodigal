@@ -541,7 +541,8 @@ setuptools.setup(
         Extension(
             "pyrodigal._pyrodigal",
             sources=[
-                "pyrodigal/_pyrodigal.pyx"
+                "pyrodigal/_pyrodigal.pyx",
+                "pyrodigal/impl/generic.c"
             ],
             platform_sources={
                 "AVX2": ["pyrodigal/impl/avx.c"],

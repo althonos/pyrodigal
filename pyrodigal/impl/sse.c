@@ -1,7 +1,6 @@
-#include "training.h"
-#include "node.h"
-#include "dprog.h"
+#include "sequence.h"
 #include "sse.h"
+#include "generic.h"
 
 #ifdef __SSE2__
 
@@ -31,7 +30,9 @@ void skippable_sse(
   __m128i n2_types   = _mm_set1_epi8(types[i]);
   __m128i n2_frames  = _mm_set1_epi8(frames[i]);
 
-  for (j = (min + 0xF) & (~0xF); j + 15 < i; j += 16) {
+  for (j = min; j < ((min + 0xF) & (~0xF)); j++)
+      skippable_generic_single(strands, types, frames, j, i, skip);
+  for (; j + 15 < i; j += 16) {
       n1_strands = _mm_load_si128((__m128i*) &strands[j]);
       n1_types =   _mm_load_si128((__m128i*) &types[j]);
       n1_frames =  _mm_load_si128((__m128i*) &frames[j]);
@@ -81,5 +82,7 @@ void skippable_sse(
       // store result mask
       _mm_store_si128((__m128i*) &skip[j], s);
   }
+  for (; j < i; j++)
+      skippable_generic_single(strands, types, frames, j, i, skip);
 }
 #endif

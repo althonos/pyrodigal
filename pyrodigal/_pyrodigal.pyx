@@ -61,7 +61,6 @@ from libc.stdlib cimport abs, malloc, calloc, free, qsort
 from libc.string cimport memcpy, memchr, memset, strstr
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
-from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask, compare_nodes, stopcmp_nodes
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
@@ -81,6 +80,7 @@ from pyrodigal._sequence cimport (
     _letters,
     _complement
 )
+from pyrodigal.impl.generic cimport skippable_generic
 
 IF TARGET_CPU == "x86":
     from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
@@ -900,17 +900,20 @@ cdef class ConnectionScorer:
             self._index(nodes)
 
     cdef int _compute_skippable(self, int min, int i) nogil:
-        if self.backend != simd_backend.NONE:
-            memset(&self.skip_connection[min], 0, sizeof(uint8_t) * (i - min))
+        memset(&self.skip_connection[min], 0, sizeof(uint8_t) * (i - min))
         IF AVX2_BUILD_SUPPORT:
             if self.backend == simd_backend.AVX2:
                 skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+                return 0
         IF SSE2_BUILD_SUPPORT:
             if self.backend == simd_backend.SSE2:
                 skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+                return 0
         IF NEON_BUILD_SUPPORT:
             if self.backend == simd_backend.NEON:
                 skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+                return 0
+        skippable_generic(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
         return 0
 
     def compute_skippable(self, int min, int i):
@@ -2309,7 +2312,6 @@ cdef class Gene:
         cdef size_t   j
         cdef size_t   begin
         cdef size_t   end
-        cdef size_t   unk
         cdef size_t   length
         cdef Py_UCS4  nuc
         cdef _gene*   gene   = self.gene
@@ -2324,11 +2326,9 @@ cdef class Gene:
         if strand == 1:
             begin = gene.begin - 1
             end = gene.end
-            unk = gene.begin - 1
         else:
             begin = slen - gene.end
             end = slen + 1 - gene.begin
-            unk = gene.end - 1
 
         # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
         #                the use of the PyUnicode API here, and will just not

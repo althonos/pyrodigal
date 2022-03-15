@@ -1,7 +1,6 @@
-#include "training.h"
-#include "node.h"
-#include "dprog.h"
+#include "sequence.h"
 #include "avx.h"
+#include "generic.h"
 
 #ifdef __AVX2__
 
@@ -31,7 +30,9 @@ void skippable_avx(
     __m256i n2_types   = _mm256_set1_epi8(types[i]);
     __m256i n2_frames  = _mm256_set1_epi8(frames[i]);
 
-    for (j = (min + 0x1F) & (~0x1F); j + 31 < i; j += 32) {
+    for (j = min; j < ((min + 0x1F) & (~0x1F)); j++)
+        skippable_generic_single(strands, types, frames, j, i, skip);
+    for (; j + 31 < i; j += 32) {
         n1_strands = _mm256_load_si256((__m256i*) &strands[j]);
         n1_types =   _mm256_load_si256((__m256i*) &types[j]);
         n1_frames =  _mm256_load_si256((__m256i*) &frames[j]);
@@ -80,5 +81,7 @@ void skippable_avx(
         // store result mask
         _mm256_store_si256((__m256i*) &skip[j], s);
     }
+    for (; j < i; j++)
+        skippable_generic_single(strands, types, frames, j, i, skip);
 }
 #endif
