@@ -807,6 +807,7 @@ cdef enum simd_backend:
     SSE2 = 1
     AVX2 = 2
     NEON = 3
+    GENERIC = 4
 
 cdef class ConnectionScorer:
 
@@ -822,7 +823,7 @@ cdef class ConnectionScorer:
     def __init__(self, str backend="detect"):
         IF TARGET_CPU == "x86":
             if backend =="detect":
-                self.backend = simd_backend.NONE
+                self.backend = simd_backend.GENERIC
                 IF SSE2_BUILD_SUPPORT:
                     if _SSE2_RUNTIME_SUPPORT:
                         self.backend = simd_backend.SSE2
@@ -843,13 +844,15 @@ cdef class ConnectionScorer:
                     if not _AVX2_RUNTIME_SUPPORT:
                         raise RuntimeError("Cannot run AVX2 instructions on this machine")
                     self.backend = simd_backend.AVX2
+            elif backend == "generic":
+                self.backend = simd_backend.GENERIC
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
         ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             if backend =="detect":
-                self.backend = simd_backend.NONE
+                self.backend = simd_backend.GENERIC
                 IF NEON_BUILD_SUPPORT:
                     if _NEON_RUNTIME_SUPPORT:
                         self.backend = simd_backend.NEON
@@ -860,12 +863,19 @@ cdef class ConnectionScorer:
                     if not _NEON_RUNTIME_SUPPORT:
                         raise RuntimeError("Cannot run NEON instructions on this machine")
                     self.backend = simd_backend.NEON
+            elif backend == "generic":
+                self.backend = simd_backend.GENERIC
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
         ELSE:
-            self.backend = simd_backend.NONE
+            if backend == "generic":
+                self.backend = simd_backend.GENERIC
+            elif backend is None:
+                self.backend = simd_backend.NONE
+            else:
+                raise ValueError(f"Unsupported backend on this architecture: {backend}")
 
     def __dealloc__(self):
         PyMem_Free(self.node_types_raw)
@@ -915,7 +925,6 @@ cdef class ConnectionScorer:
         int min,
         int i
     ) nogil:
-        memset(&self.skip_connection[min], 0, sizeof(uint8_t) * (i - min))
         IF AVX2_BUILD_SUPPORT:
             if self.backend == simd_backend.AVX2:
                 skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
@@ -928,7 +937,9 @@ cdef class ConnectionScorer:
             if self.backend == simd_backend.NEON:
                 skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
                 return 0
-        skippable_generic(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        if self.backend == simd_backend.GENERIC:
+            skippable_generic(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+            return 0
         return 0
 
     @staticmethod
@@ -939,7 +950,6 @@ cdef class ConnectionScorer:
         const _training* tinf,
         const bint final
     ) nogil:
-
         cdef _node* n1 = &nodes.nodes[p1]
         cdef _node* n2 = &nodes.nodes[p2]
         cdef _node* n3
@@ -1110,10 +1120,13 @@ cdef class ConnectionScorer:
     ) nogil:
         cdef int j
 
-        for j in range(min, i):
-            if self.skip_connection[j] == 0:
-                #dprog.score_connection(nodes.nodes, j, i, tinf, final)
-                ConnectionScorer._score_connection(nodes, j, i, tinf, final)
+        if self.backend == simd_backend.NONE:
+            for j in range(min, i):
+                dprog.score_connection(nodes.nodes, j, i, <_training*> tinf, final)
+        else:
+            for j in range(min, i):
+                if self.skip_connection[j] == 0:
+                    ConnectionScorer._score_connection(nodes, j, i, tinf, final)
 
         return 0
 
