@@ -8,7 +8,7 @@ import json
 import tqdm
 
 from pyrodigal import Nodes, Sequence
-from pyrodigal._pyrodigal import METAGENOMIC_BINS, add_nodes, ConnectionScorer
+from pyrodigal._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
 from pyrodigal.tests.fasta import parse
 
 
@@ -40,7 +40,7 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
 
     # create nodes
     nodes = Nodes()
-    add_nodes(nodes, seq, tinf)
+    nodes.extract(seq, translation_table=tinf.translation_table)
 
     # run connection scoring
     for backend in ["avx", "sse", "generic", None]:
