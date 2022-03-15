@@ -1106,7 +1106,6 @@ cdef class Node:
         cdef int i
         cdef int j
         cdef int start
-        cdef int spacer
         cdef int spacendx
         cdef int index
         cdef int max_spacer   = 0
@@ -1128,8 +1127,6 @@ cdef class Node:
             for j in range(start-18-i, start-5-i):
                 if j < 0:
                     continue
-                spacer = start - j - i - 3
-
                 if j <= start - 16 - i:
                     spacendx = 3
                 elif j <= start - 14 - i:
@@ -1144,7 +1141,7 @@ cdef class Node:
                 if score > max_sc:
                     max_sc = score
                     max_spacendx = spacendx
-                    max_spacer = spacer
+                    max_spacer = start - j - i - 3
                     max_ndx = index
                     max_len = i+3
 
@@ -3178,6 +3175,7 @@ cdef class TrainingInfo:
         cdef int     i
         cdef int     j
         cdef int     k
+        cdef int     mer
         cdef int     start
         cdef int     spacendx
         cdef _motif* mot      = &nod.mot
@@ -3201,16 +3199,9 @@ cdef class TrainingInfo:
                 for j in range(start - 18 - i, start - 5 - i):
                     if j < 0:
                         continue
-                    if j <= start-16-i:
-                        spacendx = 3
-                    elif j <= start-14-i:
-                        spacendx = 2
-                    elif j >= start-7-i:
-                        spacendx = 1
-                    else:
-                        spacendx = 0
+                    mer = _mer_ndx(seq.digits, seq.slen, j, i+3, nod.strand)
                     for k in range(4):
-                        mcnt[i][k][_mer_ndx(seq.digits, seq.slen, j, i+3, nod.strand)] += 1.0
+                        mcnt[i][k][mer] += 1.0
         # Stage 1:  Count only the best motif, but also count all its sub-motifs.
         elif stage == 1:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0;
@@ -3226,7 +3217,8 @@ cdef class TrainingInfo:
                         spacendx = 1
                     else:
                         spacendx = 0
-                    mcnt[i][spacendx][_mer_ndx(seq.digits, seq.slen, j, i+3, nod.strand)] += 1.0
+                    mer = _mer_ndx(seq.digits, seq.slen, j, i+3, nod.strand)
+                    mcnt[i][spacendx][mer] += 1.0
         # Stage 2:  Only count the highest scoring motif.
         elif stage == 2:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
