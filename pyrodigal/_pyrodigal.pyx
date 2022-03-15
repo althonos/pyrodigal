@@ -1142,8 +1142,8 @@ cdef class ConnectionScorer:
             self._index(nodes)
 
     def compute_skippable(self, int min, int i):
-        assert self.skip_connection != NULL or self.backend == simd_backend.NONE
-        assert i < <int> self.capacity or self.backend == simd_backend.NONE
+        assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
+        assert (i < <int> self.capacity) | (self.backend == simd_backend.NONE)
         assert min <= i
         with nogil:
             self._compute_skippable(min, i)
@@ -1156,8 +1156,8 @@ cdef class ConnectionScorer:
         TrainingInfo tinf not None,
         bint final=False
     ):
-        assert self.skip_connection != NULL or self.backend == simd_backend.NONE
-        assert i < <int> nodes.length or self.backend == simd_backend.NONE
+        assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
+        assert (i < <int> nodes.length) | (self.backend == simd_backend.NONE)
         assert min <= i
         with nogil:
             self._score_connections(nodes, min, i, tinf.tinf, final)
