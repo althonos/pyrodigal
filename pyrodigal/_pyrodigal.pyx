@@ -413,7 +413,14 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
-    cdef char _amino(self, int i, int tt, int strand = 1, bint is_init = False, char unknown_residue = b"X") nogil:
+    cdef char _amino(
+        self,
+        int i,
+        int tt,
+        int strand = 1,
+        bint is_init = False,
+        char unknown_residue = b"X"
+    ) nogil:
         cdef uint8_t x0
         cdef uint8_t x1
         cdef uint8_t x2
@@ -501,7 +508,13 @@ cdef class Sequence:
 
         return unknown_residue
 
-    cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=1) nogil:
+    cdef int _shine_dalgarno_exact(
+        self,
+        const int pos,
+        const int start,
+        const _training* tinf,
+        const int strand
+    ) nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -515,16 +528,12 @@ cdef class Sequence:
         cdef int cur_ctr
         cdef int dis_flag
 
-        limit = start - 4 - pos
-        if limit > 6:
-            limit = 6
-        for i in range(limit, 6):
-            match[i] = -10
+        # reset the match array
+        match[0] = match[1] = match[2] = match[3] = match[4] = match[5] = -10
 
         # Compare the 6-base region to AGGAGG
+        limit = min(6, start - 4 - pos)
         for i in range(limit):
-            if pos + i < 0:
-                continue
             if i%3 == 0 and _is_a(self.digits, self.slen, pos+i, strand):
                 match[i] = 2
             elif i%3 != 0 and _is_g(self.digits, self.slen, pos+i, strand):
@@ -620,7 +629,13 @@ cdef class Sequence:
 
         return max_val
 
-    cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=1) nogil:
+    cdef int _shine_dalgarno_mm(
+        self,
+        const int pos,
+        const int start,
+        const _training* tinf,
+        const int strand
+    ) nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -634,20 +649,16 @@ cdef class Sequence:
         cdef int cur_ctr
         cdef int dis_flag
 
-        limit = start - 4 - pos
-        if limit > 6:
-            limit = 6
-        for i in range(limit, 6):
-            match[i] = -10
+        # reset the match array
+        match[0] = match[1] = match[2] = match[3] = match[4] = match[5] = -10
 
         # Compare the 6-base region to AGGAGG
+        limit = min(6, start - 4 - pos)
         for i in range(limit):
-            if pos + i < 0:
-                continue
             if i%3 == 0:
-                match[i] = 2 if _is_a(self.digits, self.slen, pos+i, strand) else -3
+                match[i] = -3 + 5*_is_a(self.digits, self.slen, pos+i, strand)
             else:
-                match[i] = 3 if _is_g(self.digits, self.slen, pos+i, strand) else -2
+                match[i] = -2 + 5*_is_g(self.digits, self.slen, pos+i, strand)
 
         # Find the maximally scoring motif
         max_val = 0
@@ -923,7 +934,14 @@ cdef class ConnectionScorer:
         with nogil:
             self._compute_skippable(min, i)
 
-    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=False) nogil:
+    cdef int _score_connections(
+        self,
+        Nodes nodes,
+        const int min,
+        const int i,
+        const _training* tinf,
+        const bint final
+    ) nogil:
         cdef int j
 
         for j in range(min, i):
@@ -932,7 +950,14 @@ cdef class ConnectionScorer:
 
         return 0
 
-    def score_connections(self, Nodes nodes not None, int min, int i, TrainingInfo tinf not None, bint final=False):
+    def score_connections(
+        self,
+        Nodes nodes not None,
+        int min,
+        int i,
+        TrainingInfo tinf not None,
+        bint final=False
+    ):
         assert self.skip_connection != NULL
         assert i < <int> nodes.length
         assert min <= i
@@ -1058,7 +1083,7 @@ cdef class Node:
     cdef float _intergenic_mod_same(
         const _node* n1,
         const _node* n2,
-        double start_weight
+        const double start_weight
     ) nogil:
         """Compute the intergenic modifier for two nodes on the same strand.
         """
@@ -1089,7 +1114,7 @@ cdef class Node:
     cdef float _intergenic_mod_diff(
         const _node* n1,
         const _node* n2,
-        double start_weight
+        const double start_weight
     ) nogil:
         """Compute the intergenic modifier for two nodes on different strands.
         """
@@ -1100,8 +1125,8 @@ cdef class Node:
     cdef void _find_best_upstream_motif(
         _node* node,
         Sequence seq,
-        _training* tinf,
-        int stage
+        const _training* tinf,
+        const int stage
     ) nogil:
         cdef int i
         cdef int j
@@ -1162,7 +1187,7 @@ cdef class Node:
     cdef void _score_upstream_composition(
         _node* node,
         Sequence seq,
-        _training* tinf,
+        const _training* tinf,
     ) nogil:
         cdef int i
         cdef int start
@@ -1331,7 +1356,12 @@ cdef class Nodes:
         old_length, self.length = self.length, 0
         memset(self.nodes, 0, old_length * sizeof(_node))
 
-    cdef int _dynamic_programming(self, _training* tinf, ConnectionScorer scorer, bint final=False) nogil:
+    cdef int _dynamic_programming(
+        self,
+        const _training* tinf,
+        ConnectionScorer scorer,
+        const bint final
+    ) nogil:
         cdef int    i
         cdef int    j
         cdef int    min
@@ -1419,9 +1449,9 @@ cdef class Nodes:
         self,
         Sequence sequence,
         int translation_table,
-        bint closed=False,
-        int min_gene=MIN_GENE,
-        int min_edge_gene=MIN_EDGE_GENE,
+        bint closed,
+        int min_gene,
+        int min_edge_gene,
     ) nogil except -1:
         cdef int    i
         cdef int    last[3]
@@ -1594,7 +1624,11 @@ cdef class Nodes:
 
         return nn
 
-    cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1:
+    cdef int _raw_coding_score(
+        self,
+        Sequence seq,
+        const _training* tinf
+    ) nogil except -1:
         cdef double  score[3]
         cdef double  lfac
         cdef double  no_stop
@@ -1710,7 +1744,11 @@ cdef class Nodes:
         # Return 0 on success
         return 0
 
-    cdef int _rbs_score(self, Sequence seq, _training* tinf) nogil except -1:
+    cdef int _rbs_score(
+        self,
+        Sequence seq,
+        const _training* tinf
+    ) nogil except -1:
         cdef int i
         cdef int j
         cdef int cur_sc[2]
@@ -1746,9 +1784,9 @@ cdef class Nodes:
 
     cdef void _record_overlapping_starts(
         self,
-        _training* tinf,
-        int flag,
-        int max_sam_overlap=MAX_SAM_OVLP
+        const _training* tinf,
+        const int flag,
+        const int max_sam_overlap
     ) nogil:
         cdef int    i
         cdef int    j
@@ -1799,9 +1837,9 @@ cdef class Nodes:
     cdef int _score(
         self,
         Sequence seq,
-        _training* tinf,
-        bint closed=False,
-        bint is_meta=False
+        const _training* tinf,
+        const bint closed,
+        const bint is_meta,
     ) nogil except -1:
 
         cdef size_t i
@@ -2628,8 +2666,8 @@ cdef class Genes:
     cdef void _tweak_final_starts(
         self,
         Nodes nodes,
-        _training* tinf,
-        int max_sam_overlap=MAX_SAM_OVLP,
+        const _training* tinf,
+        const int max_sam_overlap,
     ) nogil:
 
         cdef int    i

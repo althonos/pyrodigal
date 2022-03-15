@@ -50,12 +50,38 @@ cdef class Sequence:
     cdef readonly Masks    masks
 
     cdef int _allocate(self, int slen) except 1
-    cdef char _amino(self, int i, int tt, int strand=*, bint is_init=*, char unknown_residue=*) nogil
+    cdef char _amino(
+        self,
+        int i,
+        int tt,
+        int strand=*,
+        bint is_init=*,
+        char unknown_residue=*
+    ) nogil
 
-    cdef int _shine_dalgarno_exact(self, int pos, int start, _training* tinf, int strand=*) nogil
-    cdef int _shine_dalgarno_mm(self, int pos, int start, _training* tinf, int strand=*) nogil
+    cdef int _shine_dalgarno_exact(
+        self,
+        const int pos,
+        const int start,
+        const _training* tinf,
+        const int strand
+    ) nogil
+    cdef int _shine_dalgarno_mm(
+        self,
+        const int pos,
+        const int start,
+        const _training* tinf,
+        const int strand
+    ) nogil
 
-    cpdef int shine_dalgarno(self, int pos, int start, TrainingInfo training_info, int strand=*, bint exact=*) except -1
+    cpdef int shine_dalgarno(
+        self,
+        int pos,
+        int start,
+        TrainingInfo training_info,
+        int strand=*,
+        bint exact=*
+    ) except -1
 
 
 # --- Connection Scorer ------------------------------------------------------
@@ -79,8 +105,19 @@ cdef class ConnectionScorer:
     cdef uint8_t* node_frames_raw
 
     cdef int _index(self, Nodes nodes) nogil except 1
-    cdef int _compute_skippable(self, int min, int i) nogil
-    cdef int _score_connections(self, Nodes nodes, int min, int i, _training* tinf, bint final=*) nogil
+    cdef int _compute_skippable(
+        self,
+        int min,
+        int i
+    ) nogil
+    cdef int _score_connections(
+        self,
+        Nodes nodes,
+        const int min,
+        const int i,
+        const _training* tinf,
+        const bint final
+    ) nogil
 
 
 # --- Nodes ------------------------------------------------------------------
@@ -97,26 +134,26 @@ cdef class Node:
     cdef float _intergenic_mod_same(
         const _node* n1,
         const _node* n2,
-        double start_weight
+        const double start_weight
     ) nogil
     @staticmethod
     cdef float _intergenic_mod_diff(
         const _node* n1,
         const _node* n2,
-        double start_weight
+        const double start_weight
     ) nogil
     @staticmethod
     cdef void _find_best_upstream_motif(
         _node* node,
         Sequence seq,
-        _training* tinf,
-        int stage
+        const _training* tinf,
+        const int stage
     ) nogil
     @staticmethod
     cdef void _score_upstream_composition(
         _node* node,
         Sequence seq,
-        _training* tinf,
+        const _training* tinf,
     ) nogil
 
 cdef class Nodes:
@@ -135,25 +172,44 @@ cdef class Nodes:
     ) nogil except NULL
     cdef int _calc_orf_gc(self, Sequence seq) nogil except -1
     cdef int _clear(self) nogil except 1
-    cdef int _dynamic_programming(self, _training* tinf, ConnectionScorer scorer, bint final=*) nogil
+    cdef int _dynamic_programming(
+        self,
+        const _training* tinf,
+        ConnectionScorer scorer,
+        const bint final
+    ) nogil
     cdef int _extract(
         self,
         Sequence sequence,
-        int translation_table,
-        bint closed=*,
-        int min_gene=*,
-        int min_edge_gene=*
+        const int translation_table,
+        const bint closed,
+        const int min_gene,
+        const int min_edge_gene
     ) nogil except -1
-    cdef int _raw_coding_score(self, Sequence seq, _training* tinf) nogil except -1
-    cdef int _rbs_score(self, Sequence seq, _training* tinf) nogil except -1
+    cdef int _raw_coding_score(
+        self,
+        Sequence seq,
+        const _training* tinf
+    ) nogil except -1
+    cdef int _rbs_score(
+        self,
+        Sequence seq,
+        const _training* tinf
+    ) nogil except -1
     cdef void _record_overlapping_starts(
         self,
-        _training* tinf,
-        int flag,
-        int max_sam_overlap=*,
+        const _training* tinf,
+        const int flag,
+        const int max_sam_overlap,
     ) nogil
     cdef int _reset_scores(self) nogil except 1
-    cdef int _score(self, Sequence seq, _training* tinf, bint closed=*, bint is_meta=*) nogil except -1
+    cdef int _score(
+        self,
+        Sequence seq,
+        const _training* tinf,
+        const bint closed,
+        const bint is_meta
+    ) nogil except -1
     cdef int _sort(self) nogil except 1
 
     cpdef Nodes copy(self)
@@ -201,8 +257,8 @@ cdef class Genes:
     cdef void _tweak_final_starts(
         self,
         Nodes nodes,
-        _training* tinf,
-        int max_sam_overlap=*,
+        const _training* tinf,
+        const int max_sam_overlap,
     ) nogil
     cdef int _clear(self) nogil except 1
 
