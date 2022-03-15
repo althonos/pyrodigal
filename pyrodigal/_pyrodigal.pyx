@@ -887,6 +887,9 @@ cdef class ConnectionScorer:
 
     cdef int _index(self, Nodes nodes) nogil except -1:
         cdef size_t i
+        # nothing to be done if we are using the Prodigal code
+        if self.backend == simd_backend.NONE:
+            return 0
         # reallocate if needed
         if self.capacity < nodes.length:
             with gil:
