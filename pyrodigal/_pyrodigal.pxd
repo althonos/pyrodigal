@@ -139,19 +139,19 @@ cdef class Node:
     cdef _node* node
 
     @staticmethod
-    cdef float _intergenic_mod(
+    cdef double _intergenic_mod(
         const _node* n1,
         const _node* n2,
         const double start_weight
     ) nogil
     @staticmethod
-    cdef float _intergenic_mod_same(
+    cdef double _intergenic_mod_same(
         const _node* n1,
         const _node* n2,
         const double start_weight
     ) nogil
     @staticmethod
-    cdef float _intergenic_mod_diff(
+    cdef double _intergenic_mod_diff(
         const _node* n1,
         const _node* n2,
         const double start_weight

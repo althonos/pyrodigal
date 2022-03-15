@@ -19,11 +19,11 @@ class TestConnectionScorer(unittest.TestCase):
         self.assertEqual(n1.edge, n2.edge)
         self.assertEqual(n1.gc_bias, n2.gc_bias)
         self.assertEqual(n1.gc_cont, n2.gc_cont)
-        self.assertAlmostEqual(n1.score, n2.score, places=4)
-        self.assertAlmostEqual(n1.cscore, n2.cscore, places=4)
-        self.assertAlmostEqual(n1.rscore, n2.rscore, places=4)
-        self.assertAlmostEqual(n1.sscore, n2.sscore, places=4)
-        self.assertAlmostEqual(n1.tscore, n2.tscore, places=4)
+        self.assertAlmostEqual(n1.score, n2.score)
+        self.assertAlmostEqual(n1.cscore, n2.cscore)
+        self.assertAlmostEqual(n1.rscore, n2.rscore)
+        self.assertAlmostEqual(n1.sscore, n2.sscore)
+        self.assertAlmostEqual(n1.tscore, n2.tscore)
 
     @classmethod
     def setUpClass(cls):

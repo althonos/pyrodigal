@@ -1278,7 +1278,7 @@ cdef class Node:
     # --- C interface --------------------------------------------------------
 
     @staticmethod
-    cdef float _intergenic_mod(
+    cdef double _intergenic_mod(
         const _node* n1,
         const _node* n2,
         const double start_weight
@@ -1291,7 +1291,7 @@ cdef class Node:
             return Node._intergenic_mod_diff(n1, n2, start_weight)
 
     @staticmethod
-    cdef float _intergenic_mod_same(
+    cdef double _intergenic_mod_same(
         const _node* n1,
         const _node* n2,
         const double start_weight
@@ -1318,7 +1318,7 @@ cdef class Node:
         return rval
 
     @staticmethod
-    cdef float _intergenic_mod_diff(
+    cdef double _intergenic_mod_diff(
         const _node* n1,
         const _node* n2,
         const double start_weight
