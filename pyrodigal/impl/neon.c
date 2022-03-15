@@ -1,7 +1,6 @@
-#include "training.h"
-#include "node.h"
-#include "dprog.h"
+#include "sequence.h"
 #include "neon.h"
+#include "generic.h"
 
 #ifdef __ARM_NEON__
 
@@ -31,7 +30,9 @@ void skippable_neon(
   uint8x16_t n2_types   = vdupq_n_u8(types[i]);
   uint8x16_t n2_frames  = vdupq_n_u8(frames[i]);
 
-  for (j = (min + 0xF) & (~0xF); j + 15 < i; j += 16) {
+  for (j = min; j < ((min + 0xF) & (~0xF)); j++)
+      skippable_generic_single(strands, types, frames, j, i, skip);
+  for (; j + 15 < i; j += 16) {
       n1_strands = vld1q_u8((uint8_t*) &strands[j]);
       n1_types   = vld1q_u8(&types[j]);
       n1_frames  = vld1q_u8(&frames[j]);
@@ -81,5 +82,7 @@ void skippable_neon(
       // store result mask
       vst1q_u8(&skip[j], s);
   }
+  for (; j < i; j++)
+      skippable_generic_single(strands, types, frames, j, i, skip);
 }
 #endif
