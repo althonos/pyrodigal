@@ -4,6 +4,9 @@ import glob
 import time
 import statistics
 import json
+import sys
+
+sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
 import tqdm
 
@@ -45,7 +48,7 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
     # run connection scoring
     for backend in ["avx", "sse", "generic", None]:
         times = []
-        for run in tqdm.tqdm(range(args.runs), description=str(backend), leave=False):
+        for run in tqdm.tqdm(range(args.runs), desc=str(backend), leave=False):
             # initialize scorer
             scorer = ConnectionScorer(backend=backend)
             scorer_nodes = nodes.copy()
