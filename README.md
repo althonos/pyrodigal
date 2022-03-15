@@ -72,7 +72,8 @@ In addition, the **new** features are available:
 
 ### 🐏 Memory
 
-Pyrodigal makes two changes compared to the original Prodigal command line:
+Pyrodigal makes several changes compared to the original Prodigal binary
+regarding memory management:
 
 * Sequences are stored as raw bytes instead of compressed bitmaps. This means
   that the sequence itself takes 3/8th more space, but since the memory used
