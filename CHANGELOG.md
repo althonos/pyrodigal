@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.3...HEAD
+
+
+## [v0.7.3] - 2022-04-06
+[v0.7.3]: https://github.com/althonos/pyrodigal/compare/v0.7.2...v0.7.3
+
+### Added
+- `Gene.score` property to get the gene score as reported in the score data string.
+
+### Fixed
+- `OrfFinder.find_genes` not producing consistent results across runs in *meta* mode ([#13](https://github.com/althonos/pyrodigal/issues/13)).
+- `OrfFinder.find_genes` returning `Nodes` with incomplete score information.
 
 
 ## [v0.7.2] - 2022-03-15
