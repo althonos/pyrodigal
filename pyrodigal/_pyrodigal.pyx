@@ -4358,7 +4358,7 @@ cdef class OrfFinder:
             nodes._record_overlapping_starts(tinf, True, self.max_overlap)
             ipath = nodes._dynamic_programming(tinf, scorer, final=True)
             # update genes if the current bin had a better score
-            if nodes.length > 0 and nodes.nodes[ipath].score > max_score:
+            if nodes.length > 0 and ipath >= 0 and nodes.nodes[ipath].score > max_score:
                 # record best phase and score
                 max_phase = i
                 max_score = nodes.nodes[ipath].score
