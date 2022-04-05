@@ -2380,7 +2380,7 @@ cdef class Gene:
     def _score_data(self):
         return "conf={:.2f};score={:.2f};cscore={:.2f};sscore={:.2f};rscore={:.2f};uscore={:.2f};tscore={:.2f}".format(
             self.confidence(),
-            self.cscore + self.sscore,
+            self.score,
             self.cscore,
             self.sscore,
             self.rscore,
@@ -2553,6 +2553,16 @@ cdef class Gene:
 
         """
         return self.owner.nodes.nodes[self.gene.start_ndx].uscore
+
+    @property
+    def score(self):
+        """`float`: The gene score, sum of the coding and start codon scores.
+        
+        .. versionadded:: 0.7.3
+        
+        """
+        cdef _node* node = &self.owner.nodes.nodes[self.gene.start_ndx]
+        return node.cscore + node.sscore
 
     @property
     def start_node(self):
