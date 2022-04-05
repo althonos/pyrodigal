@@ -4385,7 +4385,12 @@ cdef class OrfFinder:
         )
         nodes._sort()
         nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
-
+        # rescore nodes (this is not done in the Prodigal code, but if 
+        # we want to provide accurate scores in the `Node` objects we
+        # have to do it)
+        nodes._record_overlapping_starts(tinf, True, self.max_overlap)
+        nodes._dynamic_programming(tinf, scorer, final=True)
+        
         # return the max phase on success
         return max_phase
 
