@@ -109,7 +109,7 @@ class _TestMode(_OrfFinderTestCase):
         preds = self.find_genes(self.get_sequence(record))
         self.assertGenesEqual(preds, genes)
         self.assertPredictionsEqual(preds, proteins)
-
+        
 
 class _TestBin(object):
     @classmethod
@@ -241,6 +241,38 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         preds = orf_finder.find_genes(record.seq)
         self.assertGreaterEqual(len(preds), len(genes))
 
+    def test_find_small_genes_consistency(self):
+        # reported in issue #13
+        seq = """
+        TTCGTCAGTCGTTCTGTTTCATTCAATACGATAGTAATGTATTTTTCGTGCATTTCCGGT
+        GGAATCGTGCCGTCCAGCATAGCCTCCAGATATCCCCTTATAGAGGTCAGAGGGGAACGG
+        AAATCGTGGGATACATTGGCTACAAACTTTTTCTGATCATCCTCGGAACGGGCAATTTCG
+        CTTGCCATATAATTCAGACAGGAAGCCAGATAACCGATTTCATCCTCACTATCGACCTGA
+        AATTCATAATGCATATTACCGGCAGCATACTGCTCTGTGGCATGAGTGATCTTCCTCAGA
+        GGAATATATACGATCTCAGTGAAAAAGATCAGAATGATCAGGGATAGCAGGAACAGGATT
+        GCCAGGGTGATATAGGAAATATTCAGCAGGTTGTTACAGGATTTCTGAATATCATTCATA
+        TCAGTATGGATGACTACATAGCCTTTTACCTTGTAGTTGGAGGTAATGGGAGCAAATACA
+        GTAAGTACATCCGAATCAAAATTACCGAAGAAATCACCAACAATGTAATAGGAGCCGCTG
+        GTTACGGTCGAATCAAAATTCTCAATGACAACCACATTCTCCACATCTAAGGGACTATTG
+        GTATCCAGTACCAGTCGTCCGGAGGGATTGATGATGCGAATCTCGGAATTCAGGTAGACC
+        GCCAGGGAGTCCAGCTGCATTTTAACGGTCTCCAAAGTTGTTTCACTGGTGTACAATCCG
+        CCGGCATAGGTTCCGGCGATCAGGGTTGCTTCGGAATAGAGACTTTCTGCCTTTTCCCGG
+        ATCAGATGTTCTTTGGTCATATTGGGAACAAAAGTTGTAACAATGATGAAACCAAATACA
+        CCAAAAATAAAATATGCGAGTATAAATTTTAGATAAAGTGTTTTTTTCATAACAAATCCT
+        GCTTTTGGTATGACTTAATTACGTACTTCGAATTTATAGCCGATGCCCCAGATGGTGCTG
+        ATCTTCCAGTTGGCATGATCCTTGATCTTCTC
+        """
+        p = OrfFinder(meta=True, closed=True, min_gene=33, max_overlap=0)
+        for _ in range(10):
+            genes = p.find_genes(textwrap.dedent(seq).replace("\n", ""))
+            self.assertEqual(len(genes), 2)
+            self.assertEqual(genes[0].start_type, "GTG")
+            self.assertEqual(genes[0].begin, 48)
+            self.assertEqual(genes[0].end, 347)
+            self.assertEqual(genes[1].start_type, "ATG")
+            self.assertEqual(genes[1].begin, 426)
+            self.assertEqual(genes[1].end, 590)
+        
 
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
 
