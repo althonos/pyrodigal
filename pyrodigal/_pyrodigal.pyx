@@ -50,6 +50,7 @@ References:
 from cpython.buffer cimport PyBUF_READ, PyBUF_WRITE
 from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
 from cpython.exc cimport PyErr_CheckSignals
+from cpython.list cimport PyList_New, PyList_SET_ITEM
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.memoryview cimport PyMemoryView_FromMemory
 from cpython.ref cimport Py_INCREF
@@ -1459,6 +1460,98 @@ cdef class Nodes:
     def __sizeof__(self):
         return self.capacity * sizeof(_node) + sizeof(self)
 
+    cpdef list __getstate__(self):
+        """__getstate__(self)\n--
+        """
+        cdef int  i
+        return [
+            {
+                "type": self.nodes[i].type,
+                "edge": self.nodes[i].edge,
+                "ndx": self.nodes[i].ndx,
+                "strand": self.nodes[i].strand,
+                "stop_val": self.nodes[i].stop_val,
+                "star_ptr": [
+                    self.nodes[i].star_ptr[0],
+                    self.nodes[i].star_ptr[1],
+                    self.nodes[i].star_ptr[2],
+                ],
+                "gc_bias": self.nodes[i].gc_bias,
+                "gc_score": [
+                    self.nodes[i].gc_score[0],
+                    self.nodes[i].gc_score[1],
+                    self.nodes[i].gc_score[2],
+                ],
+                "cscore": self.nodes[i].cscore,
+                "gc_cont": self.nodes[i].gc_cont,
+                "rbs": [
+                    self.nodes[i].rbs[0],
+                    self.nodes[i].rbs[1],
+                ],
+                "motif": {
+                    "ndx": self.nodes[i].mot.ndx,
+                    "len": self.nodes[i].mot.len,
+                    "spacer": self.nodes[i].mot.spacer,
+                    "spacendx": self.nodes[i].mot.spacendx,
+                    "score": self.nodes[i].mot.spacendx,
+                },
+                "uscore": self.nodes[i].uscore,
+                "tscore": self.nodes[i].tscore,
+                "rscore": self.nodes[i].rscore,
+                "sscore": self.nodes[i].sscore,
+                "traceb": self.nodes[i].traceb,
+                "tracef": self.nodes[i].tracef,
+                "ov_mark": self.nodes[i].ov_mark,
+                "score": self.nodes[i].score,
+                "elim": self.nodes[i].elim,
+            }
+            for i in range(self.length)
+        ]
+
+    cpdef object __setstate__(self, list state):
+        """__setstate__(self, state)\n--
+        """
+        cdef int    i
+        cdef dict   node
+        cdef dict   motif
+        cdef size_t old_capacity = self.capacity
+    
+        # realloc to the exact number of nodes
+        self.length = len(state)
+        self.capacity = MIN_NODES_ALLOC if self.length == 0 else self.length
+        self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
+        if self.nodes == NULL:
+            raise MemoryError("Failed to reallocate node array")
+        
+        # copy node data from the state dictionary
+        for i, node in enumerate(state):
+            motif = node["motif"]          
+            self.nodes[i].type = node["type"]
+            self.nodes[i].edge = node["edge"]
+            self.nodes[i].ndx = node["ndx"]
+            self.nodes[i].strand = node["strand"]
+            self.nodes[i].stop_val = node["stop_val"]
+            self.nodes[i].star_ptr = node["star_ptr"]
+            self.nodes[i].gc_bias = node["gc_bias"]
+            self.nodes[i].gc_score = node["gc_score"]
+            self.nodes[i].cscore = node["cscore"]
+            self.nodes[i].gc_cont = node["gc_cont"]
+            self.nodes[i].rbs = node["rbs"]
+            self.nodes[i].mot.ndx = motif["ndx"]
+            self.nodes[i].mot.len = motif["len"]
+            self.nodes[i].mot.spacer = motif["spacer"]
+            self.nodes[i].mot.spacendx = motif["spacendx"]
+            self.nodes[i].mot.score = motif["score"]
+            self.nodes[i].uscore = node["uscore"]
+            self.nodes[i].tscore = node["tscore"]
+            self.nodes[i].rscore = node["rscore"]
+            self.nodes[i].sscore = node["sscore"]
+            self.nodes[i].traceb = node["traceb"]
+            self.nodes[i].tracef = node["tracef"]
+            self.nodes[i].ov_mark = node["ov_mark"]
+            self.nodes[i].score = node["score"]
+            self.nodes[i].elim = node["elim"]
+            
     # --- C interface --------------------------------------------------------
 
     cdef inline _node* _add_node(

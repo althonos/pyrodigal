@@ -2,6 +2,7 @@ import collections.abc
 import gzip
 import os
 import sys
+import pickle
 import unittest
 
 from .. import Nodes, Sequence
@@ -11,6 +12,19 @@ from .fasta import parse
 
 
 class TestNodes(unittest.TestCase):
+
+    def assertNodeEqual(self, n1, n2):
+        self.assertEqual(n1.index, n2.index, "indices differ")
+        self.assertEqual(n1.strand, n2.strand, "strands differ")
+        self.assertEqual(n1.type, n2.type, "types differ")
+        self.assertEqual(n1.edge, n2.edge, "edge differ")
+        self.assertEqual(n1.gc_bias, n2.gc_bias, "GC biases differ")
+        self.assertEqual(n1.cscore, n2.cscore, "cscores differ")
+        self.assertEqual(n1.gc_cont, n2.gc_cont, "GC contents differ")
+        self.assertEqual(n1.score, n2.score, "GC contents differ")
+        self.assertEqual(n1.rscore, n2.rscore, "rscores differ")
+        self.assertEqual(n1.sscore, n2.sscore, "sscores differ")
+        self.assertEqual(n1.tscore, n2.tscore, "tscores differ")
 
     @classmethod
     def setUpClass(cls):
@@ -39,10 +53,26 @@ class TestNodes(unittest.TestCase):
         nodes1.extract(seq, translation_table=tt)
         nodes2 = nodes1.copy()
         for n1, n2 in zip(nodes1, nodes2):
-            self.assertEqual(n1.type, n2.type)
+            self.assertNodeEqual(n1, n2)
 
     def test_copy_empty(self):
         nodes = Nodes()
         copy = nodes.copy()
         self.assertEqual(len(nodes), 0)
         self.assertEqual(len(copy), 0)
+
+    def test_pickle(self):
+        tt = METAGENOMIC_BINS[0].training_info.translation_table
+        seq = Sequence.from_string(self.record.seq)
+        nodes1 = Nodes()
+        nodes1.extract(seq, translation_table=tt)
+        nodes2 = pickle.loads(pickle.dumps(nodes1))
+        self.assertEqual(len(nodes1), len(nodes2), "lengths differ")        
+        for n1, n2 in zip(nodes1, nodes2):
+            self.assertNodeEqual(n1, n2)
+        
+    def test_pickle_empty(self):
+        nodes1 = Nodes()
+        nodes2 = pickle.loads(pickle.dumps(nodes1))
+        self.assertEqual(len(nodes1), 0)
+        self.assertEqual(len(nodes2), 0)

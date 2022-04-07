@@ -176,6 +176,9 @@ cdef class Nodes:
     cdef size_t capacity
     cdef size_t length
 
+    cpdef list __getstate__(self)
+    cpdef object __setstate__(self, list state)
+
     cdef inline _node* _add_node(
         self,
         const int  ndx,
