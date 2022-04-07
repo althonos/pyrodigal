@@ -1,6 +1,7 @@
 import abc
 import gzip
 import os
+import pickle
 import textwrap
 import unittest
 import warnings
@@ -331,3 +332,35 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         genes = p.find_genes("")
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
+
+    def test_training_info_pickle(self):
+        record = load_record("SRR492066")
+        # train separately
+        p1 = OrfFinder(meta=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            p1.train(str(record.seq[:20000]))
+        # pickle/unpickle the OrfFinder 
+        ti = pickle.loads(pickle.dumps(p1.training_info))
+        p2 = OrfFinder(meta=False, training_info=ti)
+        # make sure the same genes are found
+        g1 = p1.find_genes(record.seq)
+        g2 = p2.find_genes(record.seq)
+        # make sure genes are the same
+        self.assertEqual(len(g1), len(g2))
+        for gene1, gene2 in zip(g1, g2):
+            self.assertEqual(gene1.begin, gene2.begin)
+            self.assertEqual(gene1.end, gene2.end)
+            self.assertEqual(gene1.strand, gene2.strand)
+            self.assertEqual(gene1.partial_begin, gene2.partial_begin)
+            self.assertEqual(gene1.partial_end, gene2.partial_end)
+            self.assertEqual(gene1.start_type, gene2.start_type)
+            self.assertEqual(gene1.rbs_spacer, gene2.rbs_spacer)
+            self.assertEqual(gene1.gc_cont, gene2.gc_cont)
+            self.assertEqual(gene1.translation_table, gene2.translation_table)
+            self.assertEqual(gene1.cscore, gene2.cscore)
+            self.assertEqual(gene1.rscore, gene2.rscore)
+            self.assertEqual(gene1.sscore, gene2.sscore)
+            self.assertEqual(gene1.tscore, gene2.tscore)
+            self.assertEqual(gene1.uscore, gene2.uscore)
+            self.assertEqual(gene1.score, gene2.score)

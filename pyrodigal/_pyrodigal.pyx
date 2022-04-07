@@ -1463,7 +1463,7 @@ cdef class Nodes:
     cpdef list __getstate__(self):
         """__getstate__(self)\n--
         """
-        cdef int  i
+        cdef size_t i
         return [
             {
                 "type": self.nodes[i].type,
@@ -1511,7 +1511,7 @@ cdef class Nodes:
     cpdef object __setstate__(self, list state):
         """__setstate__(self, state)\n--
         """
-        cdef int    i
+        cdef size_t i
         cdef dict   node
         cdef dict   motif
         cdef size_t old_capacity = self.capacity
@@ -3409,7 +3409,7 @@ cdef class TrainingInfo:
     # --- Magic methods ----------------------------------------------------
 
     def __cinit__(self):
-        self.owned = False
+        self.owned = True
         self.tinf = NULL
 
     def __init__(self, double gc, double start_weight=4.35, int translation_table=11):
@@ -3441,6 +3441,64 @@ cdef class TrainingInfo:
             self.translation_table,
             self.uses_sd,
         )
+
+    cpdef dict __getstate__(self):
+        """__getstate__(self)\n--
+        """
+        assert self.tinf != NULL
+        cdef int i
+        cdef int j
+        cdef int k
+        return {
+            "gc": self.tinf.gc,
+            "translation_table": self.tinf.trans_table,
+            "start_weight": self.tinf.st_wt,
+            "bias": self.bias,
+            "type_weights": self.type_weights,
+            "uses_sd": self.uses_sd,
+            "rbs_wt": [
+                self.tinf.rbs_wt[i] for i in range(28)
+            ],
+            "ups_comp": [
+                [self.tinf.ups_comp[i][j] for j in range(4)]
+                for i in range(32)
+            ],
+            "mot_wt": [
+                [
+                    [self.tinf.mot_wt[i][j][k] for k in range(4096)]
+                    for j in range(4)
+                ]
+                for i in range(4)
+            ],
+            "no_mot": self.tinf.no_mot,
+            "gene_dc": [
+                self.tinf.gene_dc[i] for i in range(4096)
+            ]
+        }
+
+    cpdef object __setstate__(self, dict state):
+        """__setstate__(self, state)\n--
+        """
+        cdef int i
+        cdef int j
+        cdef int k
+        # allocate memory if possible / needed
+        if not self.owned:
+            raise RuntimeError("Cannot call `__setstate__` on a shared `TrainingInfo` instance")
+        if self.tinf == NULL:
+            self.__init__(state["gc"])
+        # copy data
+        self.tinf.gc = state["gc"]
+        self.tinf.trans_table = state["translation_table"]
+        self.tinf.st_wt = state["start_weight"]
+        self.tinf.bias = state["bias"]
+        self.tinf.type_wt = state["type_weights"]
+        self.tinf.uses_sd = state["uses_sd"]
+        self.tinf.no_mot = state["no_mot"]
+        self.tinf.rbs_wt = state["rbs_wt"]
+        self.tinf.ups_comp = state["ups_comp"]
+        self.tinf.mot_wt = state["mot_wt"]
+        self.tinf.gene_dc = state["gene_dc"]
 
     # --- Properties -------------------------------------------------------
 

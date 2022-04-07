@@ -291,6 +291,9 @@ cdef class TrainingInfo:
     cdef bint       owned
     cdef _training* tinf
 
+    cpdef dict __getstate__(self)
+    cpdef object __setstate__(self, dict state)
+
     @staticmethod
     cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
 

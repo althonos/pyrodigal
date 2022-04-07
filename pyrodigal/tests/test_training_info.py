@@ -4,14 +4,24 @@ import os
 import tempfile
 import textwrap
 import unittest
+import pickle
 import warnings
 
 from .. import OrfFinder, TrainingInfo
+from .._pyrodigal import METAGENOMIC_BINS
 from .fasta import parse
 from .utils import load_record
 
 
 class TestTrainingInfo(unittest.TestCase):
+
+    def assertTrainingInfoEqual(self, t1, t2):
+        self.assertEqual(t1.translation_table, t2.translation_table)
+        self.assertEqual(t1.gc, t2.gc)
+        self.assertEqual(t1.bias, t2.bias)
+        self.assertEqual(t1.type_weights, t2.type_weights)
+        self.assertEqual(t1.uses_sd, t2.uses_sd)
+        self.assertEqual(t1.start_weight, t2.start_weight)
 
     @classmethod
     def setUpClass(cls):
@@ -30,13 +40,7 @@ class TestTrainingInfo(unittest.TestCase):
         finally:
             if os.path.exists(filename):
                 os.remove(filename)
-
-        self.assertEqual(tinf.translation_table, self.training_info.translation_table)
-        self.assertEqual(tinf.gc, self.training_info.gc)
-        self.assertEqual(tinf.bias, self.training_info.bias)
-        self.assertEqual(tinf.type_weights, self.training_info.type_weights)
-        self.assertEqual(tinf.uses_sd, self.training_info.uses_sd)
-        self.assertEqual(tinf.start_weight, self.training_info.start_weight)
+        self.assertTrainingInfoEqual(tinf, self.training_info)
 
     def test_load_error(self):
         try:
@@ -48,3 +52,8 @@ class TestTrainingInfo(unittest.TestCase):
         finally:
             if os.path.exists(filename):
                 os.remove(filename)
+
+    def test_pickle(self):
+        t1 = METAGENOMIC_BINS[0].training_info
+        t2 = pickle.loads(pickle.dumps(t1))
+        self.assertTrainingInfoEqual(t1, t2)
