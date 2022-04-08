@@ -1,10 +1,22 @@
 import unittest
+import pickle
 
 from .. import Sequence
 from .._pyrodigal import METAGENOMIC_BINS
 
 
 class TestSequence(unittest.TestCase):
+
+    def test_pickle(self):
+        s1 = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
+        s2 = pickle.loads(pickle.dumps(s1))
+        self.assertEqual(len(s1), len(s2))
+        self.assertEqual(str(s1), str(s2))
+        self.assertEqual(s1.gc, s2.gc)
+        self.assertEqual(len(s1.masks), len(s2.masks))
+        for m1, m2 in zip(s1.masks, s2.masks):
+            self.assertEqual(m1.begin, m2.begin)
+            self.assertEqual(m1.end, m2.end)
 
     def test_str(self):
         s = "ATGCNNNNNNNNNNATGCNNNNNNNNTGC"

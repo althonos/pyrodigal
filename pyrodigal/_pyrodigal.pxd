@@ -36,10 +36,13 @@ cdef class Masks:
         const int  begin,
         const int  end,
     ) nogil except NULL
+    cdef int _clear(self) nogil
+
+    cpdef list __getstate__(self)
+    cpdef object __setstate__(self, list state)
 
     cpdef Masks copy(self)
-    cdef int _clear(self) nogil except 1
-
+    cpdef void clear(self)
 
 # --- Input sequence ---------------------------------------------------------
 
@@ -58,7 +61,6 @@ cdef class Sequence:
         bint is_init=*,
         char unknown_residue=*
     ) nogil
-
     cdef int _shine_dalgarno_exact(
         self,
         const int pos,
@@ -73,6 +75,9 @@ cdef class Sequence:
         const _training* tinf,
         const int strand
     ) nogil
+
+    cpdef dict __getstate__(self)
+    cpdef object __setstate__(self, dict state)
 
     cpdef int shine_dalgarno(
         self,

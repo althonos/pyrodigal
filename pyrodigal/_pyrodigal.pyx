@@ -141,6 +141,8 @@ cdef class Masks:
     """A list of masked regions within a `~pyrodigal.Sequence`.
     """
 
+    # --- Magic methods ------------------------------------------------------
+
     def __cinit__(self):
         self.masks = NULL
         self.capacity = 0
@@ -172,6 +174,37 @@ cdef class Masks:
     def __sizeof__(self):
         return self.capacity * sizeof(_mask) + sizeof(self)
 
+    cpdef list __getstate__(self):
+        """__getstate__(self)\n--
+        """
+        cdef size_t i
+        return [
+            (self.masks[i].begin, self.masks[i].end)
+            for i in range(self.length)
+        ]
+
+    cpdef object __setstate__(self, list state):
+        """__setstate__(self, state)\n--
+        """
+        cdef size_t i
+        cdef tuple  mask
+
+        # realloc to the exact number of masks
+        self.length = self.capacity = len(state)
+        if self.capacity > 0:
+            self.masks = <_mask*> PyMem_Realloc(self.masks, self.capacity * sizeof(_mask))
+            if self.masks == NULL:
+                raise MemoryError("Failed to reallocate mask array")
+        else:
+            PyMem_Free(self.masks)
+            self.masks = NULL
+
+        # copy data from the state list
+        for i, mask in enumerate(state):
+            self.masks[i].begin, self.masks[i].end = mask
+
+    # --- C interface -------------------------------------------------------
+
     cdef inline _mask* _add_mask(
         self,
         const int  begin,
@@ -197,14 +230,16 @@ cdef class Masks:
         mask.end = end
         return mask
 
-    cdef int _clear(self) nogil except 1:
+    cdef int _clear(self) nogil:
         """Remove all masks from the vector.
         """
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.masks, 0, old_length * sizeof(_mask))
 
-    def clear(self):
+    # --- Python interface ---------------------------------------------------
+
+    cpdef void clear(self):
         """Remove all masks from the vector.
         """
         with nogil:
@@ -402,6 +437,33 @@ cdef class Sequence:
             return dna.decode("ascii")
         ELSE:
             return dna
+
+    cpdef dict __getstate__(self):
+        """__getstate__(self)\n--
+        """
+        # copy sequence digits
+        cdef bytearray    digits = bytearray(self.slen)
+        cdef uint8_t[::1] view   = digits
+        memcpy(&view[0], self.digits, self.slen * sizeof(uint8_t))
+        # build the state dict
+        return {
+            "slen": self.slen,
+            "gc": self.gc,
+            "masks": self.masks,
+            "digits": digits
+        }
+
+    cpdef object __setstate__(self, dict state):
+        """__setstate__(self, state)\n--
+        """
+        # get a view on the digits
+        cdef uint8_t[::1] view = state["digits"]
+        # copy attributes
+        self.masks = state["masks"]
+        self.gc = state["gc"]
+        # allocate sequence storage and copy bytes
+        self._allocate(state["slen"])
+        memcpy(self.digits, &view[0], self.slen * sizeof(uint8_t))
 
     # --- C interface -------------------------------------------------------
 
@@ -1514,18 +1576,20 @@ cdef class Nodes:
         cdef size_t i
         cdef dict   node
         cdef dict   motif
-        cdef size_t old_capacity = self.capacity
-    
+
         # realloc to the exact number of nodes
-        self.length = len(state)
-        self.capacity = MIN_NODES_ALLOC if self.length == 0 else self.length
-        self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
-        if self.nodes == NULL:
-            raise MemoryError("Failed to reallocate node array")
-        
+        self.length = self.capacity = len(state)
+        if self.capacity > 0:
+            self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
+            if self.nodes == NULL:
+                raise MemoryError("Failed to reallocate node array")
+        else:
+            PyMem_Free(self.nodes)
+            self.nodes = NULL
+
         # copy node data from the state dictionary
         for i, node in enumerate(state):
-            motif = node["motif"]          
+            motif = node["motif"]
             self.nodes[i].type = node["type"]
             self.nodes[i].edge = node["edge"]
             self.nodes[i].ndx = node["ndx"]
@@ -1551,7 +1615,7 @@ cdef class Nodes:
             self.nodes[i].ov_mark = node["ov_mark"]
             self.nodes[i].score = node["score"]
             self.nodes[i].elim = node["elim"]
-            
+
     # --- C interface --------------------------------------------------------
 
     cdef inline _node* _add_node(
@@ -2650,9 +2714,9 @@ cdef class Gene:
     @property
     def score(self):
         """`float`: The gene score, sum of the coding and start codon scores.
-        
+
         .. versionadded:: 0.7.3
-        
+
         """
         cdef _node* node = &self.owner.nodes.nodes[self.gene.start_ndx]
         return node.cscore + node.sscore
@@ -4388,6 +4452,8 @@ cdef class OrfFinder:
         return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
     cpdef dict __getstate__(self):
+        """__getstate__(self)\n--
+        """
         return {
             "_num_seq": self._num_seq,
             "closed": self.closed,
@@ -4398,8 +4464,10 @@ cdef class OrfFinder:
             "max_overlap": self.max_overlap,
             "training_info": self.training_info
         }
-        
+
     cpdef object __setstate__(self, dict state):
+        """__setstate__(self, state)\n--
+        """
         self.lock = threading.Lock()
         self._num_seq = state["_num_seq"]
         self.closed = state["closed"]
@@ -4572,7 +4640,7 @@ cdef class OrfFinder:
         scorer._index(nodes)
         nodes._reset_scores()
         nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
-        
+
         # return the max phase on success
         return max_phase
 
