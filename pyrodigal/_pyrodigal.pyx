@@ -171,7 +171,7 @@ cdef class Masks:
         mask.mask = &self.masks[index]
         return mask
 
-    def __sizeof__(self):
+    cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_mask) + sizeof(self)
 
     cpdef list __getstate__(self):
@@ -403,7 +403,7 @@ cdef class Sequence:
     def __len__(self):
         return self.slen
 
-    def __sizeof__(self):
+    cpdef size_t __sizeof__(self):
         return self.slen * sizeof(uint8_t) + sizeof(self)
 
     def __str__(self):
@@ -1519,7 +1519,7 @@ cdef class Nodes:
         node.node = &self.nodes[index]
         return node
 
-    def __sizeof__(self):
+    cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_node) + sizeof(self)
 
     cpdef list __getstate__(self):
@@ -2487,8 +2487,8 @@ cdef class Nodes:
 # NOTE: Use a custom structure to store the gene data instead of the one
 #       declared in `gene.h` to save some memory; in Prodigal, gene structures
 #       each allocated 1,000 bytes of string data for each gene. In Pyrodigal,
-#       we build these on request through a property, so we don't have to
-#       reserve extract memory for anymore.
+#       we build these strings on request through a property, so we don't have
+#       to reserve extra memory anymore.
 cdef struct _gene:
     int begin
     int end
@@ -2957,7 +2957,7 @@ cdef class Genes:
         gene.gene = &self.genes[index]
         return gene
 
-    def __sizeof__(self):
+    cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_gene) + sizeof(self)
 
     # --- C interface --------------------------------------------------------
@@ -3447,15 +3447,10 @@ cdef class TrainingInfo:
         .. versionadded:: 0.6.4
 
         """
-        cdef char[:]  contents
-        cdef object   mem
-        cdef ssize_t  n
-
-        cdef TrainingInfo tinf = TrainingInfo.__new__(TrainingInfo)
-        tinf.owned = True
-        tinf.tinf = <_training*> PyMem_Malloc(sizeof(_training))
-        if tinf.tinf == NULL:
-            raise MemoryError("Failed to allocate training info")
+        cdef ssize_t      n
+        cdef object       mem
+        cdef char[:]      contents
+        cdef TrainingInfo tinf     = cls(50.0)
 
         if hasattr(fp, "readinto"):
             mem = PyMemoryView_FromMemory(<char*> tinf.tinf, sizeof(_training), MVIEW_WRITE)
@@ -3505,6 +3500,9 @@ cdef class TrainingInfo:
             self.translation_table,
             self.uses_sd,
         )
+
+    cpdef size_t __sizeof__(self):
+        return sizeof(_training) + sizeof(self)
 
     cpdef dict __getstate__(self):
         """__getstate__(self)\n--

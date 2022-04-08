@@ -38,6 +38,7 @@ cdef class Masks:
     ) nogil except NULL
     cdef int _clear(self) nogil
 
+    cpdef size_t __sizeof__(self)
     cpdef list __getstate__(self)
     cpdef object __setstate__(self, list state)
 
@@ -76,6 +77,7 @@ cdef class Sequence:
         const int strand
     ) nogil
 
+    cpdef size_t __sizeof__(self)
     cpdef dict __getstate__(self)
     cpdef object __setstate__(self, dict state)
 
@@ -181,6 +183,7 @@ cdef class Nodes:
     cdef size_t capacity
     cdef size_t length
 
+    cpdef size_t __sizeof__(self)
     cpdef list __getstate__(self)
     cpdef object __setstate__(self, list state)
 
@@ -268,6 +271,8 @@ cdef class Genes:
     cdef readonly Sequence     sequence
     cdef readonly TrainingInfo training_info
 
+    cpdef size_t __sizeof__(self)
+
     cdef inline _gene* _add_gene(
         self,
         const int begin,
@@ -296,6 +301,7 @@ cdef class TrainingInfo:
     cdef bint       owned
     cdef _training* tinf
 
+    cpdef size_t __sizeof__(self)
     cpdef dict __getstate__(self)
     cpdef object __setstate__(self, dict state)
 
