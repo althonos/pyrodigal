@@ -2960,6 +2960,52 @@ cdef class Genes:
     cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_gene) + sizeof(self)
 
+    cpdef dict __getstate__(self):
+        cdef size_t i
+        return {
+            "_num_seq": self._num_seq,
+            "nodes": self.nodes,
+            "sequence": self.sequence,
+            "training_info": self.training_info,
+            "genes": [
+                {
+                    "begin": self.genes[i].begin,
+                    "end": self.genes[i].end,
+                    "start_ndx": self.genes[i].start_ndx,
+                    "stop_ndx": self.genes[i].stop_ndx,
+                }
+                for i in range(self.length)
+            ]
+        }
+
+    cpdef object __setstate__(self, dict state):
+        cdef size_t i
+        cdef dict   gene
+        cdef list   genes = state["genes"]
+
+        # realloc to the exact number of genes
+        self.length = self.capacity = len(genes)
+        if self.capacity > 0:
+            self.genes = <_gene*> PyMem_Realloc(self.genes, self.capacity * sizeof(_gene))
+            if self.genes == NULL:
+                raise MemoryError("Failed to reallocate gene array")
+        else:
+            PyMem_Free(self.genes)
+            self.genes = NULL
+
+        # copy attributes
+        self._num_seq = state["_num_seq"]
+        self.nodes = state["nodes"]
+        self.sequence = state["sequence"]
+        self.training_info = state["training_info"]
+
+        # copy gene data from the state dictionary
+        for i, gene in enumerate(genes):
+            self.genes[i].begin = gene["begin"]
+            self.genes[i].end = gene["end"]
+            self.genes[i].start_ndx = gene["start_ndx"]
+            self.genes[i].stop_ndx = gene["stop_ndx"]
+
     # --- C interface --------------------------------------------------------
 
     cdef inline _gene* _add_gene(

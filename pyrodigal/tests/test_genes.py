@@ -6,6 +6,7 @@ import os
 import platform
 import sys
 import unittest
+import pickle
 
 from .. import OrfFinder
 from .fasta import parse
@@ -94,3 +95,8 @@ class TestGenes(unittest.TestCase):
         #                  can occur between different platforms: for instance,
         #                  depending on the compilation flags, the score
         #                  `-32.2550` may be rounded as `-32.25` or `-32.26`.
+
+    def test_pickle(self):
+        genes = pickle.loads(pickle.dumps(self.genes))
+        for gene1, gene2 in zip(self.genes, genes):
+            self.assertEqual(gene1._gene_data, gene2._gene_data)

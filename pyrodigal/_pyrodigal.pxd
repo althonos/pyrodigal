@@ -272,6 +272,8 @@ cdef class Genes:
     cdef readonly TrainingInfo training_info
 
     cpdef size_t __sizeof__(self)
+    cpdef dict __getstate__(self)
+    cpdef object __setstate__(self, dict state)
 
     cdef inline _gene* _add_gene(
         self,
