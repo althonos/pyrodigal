@@ -327,6 +327,9 @@ cdef class OrfFinder:
     cdef readonly int          max_overlap
     cdef readonly TrainingInfo training_info
 
+    cpdef dict __getstate__(self)
+    cpdef object __setstate__(self, dict state)
+
     cdef int _train(
         self,
         Sequence sequence,

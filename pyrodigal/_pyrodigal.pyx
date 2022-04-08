@@ -4387,6 +4387,29 @@ cdef class OrfFinder:
         ty = type(self)
         return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
+    cpdef dict __getstate__(self):
+        return {
+            "_num_seq": self._num_seq,
+            "closed": self.closed,
+            "meta": self.meta,
+            "mask": self.mask,
+            "min_gene": self.min_gene,
+            "min_edge_gene": self.min_edge_gene,
+            "max_overlap": self.max_overlap,
+            "training_info": self.training_info
+        }
+        
+    cpdef object __setstate__(self, dict state):
+        self.lock = threading.Lock()
+        self._num_seq = state["_num_seq"]
+        self.closed = state["closed"]
+        self.meta = state["meta"]
+        self.mask = state["mask"]
+        self.min_gene = state["min_gene"]
+        self.min_edge_gene = state["min_edge_gene"]
+        self.max_overlap = state["max_overlap"]
+        self.training_info = state["training_info"]
+
     # --- C interface --------------------------------------------------------
 
     cdef int _train(
