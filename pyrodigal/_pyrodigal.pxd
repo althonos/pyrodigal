@@ -26,6 +26,11 @@ cdef class Mask:
     cdef Masks  owner
     cdef _mask* mask
 
+    @staticmethod
+    cdef bint _intersects(_mask* mask, int begin, int end) nogil
+
+    cpdef bint intersects(self, int begin, int end)
+
 cdef class Masks:
     cdef _mask* masks
     cdef size_t capacity

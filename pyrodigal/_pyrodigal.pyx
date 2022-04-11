@@ -128,6 +128,9 @@ _TRANSLATION_TABLES = TRANSLATION_TABLES
 cdef class Mask:
     """The coordinates of a masked region.
     """
+    # --- Magic methods ------------------------------------------------------
+
+    # --- Properties ---------------------------------------------------------
 
     @property
     def begin(self):
@@ -136,6 +139,20 @@ cdef class Mask:
     @property
     def end(self):
         return self.mask.end
+
+    # --- C interface -------------------------------------------------------
+
+    @staticmethod
+    cdef bint _intersects(_mask* mask, int begin, int end) nogil:
+        if mask == NULL:
+            return False
+        return mask.begin <= end and begin <= mask.end
+
+    # --- Python interface ---------------------------------------------------
+
+    cpdef bint intersects(self, int begin, int end):
+        return Mask._intersects(self.mask, begin, end)
+
 
 cdef class Masks:
     """A list of masked regions within a `~pyrodigal.Sequence`.
@@ -1818,20 +1835,25 @@ cdef class Nodes:
         int min_edge_gene,
     ) nogil except -1:
         cdef int    i
+        cdef int    j
+        cdef bint   skip
+        cdef _mask* mask[3]
         cdef int    last[3]
         cdef int    min_dist[3]
         cdef bint   saw_start[3]
         cdef int    slmod        = sequence.slen % 3
         cdef int    nn           = 0
         cdef int    tt           = translation_table
-        cdef _mask* mlist        = sequence.masks.masks
-        cdef int    nm           = sequence.masks.length
 
         # If sequence is smaller than a codon, there are no nodes to add
         if sequence.slen < 3:
             return nn
 
         # Forward strand nodes
+        if sequence.masks.length > 0:
+            mask[0] = mask[1] = mask[2] = &sequence.masks.masks[sequence.masks.length - 1]
+        else:
+            mask[0] = mask[1] = mask[2] = NULL
         for i in range(3):
             last[(i+slmod)%3] = sequence.slen + i
             saw_start[i%3] = False
@@ -1840,6 +1862,7 @@ cdef class Nodes:
                 while last[(i+slmod)%3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
+            # check if the current phase encountered a stop
             if _is_stop(sequence.digits, sequence.slen, i, tt, 1):
                 if saw_start[i%3]:
                     self._add_node(
@@ -1856,48 +1879,57 @@ cdef class Nodes:
                 continue
             if last[i%3] >= sequence.slen:
                 continue
-            if not cross_mask(i, last[i%3], mlist, nm):
-                if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, 1):
-                    if _is_atg(sequence.digits, sequence.slen, i, 1):
-                        saw_start[i%3] = True
-                        self._add_node(
-                            ndx = i,
-                            type = node_type.ATG,
-                            stop_val = last[i%3],
-                            strand = 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif _is_ttg(sequence.digits, sequence.slen, i, 1):
-                        saw_start[i%3] = True
-                        self._add_node(
-                            ndx = i,
-                            type = node_type.TTG,
-                            stop_val = last[i%3],
-                            strand = 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif _is_gtg(sequence.digits, sequence.slen, i, 1):
-                        saw_start[i%3] = True
-                        self._add_node(
-                            ndx = i,
-                            type = node_type.GTG,
-                            stop_val = last[i%3],
-                            strand = 1,
-                            edge = False
-                        )
-                        nn += 1
-                if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+            # find the next phase mask if the candidate gene end is after the mask start
+            while mask[i%3] != NULL and last[i%3] < mask[i%3].begin:
+                if mask[i%3] == &sequence.masks.masks[0]:
+                    mask[i%3] = NULL
+                else:
+                    mask[i%3] -= 1
+            # check that the current phase mask does not intersect the candidate gene
+            if Mask._intersects(mask[i%3], i, last[i%3]):
+                continue
+            # check if the current phase encountered a start
+            if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, 1):
+                if _is_atg(sequence.digits, sequence.slen, i, 1):
                     saw_start[i%3] = True
                     self._add_node(
                         ndx = i,
                         type = node_type.ATG,
                         stop_val = last[i%3],
                         strand = 1,
-                        edge = True,
+                        edge = False
                     )
                     nn += 1
+                elif _is_ttg(sequence.digits, sequence.slen, i, 1):
+                    saw_start[i%3] = True
+                    self._add_node(
+                        ndx = i,
+                        type = node_type.TTG,
+                        stop_val = last[i%3],
+                        strand = 1,
+                        edge = False
+                    )
+                    nn += 1
+                elif _is_gtg(sequence.digits, sequence.slen, i, 1):
+                    saw_start[i%3] = True
+                    self._add_node(
+                        ndx = i,
+                        type = node_type.GTG,
+                        stop_val = last[i%3],
+                        strand = 1,
+                        edge = False
+                    )
+                    nn += 1
+            if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+                saw_start[i%3] = True
+                self._add_node(
+                    ndx = i,
+                    type = node_type.ATG,
+                    stop_val = last[i%3],
+                    strand = 1,
+                    edge = True,
+                )
+                nn += 1
         for i in range(3):
             if saw_start[i%3]:
                 self._add_node(
@@ -1908,7 +1940,12 @@ cdef class Nodes:
                     edge = not _is_stop(sequence.digits, sequence.slen, last[i%3], tt, 1)
                 )
                 nn += 1
+
         # Reverse strand nodes
+        if sequence.masks.length > 0:
+            mask[0] = mask[1] = mask[2] = &sequence.masks.masks[0]
+        else:
+            mask[0] = mask[1] = mask[2] = NULL
         for i in range(3):
             last[(i + slmod) % 3] = sequence.slen + i
             saw_start[i%3] = False
@@ -1917,6 +1954,7 @@ cdef class Nodes:
                 while last[(i+slmod) % 3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
+            # check if the current phase encountered a stop
             if _is_stop(sequence.digits, sequence.slen, i, tt, -1):
                 if saw_start[i%3]:
                     self._add_node(
@@ -1933,48 +1971,57 @@ cdef class Nodes:
                 continue
             if last[i%3] >= sequence.slen:
                 continue
-            if not cross_mask(sequence.slen-last[i%3]-1, sequence.slen-i-1, mlist, nm):
-                if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, -1):
-                    if _is_atg(sequence.digits, sequence.slen, i, -1):
-                        saw_start[i%3] = True
-                        self._add_node(
-                            ndx = sequence.slen - i - 1,
-                            type = node_type.ATG,
-                            strand = -1,
-                            stop_val = sequence.slen - last[i%3] - 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif _is_gtg(sequence.digits, sequence.slen, i, -1):
-                        saw_start[i%3] = True
-                        self._add_node(
-                            ndx = sequence.slen - i - 1,
-                            type = node_type.GTG,
-                            strand = -1,
-                            stop_val = sequence.slen - last[i%3] - 1,
-                            edge = False
-                        )
-                        nn += 1
-                    elif _is_ttg(sequence.digits, sequence.slen, i, -1):
-                        saw_start[i%3] = 1
-                        self._add_node(
-                            ndx = sequence.slen - i - 1,
-                            type = node_type.TTG,
-                            strand = -1,
-                            stop_val = sequence.slen - last[i%3] - 1,
-                            edge = False,
-                        )
-                        nn += 1
-                if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
-                    saw_start[i%3] = 1
-                    node = self._add_node(
+            # find the next phase mask if the candidate gene start is after the mask end
+            while mask[i%3] != NULL and sequence.slen-last[i%3]-1 > mask[i%3].end:
+                if mask[i%3] == &sequence.masks.masks[sequence.masks.length]:
+                    mask[i%3] = NULL
+                else:
+                    mask[i%3] += 1
+            # check that the current phase mask does not intersect the candidate gene
+            if Mask._intersects(mask[i%3], sequence.slen-last[i%3]-1, sequence.slen-i-1):
+                continue
+            # check if the current phase encountered a start
+            if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, -1):
+                if _is_atg(sequence.digits, sequence.slen, i, -1):
+                    saw_start[i%3] = True
+                    self._add_node(
                         ndx = sequence.slen - i - 1,
                         type = node_type.ATG,
                         strand = -1,
                         stop_val = sequence.slen - last[i%3] - 1,
-                        edge = True,
+                        edge = False
                     )
                     nn += 1
+                elif _is_gtg(sequence.digits, sequence.slen, i, -1):
+                    saw_start[i%3] = True
+                    self._add_node(
+                        ndx = sequence.slen - i - 1,
+                        type = node_type.GTG,
+                        strand = -1,
+                        stop_val = sequence.slen - last[i%3] - 1,
+                        edge = False
+                    )
+                    nn += 1
+                elif _is_ttg(sequence.digits, sequence.slen, i, -1):
+                    saw_start[i%3] = 1
+                    self._add_node(
+                        ndx = sequence.slen - i - 1,
+                        type = node_type.TTG,
+                        strand = -1,
+                        stop_val = sequence.slen - last[i%3] - 1,
+                        edge = False,
+                    )
+                    nn += 1
+            if i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+                saw_start[i%3] = 1
+                node = self._add_node(
+                    ndx = sequence.slen - i - 1,
+                    type = node_type.ATG,
+                    strand = -1,
+                    stop_val = sequence.slen - last[i%3] - 1,
+                    edge = True,
+                )
+                nn += 1
         for i in range(3):
             if saw_start[i%3]:
                 node = self._add_node(
