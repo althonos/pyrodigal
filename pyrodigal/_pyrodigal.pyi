@@ -12,7 +12,7 @@ _AVX2_BUILD_SUPPORT   : bool
 _NEON_BUILD_SUPPORT   : bool
 _SSE2_BUILD_SUPPORT   : bool
 
-_TRANSLATION_TABLES   : FrozenSet[int]
+TRANSLATION_TABLES    : FrozenSet[int]
 METAGENOMIC_BINS      : Tuple[MetagenomicBin]
 
 

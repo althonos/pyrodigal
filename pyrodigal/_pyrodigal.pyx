@@ -118,9 +118,9 @@ cdef int    WINDOW              = 120
 cdef size_t MIN_MASKS_ALLOC     = 8
 cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
-cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
+cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 
-_TRANSLATION_TABLES = frozenset(TRANSLATION_TABLES)
+TRANSLATION_TABLES = frozenset(_TRANSLATION_TABLES)
 
 
 # --- Sequence mask ----------------------------------------------------------
@@ -2934,7 +2934,7 @@ cdef class Gene:
         #       table would be read from in the fields of the struct
         if translation_table is None:
             tt = self.owner.training_info.tinf.trans_table
-        elif translation_table not in TRANSLATION_TABLES:
+        elif translation_table not in _TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
         else:
             tt = translation_table
@@ -3393,7 +3393,7 @@ cdef class Genes:
         cdef int     i
         cdef ssize_t n    = 0
 
-        if translation_table is not None and translation_table not in TRANSLATION_TABLES:
+        if translation_table is not None and translation_table not in _TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
 
         for i, gene in enumerate(self):
@@ -3687,7 +3687,7 @@ cdef class TrainingInfo:
     @translation_table.setter
     def translation_table(self, int table):
         assert self.tinf != NULL
-        if table not in TRANSLATION_TABLES:
+        if table not in _TRANSLATION_TABLES:
             raise ValueError(f"{table} is not a valid translation table index")
         self.raw.trans_table = table
 
@@ -4879,7 +4879,7 @@ cdef class OrfFinder:
         # Check arguments
         if self.meta:
             raise RuntimeError("cannot use training sequence in metagenomic mode")
-        if translation_table not in TRANSLATION_TABLES:
+        if translation_table not in _TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
 
         # extract sequence

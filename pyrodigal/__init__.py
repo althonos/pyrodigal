@@ -17,6 +17,8 @@ from ._pyrodigal import (
     Sequence,
     TrainingInfo,
     MetagenomicBin,
+    TRANSLATION_TABLES,
+    METAGENOMIC_BINS,
 )
 
 __doc__ = _pyrodigal.__doc__
@@ -30,7 +32,9 @@ __all__ = [
     "OrfFinder",
     "Sequence",
     "TrainingInfo",
-    "MetagenomicBin"
+    "MetagenomicBin",
+    "METAGENOMIC_BINS",
+    "TRANSLATION_TABLES",
 ]
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
