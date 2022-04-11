@@ -1,6 +1,6 @@
 import threading
 import typing
-from typing import Iterable, Iterator, List, Dict, Optional, Set, TextIO, Tuple, Union
+from typing import FrozenSet, Iterable, Iterator, List, Dict, Optional, TextIO, Tuple, Union
 
 # --- Globals ----------------------------------------------------------------
 
@@ -12,13 +12,16 @@ _AVX2_BUILD_SUPPORT   : bool
 _NEON_BUILD_SUPPORT   : bool
 _SSE2_BUILD_SUPPORT   : bool
 
-_TRANSLATION_TABLES   : Set[int]
+_TRANSLATION_TABLES   : FrozenSet[int]
 METAGENOMIC_BINS      : Tuple[MetagenomicBin]
 
 
 # --- Sequence mask ----------------------------------------------------------
 
 class Mask:
+    def __init__(self, begin: int, end: int) -> None: ...
+    def __repr__(self) -> str: ...
+    def __eq__(self, other: Mask) -> bool: ...
     @property
     def begin(self) -> int: ...
     @property

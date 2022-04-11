@@ -120,7 +120,7 @@ cdef size_t MIN_GENES_ALLOC     = 8
 cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
 cdef set    TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 
-_TRANSLATION_TABLES = TRANSLATION_TABLES
+_TRANSLATION_TABLES = frozenset(TRANSLATION_TABLES)
 
 
 # --- Sequence mask ----------------------------------------------------------
@@ -129,6 +129,26 @@ cdef class Mask:
     """The coordinates of a masked region.
     """
     # --- Magic methods ------------------------------------------------------
+
+    def __init__(self, int begin, int end):
+        self.owner = None
+        self.mask = &self._data
+        self.mask.begin = begin
+        self.mask.end = end
+
+    def __repr__(self):
+        ty = type(self)
+        return "<{}.{} begin={!r} end={!r}>".format(
+            ty.__module__,
+            ty.__name__,
+            self.mask.begin,
+            self.mask.end,
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, Mask):
+            return self.mask.begin == other.begin and self.mask.end == other.end
+        return False
 
     # --- Properties ---------------------------------------------------------
 

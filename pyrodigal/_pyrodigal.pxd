@@ -23,6 +23,7 @@ cdef public set    TRANSLATION_TABLES
 # --- Sequence mask ----------------------------------------------------------
 
 cdef class Mask:
+    cdef _mask  _data
     cdef Masks  owner
     cdef _mask* mask
 
