@@ -54,10 +54,10 @@ cdef class Masks:
 # --- Input sequence ---------------------------------------------------------
 
 cdef class Sequence:
-    cdef          int      slen
-    cdef          uint8_t* digits
-    cdef readonly double   gc
-    cdef readonly Masks    masks
+    cdef          Py_ssize_t slen
+    cdef          uint8_t*   digits
+    cdef readonly double     gc
+    cdef readonly Masks      masks
 
     cdef int _allocate(self, int slen) except 1
     cdef char _amino(
@@ -193,6 +193,7 @@ cdef class Nodes:
     cpdef list __getstate__(self)
     cpdef object __setstate__(self, list state)
 
+    cdef int _allocate(self, size_t capacity) except 1
     cdef inline _node* _add_node(
         self,
         const int  ndx,
@@ -281,6 +282,7 @@ cdef class Genes:
     cpdef dict __getstate__(self)
     cpdef object __setstate__(self, dict state)
 
+    cdef int _allocate(self, size_t capacity) except 1
     cdef inline _gene* _add_gene(
         self,
         const int begin,

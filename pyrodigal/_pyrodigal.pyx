@@ -47,7 +47,8 @@ References:
 
 # ----------------------------------------------------------------------------
 
-from cpython.buffer cimport PyBUF_READ, PyBUF_WRITE
+from cpython cimport Py_buffer
+from cpython.buffer cimport PyBUF_FORMAT, PyBUF_READ, PyBUF_WRITE
 from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
 from cpython.exc cimport PyErr_CheckSignals
 from cpython.list cimport PyList_New, PyList_SET_ITEM
@@ -478,6 +479,7 @@ cdef class Sequence:
     cpdef dict __getstate__(self):
         """__getstate__(self)\n--
         """
+        assert self.digits != NULL
         # copy sequence digits
         cdef bytearray    digits = bytearray(self.slen)
         cdef uint8_t[::1] view   = digits
@@ -501,6 +503,24 @@ cdef class Sequence:
         # allocate sequence storage and copy bytes
         self._allocate(state["slen"])
         memcpy(self.digits, &view[0], self.slen * sizeof(uint8_t))
+
+    def __getbuffer__(self, Py_buffer* buffer, int flags):
+        assert self.digits != NULL
+
+        if flags & PyBUF_FORMAT:
+            buffer.format = b"B"
+        else:
+            buffer.format = NULL
+        buffer.buf = self.digits
+        buffer.internal = NULL
+        buffer.itemsize = sizeof(uint8_t)
+        buffer.len = self.slen * sizeof(uint8_t)
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 0
+        buffer.shape = &self.slen
+        buffer.suboffsets = NULL
+        buffer.strides = NULL
 
     # --- C interface -------------------------------------------------------
 
@@ -1526,6 +1546,19 @@ cdef class Nodes:
 
     """
 
+    # --- Class methods ------------------------------------------------------
+
+    @classmethod
+    def with_capacity(cls, size_t capacity):
+        """with_capacity(cls, capacity)\n--
+
+        Create a new node array with the given capacity.
+
+        """
+        cdef Nodes nodes = Nodes.__new__(Nodes)
+        nodes._allocate(capacity)
+        return nodes
+
     # --- Magic methods ------------------------------------------------------
 
     def __cinit__(self):
@@ -1655,6 +1688,19 @@ cdef class Nodes:
 
     # --- C interface --------------------------------------------------------
 
+    cdef int _allocate(self, size_t capacity) except 1:
+        # record new capacity
+        cdef size_t old_capacity = self.capacity
+        self.capacity = capacity
+        # allocate node array
+        self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
+        if self.nodes == NULL:
+            raise MemoryError("Failed to reallocate node array")
+        # clean newly-allocated memory
+        if self.capacity > old_capacity:
+            memset(&self.nodes[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_node))
+        return 0
+
     cdef inline _node* _add_node(
         self,
         const int  ndx,
@@ -1665,20 +1711,13 @@ cdef class Nodes:
     ) nogil except NULL:
         """Add a single node to the vector, and return a pointer to that node.
         """
-
-        cdef size_t old_capacity = self.capacity
-        cdef _node* node
-
+        # reallocate if needed
         if self.length >= self.capacity:
-            self.capacity = MIN_NODES_ALLOC if self.capacity == 0 else self.capacity*2
             with gil:
-                self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
-                if self.nodes == NULL:
-                    raise MemoryError("Failed to reallocate node array")
-            memset(&self.nodes[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_node))
-
+                self._allocate(MIN_NODES_ALLOC if self.capacity == 0 else self.capacity*2)
+        # record node data
         self.length += 1
-        node = &self.nodes[self.length - 1]
+        cdef _node* node = &self.nodes[self.length - 1]
         node.ndx = ndx
         node.type = type
         node.strand = strand
@@ -2992,18 +3031,6 @@ cdef class Genes:
         self.capacity = 0
         self.length = 0
 
-    def __init__(
-        self,
-        Sequence sequence not None,
-        TrainingInfo training_info not None,
-        Nodes nodes not None
-    ):
-        self._clear()
-        self.sequence = sequence
-        self.training_info = training_info
-        self.nodes = nodes
-        self._num_seq = 1
-
     def __dealloc__(self):
         PyMem_Free(self.genes)
 
@@ -3075,6 +3102,19 @@ cdef class Genes:
 
     # --- C interface --------------------------------------------------------
 
+    cdef int _allocate(self, size_t capacity) except 1:
+        # record new capacity
+        cdef size_t old_capacity = self.capacity
+        self.capacity = capacity
+        # allocate node array
+        self.genes = <_gene*> PyMem_Realloc(self.genes, self.capacity * sizeof(_gene))
+        if self.genes == NULL:
+            raise MemoryError("Failed to reallocate gene array")
+        # clean newly-allocated memory
+        if self.capacity > old_capacity:
+            memset(&self.genes[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_gene))
+        return 0
+
     cdef inline _gene* _add_gene(
         self,
         const int begin,
@@ -3084,20 +3124,13 @@ cdef class Genes:
     ) nogil except NULL:
         """Add a single gene to the vector, and return a pointer to that gene.
         """
-
-        cdef size_t old_capacity = self.capacity
-        cdef _gene* gene
-
+        # reallocate if needed
         if self.length >= self.capacity:
-            self.capacity = MIN_GENES_ALLOC if self.capacity == 0 else self.capacity*2
             with gil:
-                self.genes = <_gene*> PyMem_Realloc(self.genes, self.capacity * sizeof(_gene))
-                if self.genes == NULL:
-                    raise MemoryError("Failed to reallocate gene array")
-            memset(&self.genes[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_gene))
-
+                self._allocate(MIN_GENES_ALLOC if self.capacity == 0 else self.capacity*2)
+        # record gene data
         self.length += 1
-        gene = &self.genes[self.length - 1]
+        cdef _gene* gene = &self.genes[self.length - 1]
         gene.begin = begin
         gene.end = end
         gene.start_ndx = start_ndx
