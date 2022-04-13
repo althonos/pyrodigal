@@ -308,6 +308,51 @@ cdef class Sequence:
 
     # --- Class methods ------------------------------------------------------
 
+    @staticmethod
+    cdef int _build(
+        const int      kind,
+        const void*    data,
+        const size_t   length,
+              double*  gc,
+              uint8_t* digits,
+              Masks    masks,
+    ) nogil except 1:
+
+        cdef size_t  i
+        cdef Py_UCS4 letter
+        cdef int     gc_count   = 0
+        cdef int     mask_begin = -1
+
+        for i in range(length):
+            letter = PyUnicode_READ(kind, data, i)
+            if letter == u'A' or letter == u'a':
+                digits[i] = nucleotide.A
+            elif letter == u'T' or letter == u't':
+                digits[i] = nucleotide.T
+            elif letter == u'G' or letter == u'g':
+                digits[i] = nucleotide.G
+                gc_count += 1
+            elif letter == u'C' or letter == u'c':
+                digits[i] = nucleotide.C
+                gc_count += 1
+            else:
+                digits[i] = nucleotide.N
+
+        if length > 0:
+            gc[0] = (<double> gc_count) / (<double> length)
+
+        if masks is not None:
+            for i in range(length):
+                if digits[i] == nucleotide.N:
+                    if mask_begin == -1:
+                        mask_begin = i
+                else:
+                    if mask_begin != -1:
+                        masks._add_mask(mask_begin, i-1)
+                        mask_begin = -1
+
+        return 0
+
     @classmethod
     def from_bytes(cls, const unsigned char[:] sequence, bint mask = False):
         """from_bytes(cls, sequence)\n--
@@ -321,45 +366,24 @@ cdef class Sequence:
                 characters, preventing genes from being built across them.
 
         """
-        cdef int           i
-        cdef int           j
-        cdef unsigned char letter
-        cdef Sequence      seq
-        cdef int           gc_count   = 0
-        cdef int           mask_begin = -1
+        cdef Sequence seq
+        cdef Masks    masks
 
         seq = Sequence.__new__(Sequence)
         seq._allocate(sequence.shape[0])
         seq.masks = Masks.__new__(Masks)
 
+        masks = seq.masks if mask else None
+
         with nogil:
-            for i in range(seq.slen):
-                letter = sequence[i]
-                if letter == b'A' or letter == b'a':
-                    seq.digits[i] = nucleotide.A
-                elif letter == b'T' or letter == b't':
-                    seq.digits[i] = nucleotide.T
-                elif letter == b'G' or letter == b'g':
-                    seq.digits[i] = nucleotide.G
-                    gc_count += 1
-                elif letter == b'C' or letter == b'c':
-                    seq.digits[i] = nucleotide.C
-                    gc_count += 1
-                else:
-                    seq.digits[i] = nucleotide.N
-
-            if seq.slen > 0:
-                seq.gc = (<double> gc_count) / (<double> seq.slen)
-
-            if mask:
-                for i in range(seq.slen):
-                    if seq.digits[i] == nucleotide.N:
-                        if mask_begin == -1:
-                            mask_begin = i
-                    else:
-                        if mask_begin != -1:
-                            seq.masks._add_mask(mask_begin, i-1)
-                            mask_begin = -1
+            Sequence._build(
+                PyUnicode_1BYTE_KIND,
+                &sequence[0],
+                seq.slen,
+                &seq.gc,
+                seq.digits,
+                masks,
+            )
 
         return seq
 
@@ -375,14 +399,10 @@ cdef class Sequence:
                 characters, preventing genes from being built across them.
 
         """
-        cdef int      i
-        cdef int      j
-        cdef Py_UCS4  letter
         cdef Sequence seq
         cdef int      kind
         cdef void*    data
-        cdef int      gc_count   = 0
-        cdef int      mask_begin = -1
+        cdef Masks    masks
 
         # make sure the unicode string is in canonical form,
         # --> won't be needed anymore in Python 3.12
@@ -393,37 +413,19 @@ cdef class Sequence:
         seq._allocate(PyUnicode_GET_LENGTH(sequence))
         seq.masks = Masks.__new__(Masks)
 
-        kind = PyUnicode_KIND(sequence)
-        data = PyUnicode_DATA(sequence)
+        masks = seq.masks if mask else None
+        kind  = PyUnicode_KIND(sequence)
+        data  = PyUnicode_DATA(sequence)
 
         with nogil:
-            for i, j in enumerate(range(0, seq.slen * 2, 2)):
-                letter = PyUnicode_READ(kind, data, i)
-                if letter == u'A' or letter == u'a':
-                    seq.digits[i] = nucleotide.A
-                elif letter == u'T' or letter == u't':
-                    seq.digits[i] = nucleotide.T
-                elif letter == u'G' or letter == u'g':
-                    seq.digits[i] = nucleotide.G
-                    gc_count += 1
-                elif letter == u'C' or letter == u'c':
-                    seq.digits[i] = nucleotide.C
-                    gc_count += 1
-                else:
-                    seq.digits[i] = nucleotide.N
-
-            if seq.slen > 0:
-                seq.gc = (<double> gc_count) / (<double> seq.slen)
-
-            if mask:
-                for i in range(seq.slen):
-                    if seq.digits[i] == nucleotide.N:
-                        if mask_begin == -1:
-                            mask_begin = i
-                    else:
-                        if mask_begin != -1:
-                            seq.masks._add_mask(mask_begin, i-1)
-                            mask_begin = -1
+            Sequence._build(
+                kind,
+                data,
+                seq.slen,
+                &seq.gc,
+                seq.digits,
+                masks,
+            )
 
         return seq
 

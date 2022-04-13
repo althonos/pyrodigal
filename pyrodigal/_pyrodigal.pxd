@@ -59,6 +59,16 @@ cdef class Sequence:
     cdef readonly double     gc
     cdef readonly Masks      masks
 
+    @staticmethod
+    cdef int _build(
+        const int      kind,
+        const void*    data,
+        const size_t   length,
+              double*  gc,
+              uint8_t* digits,
+              Masks    masks,
+    ) nogil except 1
+
     cdef int _allocate(self, int slen) except 1
     cdef char _amino(
         self,
