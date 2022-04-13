@@ -660,8 +660,6 @@ cdef class Sequence:
                 match[i] = 2
             elif i%3 != 0 and _is_g(self.digits, self.slen, pos+i, strand):
                 match[i] = 3
-            else:
-                match[i] = -10
 
         # Find the maximally scoring motif
         max_val = 0
@@ -671,11 +669,10 @@ cdef class Sequence:
                 mism = 0;
                 for k in range(j, j+i):
                     cur_ctr += match[k]
-                    if match[k] < 0:
-                        mism += 1
-                if mism > 0:
-                    continue
                 rdis = start - (pos + j + i)
+                if rdis > 15 or cur_ctr < 6:
+                    continue
+
                 if rdis < 5 and i < 5:
                     dis_flag = 2
                 elif rdis < 5 and i >= 5:
@@ -688,13 +685,9 @@ cdef class Sequence:
                     dis_flag = 3
                 else:
                     dis_flag = 0
-                if rdis > 15 or cur_ctr < 6.0:
-                    continue
 
                 # Exact-Matching RBS Motifs
-                if cur_ctr < 6:
-                    cur_val = 0
-                elif cur_ctr == 6 and dis_flag == 2:
+                if cur_ctr == 6 and dis_flag == 2:
                     cur_val = 1
                 elif cur_ctr == 6 and dis_flag == 3:
                     cur_val = 2
@@ -742,6 +735,8 @@ cdef class Sequence:
                     cur_val = 26
                 elif cur_ctr == 14 and dis_flag == 0:
                     cur_val = 27
+                else:
+                    cur_val = 0
 
                 if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
                     continue
@@ -793,10 +788,12 @@ cdef class Sequence:
                     if match[k] < 0.0:
                         mism += 1
                         if k <= j+1 or k >= j+i-2:
-                          cur_ctr -= 10
+                            cur_ctr -= 10
                 if mism != 1:
                     continue
                 rdis = start - (pos + j + i)
+                if rdis > 15 or cur_ctr < 6:
+                    continue
                 if rdis < 5:
                     dis_flag = 1
                 elif rdis > 10 and rdis <= 12:
@@ -805,13 +802,9 @@ cdef class Sequence:
                     dis_flag = 3
                 else:
                     dis_flag = 0
-                if rdis > 15 or cur_ctr < 6:
-                    continue
 
                 # Single-Matching RBS Motifs
-                if cur_ctr < 6:
-                    cur_val = 0
-                elif cur_ctr == 6 and dis_flag == 3:
+                if cur_ctr == 6 and dis_flag == 3:
                     cur_val = 2
                 elif cur_ctr == 7 and dis_flag == 3:
                     cur_val = 2
@@ -835,6 +828,8 @@ cdef class Sequence:
                     cur_val = 18
                 elif cur_ctr == 9 and dis_flag == 0:
                     cur_val = 19
+                else:
+                    cur_val = 0
 
                 if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
                     continue
