@@ -656,88 +656,70 @@ cdef class Sequence:
         # Compare the 6-base region to AGGAGG
         limit = min(6, start - 4 - pos)
         for i in range(limit):
-            if i%3 == 0 and _is_a(self.digits, self.slen, pos+i, strand):
-                match[i] = 2
-            elif i%3 != 0 and _is_g(self.digits, self.slen, pos+i, strand):
-                match[i] = 3
+            if i%3 == 0:
+                if _is_a(self.digits, self.slen, pos+i, strand):
+                    match[i] = 2
+            else:
+                if _is_g(self.digits, self.slen, pos+i, strand):
+                    match[i] = 3
 
         # Find the maximally scoring motif
         max_val = 0
         for i in range(limit, 2, -1):
             for j in range(limit+1-i):
+                # count number of matching positions, skip if less than
+                # GAG matching (or if a mismatch occurs)
                 cur_ctr = -2
-                mism = 0;
                 for k in range(j, j+i):
                     cur_ctr += match[k]
-                rdis = start - (pos + j + i)
-                if rdis > 15 or cur_ctr < 6:
+                if cur_ctr < 6:
                     continue
-
-                if rdis < 5 and i < 5:
-                    dis_flag = 2
-                elif rdis < 5 and i >= 5:
-                    dis_flag = 1
-                elif rdis > 10 and rdis <= 12 and i < 5:
-                    dis_flag = 1
-                elif rdis > 10 and rdis <= 12 and i >= 5:
-                    dis_flag = 2
-                elif rdis >= 13:
+                # compute distance to the start codon
+                rdis = start - (pos + j + i)
+                if rdis < 5: # 3-4bp
+                    dis_flag = 2 if i < 5 else 1
+                elif rdis < 11: # 5-10bp
+                    dis_flag = 0
+                elif rdis < 13: # 11-12bp
+                    dis_flag = 1 if i < 5 else 2
+                elif rdis < 16: # 13-15bp
                     dis_flag = 3
                 else:
-                    dis_flag = 0
-
-                # Exact-Matching RBS Motifs
-                if cur_ctr == 6 and dis_flag == 2:
-                    cur_val = 1
-                elif cur_ctr == 6 and dis_flag == 3:
-                    cur_val = 2
-                elif cur_ctr == 8 and dis_flag == 3:
-                    cur_val = 3
-                elif cur_ctr == 9 and dis_flag == 3:
-                    cur_val = 3
-                elif cur_ctr == 6 and dis_flag == 1:
-                    cur_val = 6
-                elif cur_ctr == 11 and dis_flag == 3:
-                    cur_val = 10
-                elif cur_ctr == 12 and dis_flag == 3:
-                    cur_val = 10
-                elif cur_ctr == 14 and dis_flag == 3:
-                    cur_val = 10
-                elif cur_ctr == 8 and dis_flag == 2:
-                    cur_val = 11
-                elif cur_ctr == 9 and dis_flag == 2:
-                    cur_val = 11
-                elif cur_ctr == 8 and dis_flag == 1:
-                    cur_val = 12
-                elif cur_ctr == 9 and dis_flag == 1:
-                    cur_val = 12
-                elif cur_ctr == 6 and dis_flag == 0:
-                    cur_val = 13
-                elif cur_ctr == 8 and dis_flag == 0:
-                    cur_val = 15
-                elif cur_ctr == 9 and dis_flag == 0:
-                    cur_val = 16
-                elif cur_ctr == 11 and dis_flag == 2:
-                    cur_val = 20
-                elif cur_ctr == 11 and dis_flag == 1:
-                    cur_val = 21
-                elif cur_ctr == 11 and dis_flag == 0:
-                    cur_val = 22
-                elif cur_ctr == 12 and dis_flag == 2:
-                    cur_val = 20
-                elif cur_ctr == 12 and dis_flag == 1:
-                    cur_val = 23
-                elif cur_ctr == 12 and dis_flag == 0:
-                    cur_val = 24
-                elif cur_ctr == 14 and dis_flag == 2:
-                    cur_val = 25
-                elif cur_ctr == 14 and dis_flag == 1:
-                    cur_val = 26
-                elif cur_ctr == 14 and dis_flag == 0:
-                    cur_val = 27
+                    continue
+                # match exact RBS Motifs
+                if cur_ctr == 6:  # GGA
+                    if dis_flag == 0:   cur_val = 13
+                    elif dis_flag == 1: cur_val = 6
+                    elif dis_flag == 2: cur_val = 1
+                    elif dis_flag == 3: cur_val = 2
+                elif cur_ctr == 8: # AGGA
+                    if dis_flag == 0:   cur_val = 15
+                    elif dis_flag == 1: cur_val = 12
+                    elif dis_flag == 2: cur_val = 11
+                    elif dis_flag == 3: cur_val = 3
+                elif cur_ctr == 9: # GGAG
+                    if dis_flag == 0:   cur_val = 16
+                    elif dis_flag == 1: cur_val = 12
+                    elif dis_flag == 2: cur_val = 11
+                    elif dis_flag == 3: cur_val = 3
+                elif cur_ctr == 11: # AGGAG
+                    if dis_flag == 0:   cur_val = 22
+                    elif dis_flag == 1: cur_val = 21
+                    elif dis_flag == 2: cur_val = 20
+                    elif dis_flag == 3: cur_val = 10
+                elif cur_ctr == 12: # GGAGG
+                    if dis_flag == 0:   cur_val = 24
+                    elif dis_flag == 1: cur_val = 23
+                    elif dis_flag == 2: cur_val = 20
+                    elif dis_flag == 3: cur_val = 10
+                elif cur_ctr == 14: # AGGAGG
+                    if dis_flag == 0:   cur_val = 27
+                    elif dis_flag == 1: cur_val = 26
+                    elif dis_flag == 2: cur_val = 25
+                    elif dis_flag == 3: cur_val = 10
                 else:
                     cur_val = 0
-
+                # record the motif only if this is the maximal scoring motif so far
                 if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
                     continue
                 if tinf.rbs_wt[cur_val] == tinf.rbs_wt[max_val] and cur_val < max_val:
@@ -773,14 +755,16 @@ cdef class Sequence:
         limit = min(6, start - 4 - pos)
         for i in range(limit):
             if i%3 == 0:
-                match[i] = -3 + 5*_is_a(self.digits, self.slen, pos+i, strand)
+                match[i] = 2 if _is_a(self.digits, self.slen, pos+i, strand) else -3
             else:
-                match[i] = -2 + 5*_is_g(self.digits, self.slen, pos+i, strand)
+                match[i] = 3 if _is_g(self.digits, self.slen, pos+i, strand) else -2
 
         # Find the maximally scoring motif
         max_val = 0
         for i in range(limit, 4, -1):
             for j in range(limit+1-i):
+                # count number of matching positions, skip if less than
+                # GAG matching (or if not exactly one mismatch occurs)
                 cur_ctr = -2
                 mism = 0;
                 for k in range(j, j+i):
@@ -789,48 +773,37 @@ cdef class Sequence:
                         mism += 1
                         if k <= j+1 or k >= j+i-2:
                             cur_ctr -= 10
-                if mism != 1:
+                if mism != 1 or cur_ctr < 6:
                     continue
+                # compute distance to the start codon
                 rdis = start - (pos + j + i)
-                if rdis > 15 or cur_ctr < 6:
-                    continue
                 if rdis < 5:
                     dis_flag = 1
-                elif rdis > 10 and rdis <= 12:
+                elif rdis < 11:
+                    dis_flag = 0
+                elif rdis < 13:
                     dis_flag = 2
-                elif rdis >= 13:
+                elif rdis < 16:
                     dis_flag = 3
                 else:
-                    dis_flag = 0
-
-                # Single-Matching RBS Motifs
-                if cur_ctr == 6 and dis_flag == 3:
-                    cur_val = 2
-                elif cur_ctr == 7 and dis_flag == 3:
-                    cur_val = 2
-                elif cur_ctr == 9 and dis_flag == 3:
-                    cur_val = 3
-                elif cur_ctr == 6 and dis_flag == 2:
-                    cur_val = 4
-                elif cur_ctr == 6 and dis_flag == 1:
-                    cur_val = 5
-                elif cur_ctr == 6 and dis_flag == 0:
-                    cur_val = 9
-                elif cur_ctr == 7 and dis_flag == 2:
-                    cur_val = 7
-                elif cur_ctr == 7 and dis_flag == 1:
-                    cur_val = 8
-                elif cur_ctr == 7 and dis_flag == 0:
-                    cur_val = 14
-                elif cur_ctr == 9 and dis_flag == 2:
-                    cur_val = 17
-                elif cur_ctr == 9 and dis_flag == 1:
-                    cur_val = 18
-                elif cur_ctr == 9 and dis_flag == 0:
-                    cur_val = 19
-                else:
-                    cur_val = 0
-
+                    continue
+                # match single-mismatch RBS Motifs
+                if cur_ctr == 6:  # AGxAG
+                    if dis_flag == 0:   cur_val = 9
+                    elif dis_flag == 1: cur_val = 5
+                    elif dis_flag == 2: cur_val = 4
+                    elif dis_flag == 3: cur_val = 2
+                elif cur_ctr == 7: # GGxGG
+                    if dis_flag == 0:   cur_val = 14
+                    elif dis_flag == 1: cur_val = 8
+                    elif dis_flag == 2: cur_val = 7
+                    elif dis_flag == 3: cur_val = 2
+                elif cur_ctr == 9: # AGGxGG
+                    if dis_flag == 0:   cur_val = 19
+                    elif dis_flag == 1: cur_val = 18
+                    elif dis_flag == 2: cur_val = 17
+                    elif dis_flag == 3: cur_val = 3
+                # record the motif only if this is the maximal scoring motif so far
                 if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
                     continue
                 if tinf.rbs_wt[cur_val] == tinf.rbs_wt[max_val] and cur_val < max_val:
