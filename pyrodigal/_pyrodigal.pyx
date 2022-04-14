@@ -2518,7 +2518,7 @@ cdef class Gene:
 
     @property
     def rbs_motif(self):
-        """``str``, optional: The motif of the Ribosome Binding Site.
+        """`str`, optional: The motif of the Ribosome Binding Site.
 
         Possible non-`None` values are ``GGA/GAG/AGG``, ``3Base/5BMM``,
         ``4Base/6BMM``, ``AGxAG``, ``GGxGG``, ``AGGAG(G)/GGAGG``, ``AGGA``,
@@ -2663,7 +2663,7 @@ cdef class Gene:
         Estimate the confidence of the prediction.
 
         Returns:
-            `float`: A confidence percentage between *0* and *100*.
+            `float`: A confidence percentage (between *0* and *100*).
 
         """
         cdef int ndx = self.gene.start_ndx
@@ -2680,7 +2680,6 @@ cdef class Gene:
         .. versionadded:: 0.5.4
 
         """
-
         cdef size_t   i
         cdef size_t   j
         cdef size_t   begin
@@ -2767,7 +2766,6 @@ cdef class Gene:
                 genetic code number.
 
         """
-
         cdef size_t nucl_length
         cdef size_t prot_length
         cdef size_t i
