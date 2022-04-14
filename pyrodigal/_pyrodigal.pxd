@@ -133,15 +133,7 @@ cdef class ConnectionScorer:
         const int min,
         const int i
     ) nogil
-    @staticmethod
-    cdef void _score_connection(
-        Nodes nodes,
-        const int j,
-        const int i,
-        const _training* tinf,
-        const bint flag
-    ) nogil
-    cdef int _score_connections(
+    cdef void _score_connections(
         self,
         Nodes nodes,
         const int min,

@@ -90,6 +90,9 @@ from pyrodigal._connection cimport (
     _score_connection_forward_stop,
     _score_connection_backward_start,
     _score_connection_backward_stop,
+    _score_connections,
+    connection_function,
+    CONNECTION_FUNCTIONS,
 )
 from pyrodigal.impl.generic cimport skippable_generic
 
@@ -1046,175 +1049,7 @@ cdef class ConnectionScorer:
             return 0
         return 0
 
-    @staticmethod
-    cdef void _score_connection(
-        Nodes nodes,
-        const int p1,
-        const int p2,
-        const _training* tinf,
-        const bint final
-    ) nogil:
-        cdef _node* n1 = &nodes.nodes[p1]
-        cdef _node* n2 = &nodes.nodes[p2]
-        cdef _node* n3
-
-        cdef int i
-        cdef int bnd
-        cdef int ovlp  = 0
-        cdef int maxfr = -1
-        cdef int left  = n1.ndx
-        cdef int right = n2.ndx
-
-        cdef double maxval
-        cdef double score   = 0.0
-        cdef double scr_mod = 0.0
-
-        # NOTE(@althonos): We can skip checking for invalid connections here
-        #                  because the connection scorer already checked for
-        #                  them using the SIMD filter
-
-        # --- Edge Artifacts ---
-        if n1.traceb == -1 and n1.strand == 1 and n1.type == node_type.STOP:
-            return
-        elif n1.traceb == -1 and n1.strand == -1 and n1.type != node_type.STOP:
-            return
-
-        # --- Genes ---
-        # 5'fwd->3'fwd
-        elif n1.strand == 1 and n2.strand == 1 and n1.type != node_type.STOP and n2.type == node_type.STOP:
-            if n2.stop_val >= n1.ndx:
-                return
-            right += 2
-            if final:
-                score = n1.cscore + n1.sscore
-            else:
-                scr_mod = tinf.bias[0]*n1.gc_score[0] + tinf.bias[1]*n1.gc_score[1] + tinf.bias[2]*n1.gc_score[2]
-        # 3'rev->5'rev */
-        elif n1.strand == -1 and n2.strand == -1 and n1.type == node_type.STOP and n2.type != node_type.STOP:
-            if n1.stop_val <= n2.ndx:
-                return
-            left -= 2;
-            if final == 0:
-                scr_mod = tinf.bias[0]*n2.gc_score[0] + tinf.bias[1]*n2.gc_score[1] + tinf.bias[2]*n2.gc_score[2]
-            elif final:
-                score = n2.cscore + n2.sscore
-
-        # --- Intergenic space (Noncoding) ---
-        # 3'fwd->5'fwd
-        elif n1.strand == 1 and n2.strand == 1 and n1.type == node_type.STOP and n2.type != node_type.STOP:
-            left += 2
-            if left >= right:
-                return
-            if final:
-                score = _intergenic_mod_same(n1, n2, tinf.st_wt)
-        # 3'fwd->3'rev
-        elif n1.strand == 1 and n2.strand == -1 and n1.type == node_type.STOP and n2.type == node_type.STOP:
-            left += 2
-            right -= 2
-            if left >= right:
-                return
-            # Overlapping Gene Case 2: Three consecutive overlapping genes f r r
-            maxfr = -1
-            maxval = 0.0
-            if n1.traceb != -1:
-                for i in range(3):
-                    if n2.star_ptr[i] == -1:
-                        continue
-                    n3 = &nodes.nodes[n2.star_ptr[i]]
-                    ovlp = left - n3.stop_val + 3
-                    if ovlp <= 0 or ovlp >= dprog.MAX_OPP_OVLP:
-                        continue
-                    if ovlp >= n3.ndx - left:
-                        continue
-                    if ovlp >= n3.stop_val - nodes.nodes[n1.traceb].ndx - 2:
-                        continue
-                    # record max frame
-                    if final == 1:
-                        score = n3.cscore + n3.sscore + _intergenic_mod(n3, n2, tinf.st_wt)
-                    else:
-                        score = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
-                    if score > maxval:
-                        maxfr = i
-                        maxval = score
-            if maxfr != -1:
-                n3 = &nodes.nodes[n2.star_ptr[maxfr]]
-                if final:
-                    score = n3.cscore + n3.sscore + _intergenic_mod(n3, n2, tinf.st_wt)
-                else:
-                    scr_mod = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
-            elif final:
-                score = _intergenic_mod_diff(n1, n2, tinf.st_wt)
-        # 5'rev->3'rev
-        elif n1.strand == -1 and n2.strand == -1 and n1.type != node_type.STOP and n2.type == node_type.STOP:
-            right -= 2
-            if left >= right:
-                return
-            if final:
-                score = _intergenic_mod_same(n1, n2, tinf.st_wt)
-        # 5'rev->5'fwd
-        elif n1.strand == -1 and n2.strand == 1 and n1.type != node_type.STOP and n2.type != node_type.STOP:
-            if left >= right:
-                return
-            if final:
-                score = _intergenic_mod_diff(n1, n2, tinf.st_wt)
-
-        # --- Possible Operons */ ---
-        # 3'fwd->3'fwd, check for a start just to left of first 3'
-        elif n1.strand == 1 and n2.strand == 1 and n1.type == node_type.STOP and n2.type == node_type.STOP:
-            if n2.stop_val >= n1.ndx:
-                return
-            if n1.star_ptr[n2.ndx%3] == -1:
-                return
-            n3 = &nodes.nodes[n1.star_ptr[n2.ndx%3]]
-            left = n3.ndx
-            right += 2
-            if final:
-                score = n3.cscore + n3.sscore + _intergenic_mod(n1, n3, tinf.st_wt)
-            else:
-                scr_mod = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
-        # 3'rev->3'rev, check for a start just to right of second 3'
-        elif n1.strand == -1 and n2.strand == -1 and n1.type == node_type.STOP and n2.type == node_type.STOP:
-            if n1.stop_val <= n2.ndx:
-                return
-            if n2.star_ptr[n1.ndx%3] == -1:
-                return
-            n3 = &nodes.nodes[n2.star_ptr[n1.ndx%3]]
-            left -= 2
-            right = n3.ndx
-            if final:
-                score = n3.cscore + n3.sscore + _intergenic_mod(n3, n2, tinf.st_wt)
-            else:
-                scr_mod = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
-
-        # --- Overlapping Opposite Strand 3' Ends ---
-        # 3'for->5'rev
-        elif n1.strand == 1 and n2.strand == -1 and n1.type == node_type.STOP and n2.type != node_type.STOP:
-            if n2.stop_val - 2 >= n1.ndx + 2:
-                return
-            ovlp = (n1.ndx+2) - (n2.stop_val-2) + 1
-            if ovlp >= dprog.MAX_OPP_OVLP:
-                return
-            if (n1.ndx+2 - n2.stop_val-2 + 1) >= (n2.ndx -n1.ndx+3 + 1):
-                return
-            bnd = 0 if n1.traceb == -1 else nodes.nodes[n1.traceb].ndx
-            if (n1.ndx+2 - n2.stop_val-2 + 1) >= (n2.stop_val-3 - bnd + 1):
-                return
-            left = n2.stop_val-2
-            if final:
-                score = n2.cscore + n2.sscore + _intergenic_mod_diff(n1, n2, tinf.st_wt)
-            else:
-                scr_mod = tinf.bias[0]*n2.gc_score[0] + tinf.bias[1]*n2.gc_score[1] + tinf.bias[2]*n2.gc_score[2];
-
-        if not final:
-            score = (<double> (right - left + 1 - ovlp*2))*scr_mod
-        if n1.score + score >= n2.score:
-            n2.score = n1.score + score
-            n2.traceb = p1
-            n2.ov_mark = maxfr
-
-        return
-
-    cdef int _score_connections(
+    cdef void _score_connections(
         self,
         Nodes nodes,
         const int min,
@@ -1223,41 +1058,23 @@ cdef class ConnectionScorer:
         const bint final
     ) nogil:
         cdef int j
-
         # NOTE: For comparison / testing purposes, it's still possible to
         #       score connections exactly the way it's done in the original
         #       Prodigal code.
         if self.backend == simd_backend.NONE:
             for j in range(min, i):
                 dprog.score_connection(nodes.nodes, j, i, <_training*> tinf, final)
-            return 0
-
-        #
-        if self.node_strands[i] == 1:
-            if self.node_types[i] != node_type.STOP:
-                for j in range(min, i):
-                    if self.skip_connection[j] == 0:
-                        _score_connection_forward_start(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
-            else:
-                for j in range(min, i):
-                    if self.skip_connection[j] == 0:
-                        _score_connection_forward_stop(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
-
         else:
-            if self.node_types[i] != node_type.STOP:
-                for j in range(min, i):
-                    if self.skip_connection[j] == 0:
-                        _score_connection_backward_start(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
-            else:
-                for j in range(min, i):
-                    if self.skip_connection[j] == 0:
-                        _score_connection_backward_stop(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
-
-            # for j in range(min, i):
-            #     if self.skip_connection[j] == 0:
-            #         ConnectionScorer._score_connection(nodes, j, i, tinf, final)
-
-        return 0
+            _score_connections(
+                self.skip_connection,
+                self.node_types,
+                self.node_strands,
+                nodes.nodes,
+                min,
+                i,
+                tinf,
+                final
+            )
 
     # --- Python interface ---------------------------------------------------
 
