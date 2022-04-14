@@ -82,6 +82,15 @@ from pyrodigal._sequence cimport (
     _letters,
     _complement
 )
+from pyrodigal._connection cimport (
+    _intergenic_mod_same,
+    _intergenic_mod_diff,
+    _intergenic_mod,
+    _score_connection_forward_start,
+    _score_connection_forward_stop,
+    _score_connection_backward_start,
+    _score_connection_backward_stop,
+)
 from pyrodigal.impl.generic cimport skippable_generic
 
 IF TARGET_CPU == "x86":
@@ -1097,7 +1106,7 @@ cdef class ConnectionScorer:
             if left >= right:
                 return
             if final:
-                score = Node._intergenic_mod_same(n1, n2, tinf.st_wt)
+                score = _intergenic_mod_same(n1, n2, tinf.st_wt)
         # 3'fwd->3'rev
         elif n1.strand == 1 and n2.strand == -1 and n1.type == node_type.STOP and n2.type == node_type.STOP:
             left += 2
@@ -1121,7 +1130,7 @@ cdef class ConnectionScorer:
                         continue
                     # record max frame
                     if final == 1:
-                        score = n3.cscore + n3.sscore + Node._intergenic_mod(n3, n2, tinf.st_wt)
+                        score = n3.cscore + n3.sscore + _intergenic_mod(n3, n2, tinf.st_wt)
                     else:
                         score = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
                     if score > maxval:
@@ -1130,24 +1139,24 @@ cdef class ConnectionScorer:
             if maxfr != -1:
                 n3 = &nodes.nodes[n2.star_ptr[maxfr]]
                 if final:
-                    score = n3.cscore + n3.sscore + Node._intergenic_mod(n3, n2, tinf.st_wt)
+                    score = n3.cscore + n3.sscore + _intergenic_mod(n3, n2, tinf.st_wt)
                 else:
                     scr_mod = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
             elif final:
-                score = Node._intergenic_mod_diff(n1, n2, tinf.st_wt)
+                score = _intergenic_mod_diff(n1, n2, tinf.st_wt)
         # 5'rev->3'rev
         elif n1.strand == -1 and n2.strand == -1 and n1.type != node_type.STOP and n2.type == node_type.STOP:
             right -= 2
             if left >= right:
                 return
             if final:
-                score = Node._intergenic_mod_same(n1, n2, tinf.st_wt)
+                score = _intergenic_mod_same(n1, n2, tinf.st_wt)
         # 5'rev->5'fwd
         elif n1.strand == -1 and n2.strand == 1 and n1.type != node_type.STOP and n2.type != node_type.STOP:
             if left >= right:
                 return
             if final:
-                score = Node._intergenic_mod_diff(n1, n2, tinf.st_wt)
+                score = _intergenic_mod_diff(n1, n2, tinf.st_wt)
 
         # --- Possible Operons */ ---
         # 3'fwd->3'fwd, check for a start just to left of first 3'
@@ -1160,7 +1169,7 @@ cdef class ConnectionScorer:
             left = n3.ndx
             right += 2
             if final:
-                score = n3.cscore + n3.sscore + Node._intergenic_mod(n1, n3, tinf.st_wt)
+                score = n3.cscore + n3.sscore + _intergenic_mod(n1, n3, tinf.st_wt)
             else:
                 scr_mod = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
         # 3'rev->3'rev, check for a start just to right of second 3'
@@ -1173,7 +1182,7 @@ cdef class ConnectionScorer:
             left -= 2
             right = n3.ndx
             if final:
-                score = n3.cscore + n3.sscore + Node._intergenic_mod(n3, n2, tinf.st_wt)
+                score = n3.cscore + n3.sscore + _intergenic_mod(n3, n2, tinf.st_wt)
             else:
                 scr_mod = tinf.bias[0]*n3.gc_score[0] + tinf.bias[1]*n3.gc_score[1] + tinf.bias[2]*n3.gc_score[2]
 
@@ -1192,7 +1201,7 @@ cdef class ConnectionScorer:
                 return
             left = n2.stop_val-2
             if final:
-                score = n2.cscore + n2.sscore + Node._intergenic_mod_diff(n1, n2, tinf.st_wt)
+                score = n2.cscore + n2.sscore + _intergenic_mod_diff(n1, n2, tinf.st_wt)
             else:
                 scr_mod = tinf.bias[0]*n2.gc_score[0] + tinf.bias[1]*n2.gc_score[1] + tinf.bias[2]*n2.gc_score[2];
 
@@ -1215,13 +1224,38 @@ cdef class ConnectionScorer:
     ) nogil:
         cdef int j
 
+        # NOTE: For comparison / testing purposes, it's still possible to
+        #       score connections exactly the way it's done in the original
+        #       Prodigal code.
         if self.backend == simd_backend.NONE:
             for j in range(min, i):
                 dprog.score_connection(nodes.nodes, j, i, <_training*> tinf, final)
+            return 0
+
+        #
+        if self.node_strands[i] == 1:
+            if self.node_types[i] != node_type.STOP:
+                for j in range(min, i):
+                    if self.skip_connection[j] == 0:
+                        _score_connection_forward_start(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
+            else:
+                for j in range(min, i):
+                    if self.skip_connection[j] == 0:
+                        _score_connection_forward_stop(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
+
         else:
-            for j in range(min, i):
-                if self.skip_connection[j] == 0:
-                    ConnectionScorer._score_connection(nodes, j, i, tinf, final)
+            if self.node_types[i] != node_type.STOP:
+                for j in range(min, i):
+                    if self.skip_connection[j] == 0:
+                        _score_connection_backward_start(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
+            else:
+                for j in range(min, i):
+                    if self.skip_connection[j] == 0:
+                        _score_connection_backward_stop(nodes.nodes, &nodes.nodes[j], &nodes.nodes[i], tinf, final)
+
+            # for j in range(min, i):
+            #     if self.skip_connection[j] == 0:
+            #         ConnectionScorer._score_connection(nodes, j, i, tinf, final)
 
         return 0
 
@@ -1366,57 +1400,6 @@ cdef class Node:
         return self.node.tscore
 
     # --- C interface --------------------------------------------------------
-
-    @staticmethod
-    cdef double _intergenic_mod(
-        const _node* n1,
-        const _node* n2,
-        const double start_weight
-    ) nogil:
-        """Compute the intergenic modifier for two nodes.
-        """
-        if n1.strand == n2.strand:
-            return Node._intergenic_mod_same(n1, n2, start_weight)
-        else:
-            return Node._intergenic_mod_diff(n1, n2, start_weight)
-
-    @staticmethod
-    cdef double _intergenic_mod_same(
-        const _node* n1,
-        const _node* n2,
-        const double start_weight
-    ) nogil:
-        """Compute the intergenic modifier for two nodes on the same strand.
-        """
-        cdef int    dist    = abs(n1.ndx - n2.ndx)
-        cdef bint   overlap = n1.ndx + 2*n1.strand >= n2.ndx
-        cdef double rval    = 0.0
-        # bonus when in an operon
-        if n1.ndx + 2 == n2.ndx or n1.ndx == n2.ndx + 1:
-            if n1.strand == 1:
-                if n2.rscore < 0: rval -= n2.rscore
-                if n2.uscore < 0: rval -= n2.uscore
-            else:
-                if n1.rscore < 0: rval -= n1.rscore
-                if n1.uscore < 0: rval -= n1.uscore
-        # penalty when on large intergenic space / bonus when genes are close
-        if dist > 3*node.OPER_DIST:
-            rval -= 0.15 * start_weight
-        elif (dist <= node.OPER_DIST and not overlap) or dist < 0.25*node.OPER_DIST:
-            rval += (2.0 - (<double> dist) / node.OPER_DIST) * 0.15 * start_weight
-        # return final value
-        return rval
-
-    @staticmethod
-    cdef double _intergenic_mod_diff(
-        const _node* n1,
-        const _node* n2,
-        const double start_weight
-    ) nogil:
-        """Compute the intergenic modifier for two nodes on different strands.
-        """
-        # nodes on different strands are always penalized
-        return -0.15 * start_weight
 
     @staticmethod
     cdef void _find_best_upstream_motif(
@@ -2252,7 +2235,7 @@ cdef class Nodes:
                         if flag == 0 and self.nodes[i].star_ptr[self.nodes[j].ndx%3] == -1:
                             self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
                         elif flag == 1:
-                            sc = self.nodes[j].cscore + self.nodes[j].sscore + Node._intergenic_mod_same(&self.nodes[i], &self.nodes[j], tinf.st_wt)
+                            sc = self.nodes[j].cscore + self.nodes[j].sscore + _intergenic_mod_same(&self.nodes[i], &self.nodes[j], tinf.st_wt)
                             if sc > max_sc:
                                 self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
                                 max_sc = sc
@@ -2269,7 +2252,7 @@ cdef class Nodes:
                         if flag == 0 and self.nodes[i].star_ptr[self.nodes[j].ndx%3] == -1:
                             self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
                         elif flag == 1:
-                            sc = self.nodes[j].cscore + self.nodes[j].sscore + Node._intergenic_mod_same(&self.nodes[j], &self.nodes[i], tinf.st_wt)
+                            sc = self.nodes[j].cscore + self.nodes[j].sscore + _intergenic_mod_same(&self.nodes[j], &self.nodes[i], tinf.st_wt)
                             if sc > max_sc:
                                 self.nodes[i].star_ptr[self.nodes[j].ndx%3] = j
                                 max_sc = sc
@@ -3180,13 +3163,13 @@ cdef class Genes:
             igm = 0.0
 
             if i > 0 and nodes.nodes[ndx].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == 1:
-                igm = Node._intergenic_mod_same(&nodes.nodes[self.genes[i-1].stop_ndx], &nodes.nodes[ndx], tinf.st_wt)
+                igm = _intergenic_mod_same(&nodes.nodes[self.genes[i-1].stop_ndx], &nodes.nodes[ndx], tinf.st_wt)
             if i > 0 and nodes.nodes[ndx].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == -1:
-                igm = Node._intergenic_mod_diff(&nodes.nodes[self.genes[i-1].start_ndx], &nodes.nodes[ndx], tinf.st_wt)
+                igm = _intergenic_mod_diff(&nodes.nodes[self.genes[i-1].start_ndx], &nodes.nodes[ndx], tinf.st_wt)
             if i < ng-1 and nodes.nodes[ndx].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == 1:
-                igm = Node._intergenic_mod_diff(&nodes.nodes[ndx], &nodes.nodes[self.genes[i+1].start_ndx], tinf.st_wt)
+                igm = _intergenic_mod_diff(&nodes.nodes[ndx], &nodes.nodes[self.genes[i+1].start_ndx], tinf.st_wt)
             if i < ng-1 and nodes.nodes[ndx].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == -1:
-                igm = Node._intergenic_mod_same(&nodes.nodes[ndx], &nodes.nodes[self.genes[i+1].stop_ndx], tinf.st_wt)
+                igm = _intergenic_mod_same(&nodes.nodes[ndx], &nodes.nodes[self.genes[i+1].stop_ndx], tinf.st_wt)
 
             # Search upstream and downstream for the #2 and #3 scoring starts
             maxndx[0] = maxndx[1] = -1
@@ -3202,19 +3185,19 @@ cdef class Genes:
                 if i > 0 and nodes.nodes[j].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == 1:
                     if nodes.nodes[self.genes[i-1].stop_ndx].ndx - nodes.nodes[j].ndx > max_sam_overlap:
                         continue
-                    tigm = Node._intergenic_mod_same(&nodes.nodes[self.genes[i-1].stop_ndx], &nodes.nodes[j], tinf.st_wt)
+                    tigm = _intergenic_mod_same(&nodes.nodes[self.genes[i-1].stop_ndx], &nodes.nodes[j], tinf.st_wt)
                 if i > 0 and nodes.nodes[j].strand == 1 and nodes.nodes[self.genes[i-1].start_ndx].strand == -1:
                     if nodes.nodes[self.genes[i-1].start_ndx].ndx - nodes.nodes[j].ndx >= 0:
                         continue
-                    tigm = Node._intergenic_mod_diff(&nodes.nodes[self.genes[i-1].start_ndx], &nodes.nodes[j], tinf.st_wt)
+                    tigm = _intergenic_mod_diff(&nodes.nodes[self.genes[i-1].start_ndx], &nodes.nodes[j], tinf.st_wt)
                 if i < ng-1 and nodes.nodes[j].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == 1:
                     if nodes.nodes[j].ndx - nodes.nodes[self.genes[i+1].start_ndx].ndx >= 0:
                         continue
-                    tigm = Node._intergenic_mod_diff(&nodes.nodes[j], &nodes.nodes[self.genes[i+1].start_ndx], tinf.st_wt);
+                    tigm = _intergenic_mod_diff(&nodes.nodes[j], &nodes.nodes[self.genes[i+1].start_ndx], tinf.st_wt);
                 if i < ng-1 and nodes.nodes[j].strand == -1 and nodes.nodes[self.genes[i+1].start_ndx].strand == -1:
                     if nodes.nodes[j].ndx - nodes.nodes[self.genes[i+1].stop_ndx].ndx > max_sam_overlap:
                         continue
-                    tigm = Node._intergenic_mod_same(&nodes.nodes[j], &nodes.nodes[self.genes[i+1].stop_ndx], tinf.st_wt)
+                    tigm = _intergenic_mod_same(&nodes.nodes[j], &nodes.nodes[self.genes[i+1].stop_ndx], tinf.st_wt)
 
                 if maxndx[0] == -1:
                     maxndx[0] = j
