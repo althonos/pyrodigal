@@ -912,6 +912,8 @@ cdef enum simd_backend:
     GENERIC = 4
 
 cdef class ConnectionScorer:
+    """A dedicated class for the fast scoring of nodes.
+    """
 
     # --- Magic methods ------------------------------------------------------
 
@@ -923,6 +925,17 @@ cdef class ConnectionScorer:
         self.node_frames     = self.node_frames_raw     = NULL
 
     def __init__(self, str backend="detect"):
+        """__init__(self, backend="detect")\n--
+
+        Create a new connection score.
+
+        Arguments:
+            backend (`str`): The SIMD backend to use for the heuristic filter.
+                Use ``"detect"`` to use the best available one depending on
+                the CPU capabilities of the local machine. Other available
+                values are: ``"generic"``, ``"sse"``, ``"avx"``, ``neon``.
+
+        """
         IF TARGET_CPU == "x86":
             if backend =="detect":
                 self.backend = simd_backend.NONE
@@ -986,6 +999,9 @@ cdef class ConnectionScorer:
         PyMem_Free(self.node_strands_raw)
         PyMem_Free(self.node_frames_raw)
         PyMem_Free(self.skip_connection_raw)
+
+    cpdef size_t __sizeof__(self):
+        return sizeof(self) + (self.capacity * sizeof(uint8_t) + 0x1F) * 4
 
     # --- C interface --------------------------------------------------------
 
@@ -1079,10 +1095,25 @@ cdef class ConnectionScorer:
     # --- Python interface ---------------------------------------------------
 
     def index(self, Nodes nodes not None):
+        """index(self, nodes)\n--
+
+        Index the nodes in preparation for the heuristic SIMD filter.
+
+        """
         with nogil:
             self._index(nodes)
 
     def compute_skippable(self, int min, int i):
+        """compute_skippable(self, min, i)\n--
+
+        Find which connections to node *i* are invalid, starting from *min*.
+
+        Arguments:
+            min (`int`): The index of the first node from which to start
+                scoring connections.
+            i (`int`): The index of the node to score.
+
+        """
         assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
         assert (i < <int> self.capacity) | (self.backend == simd_backend.NONE)
         assert min <= i
@@ -1097,6 +1128,21 @@ cdef class ConnectionScorer:
         TrainingInfo tinf not None,
         bint final=False
     ):
+        """score_connections(self, nodes, min, i, tinf, final=False)\n--
+
+        Score all connections to node *i*, starting from node *min*.
+
+        Arguments:
+            nodes (`~pyrodigal.Nodes`): The array of nodes to score.
+            min (`int`): The index of the first node from which to start
+                scoring connections.
+            i (`int`): The index of the node to score.
+            tinf (`~pyrodigal.TrainingInfo`): The training info from which
+                to read the start codon weights.
+            final (`bool`): ``False`` when the scoring occurs during training,
+                ``True`` otherwise.
+
+        """
         assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
         assert (i < <int> nodes.length) | (self.backend == simd_backend.NONE)
         assert min <= i

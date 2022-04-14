@@ -51,6 +51,7 @@ cdef class Masks:
     cpdef Masks copy(self)
     cpdef void clear(self)
 
+
 # --- Input sequence ---------------------------------------------------------
 
 cdef class Sequence:
@@ -126,6 +127,8 @@ cdef class ConnectionScorer:
     # aligned storage of node frame
     cdef uint8_t* node_frames
     cdef uint8_t* node_frames_raw
+
+    cpdef size_t __sizeof__(self)
 
     cdef int _index(self, Nodes nodes) nogil except -1
     cdef int _compute_skippable(
