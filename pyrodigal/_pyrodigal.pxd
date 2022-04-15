@@ -37,6 +37,7 @@ cdef class Masks:
     cdef size_t capacity
     cdef size_t length
 
+    cdef int _allocate(self, size_t capacity) except 1
     cdef inline _mask* _add_mask(
         self,
         const int  begin,
@@ -172,9 +173,9 @@ cdef class Node:
 
 cdef class Nodes:
     # contiguous array of nodes, with capacity and length
-    cdef _node* nodes
-    cdef size_t capacity
-    cdef size_t length
+    cdef          _node* nodes
+    cdef readonly size_t capacity
+    cdef readonly size_t length
 
     cpdef size_t __sizeof__(self)
     cpdef list __getstate__(self)

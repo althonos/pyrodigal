@@ -135,6 +135,8 @@ cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(ra
 
 TRANSLATION_TABLES = frozenset(_TRANSLATION_TABLES)
 
+cdef inline size_t new_capacity(size_t capacity) nogil:
+    return capacity + (capacity >> 3) + 6
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -242,9 +244,7 @@ cdef class Masks:
         # realloc to the exact number of masks
         self.length = self.capacity = len(state)
         if self.capacity > 0:
-            self.masks = <_mask*> PyMem_Realloc(self.masks, self.capacity * sizeof(_mask))
-            if self.masks == NULL:
-                raise MemoryError("Failed to reallocate mask array")
+            self._allocate(self.capacity)
         else:
             PyMem_Free(self.masks)
             self.masks = NULL
@@ -254,6 +254,19 @@ cdef class Masks:
             self.masks[i].begin, self.masks[i].end = mask
 
     # --- C interface -------------------------------------------------------
+
+    cdef int _allocate(self, size_t capacity) except 1:
+        # record new capacity
+        cdef size_t old_capacity = self.capacity
+        self.capacity = capacity
+        # allocate node array
+        self.masks = <_mask*> PyMem_Realloc(self.masks, self.capacity * sizeof(_mask))
+        if self.masks == NULL:
+            raise MemoryError("Failed to reallocate mask array")
+        # clean newly-allocated memory
+        if self.capacity > old_capacity:
+            memset(&self.masks[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_mask))
+        return 0
 
     cdef inline _mask* _add_mask(
         self,
@@ -267,12 +280,8 @@ cdef class Masks:
         cdef _mask* mask
 
         if self.length >= self.capacity:
-            self.capacity = MIN_MASKS_ALLOC if self.capacity == 0 else self.capacity*2
             with gil:
-                self.masks = <_mask*> PyMem_Realloc(self.masks, self.capacity * sizeof(_mask))
-                if self.masks == NULL:
-                    raise MemoryError("Failed to reallocate mask array")
-            memset(&self.masks[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_mask))
+                self._allocate(MIN_MASKS_ALLOC if self.capacity == 0 else new_capacity(self.capacity))
 
         self.length += 1
         mask = &self.masks[self.length - 1]
@@ -1530,7 +1539,7 @@ cdef class Nodes:
         # reallocate if needed
         if self.length >= self.capacity:
             with gil:
-                self._allocate(MIN_NODES_ALLOC if self.capacity == 0 else self.capacity*2)
+                self._allocate(MIN_NODES_ALLOC if self.capacity == 0 else new_capacity(self.capacity))
         # record node data
         self.length += 1
         cdef _node* node = &self.nodes[self.length - 1]
@@ -2300,9 +2309,7 @@ cdef class Nodes:
         new.capacity = self.capacity
         new.length = self.length
         if self.capacity > 0:
-            new.nodes = <_node*> PyMem_Malloc(new.capacity * sizeof(_node))
-            if new.nodes == NULL:
-                raise MemoryError("Failed to reallocate node array")
+            new._allocate(new.capacity)
             memcpy(new.nodes, self.nodes, new.length * sizeof(_node))
         return new
 
@@ -2941,7 +2948,7 @@ cdef class Genes:
         # reallocate if needed
         if self.length >= self.capacity:
             with gil:
-                self._allocate(MIN_GENES_ALLOC if self.capacity == 0 else self.capacity*2)
+                self._allocate(MIN_GENES_ALLOC if self.capacity == 0 else new_capacity(self.capacity))
         # record gene data
         self.length += 1
         cdef _gene* gene = &self.genes[self.length - 1]
