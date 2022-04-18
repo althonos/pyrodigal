@@ -10,7 +10,6 @@ from .fasta import parse
 
 
 class TestGene(unittest.TestCase):
-
     @classmethod
     def find_genes(cls, seq):
         p = OrfFinder(meta=True)

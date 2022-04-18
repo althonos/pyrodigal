@@ -6,7 +6,6 @@ from .._pyrodigal import METAGENOMIC_BINS
 
 
 class TestSequence(unittest.TestCase):
-
     def test_pickle(self):
         s1 = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
         s2 = pickle.loads(pickle.dumps(s1))

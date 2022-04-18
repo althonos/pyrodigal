@@ -12,7 +12,6 @@ from .fasta import parse
 
 
 class TestNodes(unittest.TestCase):
-
     def assertNodeEqual(self, n1, n2):
         self.assertEqual(n1.index, n2.index, "indices differ")
         self.assertEqual(n1.strand, n2.strand, "strands differ")
@@ -67,10 +66,10 @@ class TestNodes(unittest.TestCase):
         nodes1 = Nodes()
         nodes1.extract(seq, translation_table=tt)
         nodes2 = pickle.loads(pickle.dumps(nodes1))
-        self.assertEqual(len(nodes1), len(nodes2), "lengths differ")        
+        self.assertEqual(len(nodes1), len(nodes2), "lengths differ")
         for n1, n2 in zip(nodes1, nodes2):
             self.assertNodeEqual(n1, n2)
-        
+
     def test_pickle_empty(self):
         nodes1 = Nodes()
         nodes2 = pickle.loads(pickle.dumps(nodes1))

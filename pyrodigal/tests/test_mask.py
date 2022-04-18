@@ -2,8 +2,8 @@ import unittest
 
 from .. import Mask
 
-class TestMask(unittest.TestCase):
 
+class TestMask(unittest.TestCase):
     def test_repr(self):
         mask = Mask(1, 2)
         self.assertEqual(repr(mask), "<pyrodigal._pyrodigal.Mask begin=1 end=2>")

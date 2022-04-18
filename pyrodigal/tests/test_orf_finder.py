@@ -11,7 +11,6 @@ from .utils import load_record, load_proteins, load_genes
 
 
 class _OrfFinderTestCase(object):
-
     def assertGeneEqual(self, gene1, gene2):
         self.assertEqual(gene1.begin, gene2.begin)
         self.assertEqual(gene1.end, gene2.end)
@@ -100,7 +99,6 @@ class _OrfFinderTestCase(object):
 
 
 class _TestMode(_OrfFinderTestCase):
-
     def test_find_genes_KK037166(self):
         record = load_record("KK037166")
         proteins = load_proteins("KK037166", self.mode)
@@ -127,12 +125,12 @@ class _TestMode(_OrfFinderTestCase):
         preds = self.find_genes(self.get_sequence(record))
         self.assertGenesEqual(preds, genes)
         self.assertPredictionsEqual(preds, proteins)
-        
+
 
 class _TestBin(object):
     @classmethod
     def get_sequence(cls, r):
-        return r.seq.encode('ascii')
+        return r.seq.encode("ascii")
 
 
 class _TestTxt(object):
@@ -143,6 +141,7 @@ class _TestTxt(object):
 
 class _TestSingle(object):
     mode = "single"
+
     @classmethod
     def find_genes(cls, seq):
         p = OrfFinder(meta=False)
@@ -154,6 +153,7 @@ class _TestSingle(object):
 
 class _TestMeta(object):
     mode = "meta"
+
     @classmethod
     def find_genes(cls, seq):
         p = OrfFinder(meta=True)
@@ -177,7 +177,6 @@ class TestSingleBin(_TestSingle, _TestBin, _TestMode, unittest.TestCase):
 
 
 class TestOrfFinder(_OrfFinderTestCase, unittest.TestCase):
-
     def test_invalid_overlap(self):
         self.assertRaises(ValueError, OrfFinder, min_gene=10, max_overlap=100)
         self.assertRaises(ValueError, OrfFinder, max_overlap=-1)
@@ -187,7 +186,6 @@ class TestOrfFinder(_OrfFinderTestCase, unittest.TestCase):
 
 
 class TestMeta(_OrfFinderTestCase, unittest.TestCase):
-
     def test_train(self):
         record = load_record("SRR492066")
         p = OrfFinder(meta=True)
@@ -255,7 +253,9 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         record = load_record("KK037166")
         genes = load_genes("KK037166", "meta+mask")
 
-        orf_finder = OrfFinder(meta=True, min_gene=30, min_edge_gene=20, max_overlap=20, mask=True)
+        orf_finder = OrfFinder(
+            meta=True, min_gene=30, min_edge_gene=20, max_overlap=20, mask=True
+        )
         preds = orf_finder.find_genes(record.seq)
         self.assertGreaterEqual(len(preds), len(genes))
 
@@ -290,10 +290,9 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
             self.assertEqual(genes[1].start_type, "ATG")
             self.assertEqual(genes[1].begin, 426)
             self.assertEqual(genes[1].end, 590)
-        
+
 
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
-
     def test_train_info(self):
         record = load_record("SRR492066")
         p = OrfFinder(meta=False)
@@ -325,7 +324,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
             warnings.simplefilter("ignore")
             p.train(str(record.seq))
         genes = p.find_genes(str(record.seq))
-        del p # normally should not deallocate training info since it's RC
+        del p  # normally should not deallocate training info since it's RC
         self.assertEqual(genes[0].translate(), str(proteins[0].seq))
 
     def test_short_sequences(self):
@@ -357,7 +356,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p1.train(str(record.seq[:20000]))
-        # pickle/unpickle the OrfFinder 
+        # pickle/unpickle the OrfFinder
         p2 = pickle.loads(pickle.dumps(p1))
         # make sure the same genes are found
         g1 = p1.find_genes(record.seq)
@@ -365,7 +364,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         # make sure genes are the same
         self.assertEqual(len(g1), len(g2))
         for gene1, gene2 in zip(g1, g2):
-            self.assertGeneEqual(gene1, gene2)    
+            self.assertGeneEqual(gene1, gene2)
 
     def test_training_info_pickle(self):
         record = load_record("SRR492066")
@@ -374,7 +373,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p1.train(str(record.seq[:20000]))
-        # pickle/unpickle the TrainingInfo 
+        # pickle/unpickle the TrainingInfo
         ti = pickle.loads(pickle.dumps(p1.training_info))
         p2 = OrfFinder(meta=False, training_info=ti, min_gene=60)
         # make sure the same genes are found

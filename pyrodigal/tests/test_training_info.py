@@ -14,7 +14,6 @@ from .utils import load_record
 
 
 class TestTrainingInfo(unittest.TestCase):
-
     def assertTrainingInfoEqual(self, t1, t2):
         self.assertEqual(t1.translation_table, t2.translation_table)
         self.assertEqual(t1.gc, t2.gc)

@@ -1,20 +1,29 @@
 import threading
 import typing
-from typing import FrozenSet, Iterable, Iterator, List, Dict, Optional, TextIO, Tuple, Union
+from typing import (
+    FrozenSet,
+    Iterable,
+    Iterator,
+    List,
+    Dict,
+    Optional,
+    TextIO,
+    Tuple,
+    Union,
+)
 
 # --- Globals ----------------------------------------------------------------
 
-_TARGET_CPU           : str
-_AVX2_RUNTIME_SUPPORT : bool
-_NEON_RUNTIME_SUPPORT : bool
-_SSE2_RUNTIME_SUPPORT : bool
-_AVX2_BUILD_SUPPORT   : bool
-_NEON_BUILD_SUPPORT   : bool
-_SSE2_BUILD_SUPPORT   : bool
+_TARGET_CPU: str
+_AVX2_RUNTIME_SUPPORT: bool
+_NEON_RUNTIME_SUPPORT: bool
+_SSE2_RUNTIME_SUPPORT: bool
+_AVX2_BUILD_SUPPORT: bool
+_NEON_BUILD_SUPPORT: bool
+_SSE2_BUILD_SUPPORT: bool
 
-TRANSLATION_TABLES    : FrozenSet[int]
-METAGENOMIC_BINS      : Tuple[MetagenomicBin]
-
+TRANSLATION_TABLES: FrozenSet[int]
+METAGENOMIC_BINS: Tuple[MetagenomicBin]
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -59,7 +68,7 @@ class Sequence(typing.Sized):
         start: int,
         training_info: TrainingInfo,
         strand: int = 1,
-        exact: bool = True
+        exact: bool = True,
     ) -> int: ...
 
 # --- Connection Scorer ------------------------------------------------------
@@ -68,7 +77,9 @@ class ConnectionScorer:
     def __init__(self, backend: str = "detect") -> None: ...
     def index(self, nodes: Nodes) -> None: ...
     def compute_skippable(self, min: int, i: int) -> None: ...
-    def score_connections(self, nodes: Nodes, min: int, i: int, tinf: TrainingInfo, final: bool = False) -> None: ...
+    def score_connections(
+        self, nodes: Nodes, min: int, i: int, tinf: TrainingInfo, final: bool = False
+    ) -> None: ...
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -176,7 +187,9 @@ class Gene:
     def score(self) -> float: ...
     def confidence(self) -> float: ...
     def sequence(self) -> str: ...
-    def translate(self, translation_table: Optional[int] = None, unknown_residue: str = "X") -> str: ...
+    def translate(
+        self, translation_table: Optional[int] = None, unknown_residue: str = "X"
+    ) -> str: ...
 
 class Genes(typing.Sequence[Gene]):
     def __bool__(self) -> int: ...
@@ -189,17 +202,26 @@ class Genes(typing.Sequence[Gene]):
     def __setstate__(self, state: Dict[str, object]) -> None: ...
     def clear(self) -> None: ...
     def write_gff(self, file: TextIO, prefix: str = "gene_") -> int: ...
-    def write_genes(self, file: TextIO, prefix: str ="gene_", width: typing.Optional[int] = 70) -> int: ...
-    def write_translations(self, file: TextIO, prefix: str = "gene_", width: typing.Optional[int] = 60, translation_table: typing.Optional[int] = None) -> int: ...
+    def write_genes(
+        self, file: TextIO, prefix: str = "gene_", width: typing.Optional[int] = 70
+    ) -> int: ...
+    def write_translations(
+        self,
+        file: TextIO,
+        prefix: str = "gene_",
+        width: typing.Optional[int] = 60,
+        translation_table: typing.Optional[int] = None,
+    ) -> int: ...
     def write_scores(self, file: TextIO, header: bool = True) -> int: ...
-
 
 # --- Training Info ----------------------------------------------------------
 
 class TrainingInfo:
     @classmethod
     def load(cls, fp: typing.BinaryIO) -> TrainingInfo: ...
-    def __init__(self, gc: float, start_weight: float = 4.35, translation_table: int = 11) -> None: ...
+    def __init__(
+        self, gc: float, start_weight: float = 4.35, translation_table: int = 11
+    ) -> None: ...
     def __repr__(self) -> str: ...
     def __getstate__(self) -> Dict[str, object]: ...
     def __setstate__(self, state: Dict[str, object]) -> None: ...
@@ -230,7 +252,6 @@ class TrainingInfo:
     def start_weight(self, st_wt: float) -> None: ...
     def dump(self, fp: typing.BinaryIO) -> None: ...
 
-
 # --- Metagenomic Bins -------------------------------------------------------
 
 class MetagenomicBin:
@@ -240,7 +261,6 @@ class MetagenomicBin:
     def index(self) -> int: ...
     @property
     def description(self) -> str: ...
-
 
 # --- Pyrodigal --------------------------------------------------------------
 
@@ -275,10 +295,7 @@ class OrfFinder:
     def min_edge_gene(self) -> int: ...
     @property
     def max_overlap(self) -> int: ...
-    def find_genes(
-        self,
-        sequence: Union[Sequence, str, bytes, bytearray]
-    ) -> Genes: ...
+    def find_genes(self, sequence: Union[Sequence, str, bytes, bytearray]) -> Genes: ...
     def train(
         self,
         sequence: Union[Sequence, str, bytes, bytearray],

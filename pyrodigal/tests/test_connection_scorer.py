@@ -11,7 +11,6 @@ from .fasta import parse
 
 
 class TestConnectionScorer(unittest.TestCase):
-
     def assertNodeEqual(self, n1, n2):
         self.assertEqual(n1.index, n2.index)
         self.assertEqual(n1.strand, n2.strand)
@@ -33,8 +32,12 @@ class TestConnectionScorer(unittest.TestCase):
             cls.record = next(parse(f))
 
     @unittest.skipUnless(_pyrodigal._TARGET_CPU == "x86", "requires x86 CPU")
-    @unittest.skipUnless(_pyrodigal._SSE2_BUILD_SUPPORT, "requires extension compiled with SSE2 support")
-    @unittest.skipUnless(_pyrodigal._SSE2_RUNTIME_SUPPORT, "requires machine with SSE2 support")
+    @unittest.skipUnless(
+        _pyrodigal._SSE2_BUILD_SUPPORT, "requires extension compiled with SSE2 support"
+    )
+    @unittest.skipUnless(
+        _pyrodigal._SSE2_RUNTIME_SUPPORT, "requires machine with SSE2 support"
+    )
     def test_score_connections_sse(self):
         # setup
         seq = Sequence.from_string(self.record.seq)
@@ -65,8 +68,12 @@ class TestConnectionScorer(unittest.TestCase):
             self.assertNodeEqual(n1, n2)
 
     @unittest.skipUnless(_pyrodigal._TARGET_CPU == "x86", "requires x86 CPU")
-    @unittest.skipUnless(_pyrodigal._AVX2_BUILD_SUPPORT, "requires extension compiled with AVX2 support")
-    @unittest.skipUnless(_pyrodigal._AVX2_RUNTIME_SUPPORT, "requires machine with AVX2 support")
+    @unittest.skipUnless(
+        _pyrodigal._AVX2_BUILD_SUPPORT, "requires extension compiled with AVX2 support"
+    )
+    @unittest.skipUnless(
+        _pyrodigal._AVX2_RUNTIME_SUPPORT, "requires machine with AVX2 support"
+    )
     def test_score_connections_avx(self):
         # setup
         seq = Sequence.from_string(self.record.seq)
@@ -96,9 +103,15 @@ class TestConnectionScorer(unittest.TestCase):
         for n1, n2 in zip(nodes_avx, nodes_none):
             self.assertNodeEqual(n1, n2)
 
-    @unittest.skipUnless(_pyrodigal._TARGET_CPU in ("arm", "aarch64"), "requires ARM CPU")
-    @unittest.skipUnless(_pyrodigal._NEON_BUILD_SUPPORT, "requires extension compiled with NEON support")
-    @unittest.skipUnless(_pyrodigal._NEON_RUNTIME_SUPPORT, "requires machine with NEON support")
+    @unittest.skipUnless(
+        _pyrodigal._TARGET_CPU in ("arm", "aarch64"), "requires ARM CPU"
+    )
+    @unittest.skipUnless(
+        _pyrodigal._NEON_BUILD_SUPPORT, "requires extension compiled with NEON support"
+    )
+    @unittest.skipUnless(
+        _pyrodigal._NEON_RUNTIME_SUPPORT, "requires machine with NEON support"
+    )
     def test_score_connections_neon(self):
         # setup
         seq = Sequence.from_string(self.record.seq)

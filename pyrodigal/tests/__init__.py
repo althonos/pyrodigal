@@ -9,6 +9,7 @@ from . import (
     test_training_info,
 )
 
+
 def load_tests(loader, suite, pattern):
     suite.addTests(loader.loadTestsFromModule(test_connection_scorer))
     suite.addTests(loader.loadTestsFromModule(test_gene))

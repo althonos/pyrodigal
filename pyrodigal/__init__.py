@@ -54,4 +54,6 @@ if __doc__ is not None:
     of the library on
     `Read The Docs <https://pyrodigal.readthedocs.io/en/v{}/>`_.
 
-    """.format(__version__)
+    """.format(
+        __version__
+    )
