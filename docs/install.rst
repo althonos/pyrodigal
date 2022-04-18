@@ -19,7 +19,7 @@ one is available, or from source after compiling the Cython code :
 
 .. code:: console
 
-	$ pip install --user pyrodigal
+   $ pip install --user pyrodigal
 
 Conda
 ^^^^^
@@ -30,7 +30,22 @@ use the ``conda`` installer:
 
 .. code:: console
 
-	 $ conda install -c bioconda pyrodigal
+   $ conda install -c bioconda pyrodigal
+
+
+Arch User Repository
+^^^^^^^^^^^^^^^^^^^^
+
+A package recipe for Arch Linux can be found in the Arch User Repository
+under the name `python-pyrodigal <https://aur.archlinux.org/packages/python-pyrodigal>`_.
+It will always match the latest release from PyPI.
+
+Steps to install on ArchLinux depend on your `AUR helper <https://wiki.archlinux.org/title/AUR_helpers>`_ 
+(``yaourt``, ``aura``, ``yay``, etc.). Steps for ``aura`` are:
+
+.. console::
+
+    $ aura -A python-pyrodigal
 
 
 GitHub + ``pip``
@@ -41,8 +56,8 @@ the repository and install the repository by running (with the admin rights):
 
 .. code:: console
 
-  $ git clone --recursive https://github.com/althonos/pyrodigal
-	$ pip install --user ./pyrodigal
+   $ git clone --recursive https://github.com/althonos/pyrodigal
+   $ pip install --user ./pyrodigal
 
 .. caution::
 
@@ -59,10 +74,10 @@ build dependencies (mainly `Cython <https://pypi.org/project/cython>`_):
 
 .. code:: console
 
-	$ git clone --recursive https://github.com/althonos/pyrodigal
-	$ cd pyrodigal
-	$ python setup.py build_ext
-	# python setup.py install
+   $ git clone --recursive https://github.com/althonos/pyrodigal
+   $ cd pyrodigal
+   $ python setup.py build_ext
+   # python setup.py install
 
 .. Danger::
 
