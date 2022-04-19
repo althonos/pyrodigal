@@ -79,7 +79,7 @@ regarding memory management:
   that the sequence itself takes 3/8th more space, but since the memory used
   for storing the sequence is often negligible compared to the memory used to
   store dynamic programming nodes, this is an acceptable trade-off for better
-  performance when finding the start and stop nodes.
+  performance when extracting said nodes.
 * Node arrays are dynamically allocated and grow exponentially instead of
   being pre-allocated with a large size. On small sequences, this leads to
   Pyrodigal using about 30% less memory.
@@ -96,6 +96,7 @@ method is re-entrant. This means you can train an
 [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
 instance once, and then use a pool to process sequences in parallel:
 ```python
+import multiprocessing.pool
 import pyrodigal
 
 orf_finder = pyrodigal.OrfFinder()
@@ -130,21 +131,31 @@ format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder) in single mode, you must explicitly call the
+To use the [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder) 
+in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal), 
+you must explicitly call the
 [`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.train) method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
+import Bio.SeqIO
+import pyrodigal
+
+record = Bio.SeqIO.read("sequence.gbk", "genbank")
+
 orf_finder = pyrodigal.OrfFinder()
 orf_finder.train(bytes(record.seq))
 genes = orf_finder.find_genes(bytes(record.seq))
 ```
 
-However, in `meta` mode, you can find genes directly:
+However, in `meta` mode (corresponding to `prodigal -p meta`), you can find genes directly:
 ```python
-record = Bio.SeqIO.read("sequence.gbk", "genbank")
-orf_finder = pyrodigal.OrfFinder(meta=True)
+import Bio.SeqIO
+import pyrodigal
 
+record = Bio.SeqIO.read("sequence.gbk", "genbank")
+
+orf_finder = pyrodigal.OrfFinder(meta=True)
 for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
@@ -157,9 +168,12 @@ for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
 ### 🧪 [Scikit-bio](https://github.com/biocore/scikit-bio)
 
 ```python
-seq = next(skbio.io.read("sequence.gbk", "genbank"))
-orf_finder = pyrodigal.OrfFinder(meta=True)
+import skbio.io
+import pyrodigal
 
+seq = next(skbio.io.read("sequence.gbk", "genbank"))
+
+orf_finder = pyrodigal.OrfFinder(meta=True)
 for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
