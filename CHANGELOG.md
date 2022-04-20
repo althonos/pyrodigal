@@ -6,7 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.0.0...HEAD
+
+
+## [v1.0.0] - 2022-04-20
+[v1.0.0]: https://github.com/althonos/pyrodigal/compare/v0.7.3...v1.0.0
+
+Stable version, to be published in the [Journal of Open-Source Software](https://joss.theoj.org/).
+
+### Added
+- `pickle` protocol implementation for `Nodes`, `TrainingInfo`, `OrfFinder`, `Sequence`, `Masks` and `Genes` objects.
+- Buffer protocol implementation for `Sequence`, allowing access to raw digits.
+- `__eq__` and `__repr__` magic methods to `Mask` objects.
+
+### Changed
+- Optimized code used for region masking to avoid searching for the same mask repeatedly.
+- `TRANSLATION_TABLES` and `METAGENOMIC_BINS` are now exposed as constants in the top `pyrodigal` module.
+- Refactored connection scoring into different functions based on the type (start/stop) and strand (direct/reverse) of the node being scored.
+- Changed the growth factor for dynamic arrays to be the same as the one used in CPython `list` buffers.
 
 
 ## [v0.7.3] - 2022-04-06
