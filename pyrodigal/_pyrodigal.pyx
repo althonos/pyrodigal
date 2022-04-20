@@ -15,8 +15,8 @@ Example:
         ...     record = Bio.SeqIO.read(f, "fasta")
 
     Then use Pyrodigal to find the genes in *metagenomic* mode (without
-    training first), and then build a map of codon frequencies for each
-    gene::
+    training first), for instance to build a map of codon frequencies for
+    each gene::
 
         >>> from collections import Counter
         >>> import pyrodigal

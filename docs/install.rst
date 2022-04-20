@@ -40,10 +40,10 @@ A package recipe for Arch Linux can be found in the Arch User Repository
 under the name `python-pyrodigal <https://aur.archlinux.org/packages/python-pyrodigal>`_.
 It will always match the latest release from PyPI.
 
-Steps to install on ArchLinux depend on your `AUR helper <https://wiki.archlinux.org/title/AUR_helpers>`_ 
-(``yaourt``, ``aura``, ``yay``, etc.). Steps for ``aura`` are:
+Steps to install on ArchLinux depend on your `AUR helper <https://wiki.archlinux.org/title/AUR_helpers>`_
+(``yaourt``, ``aura``, ``yay``, etc.). For ``aura``, you'll need to run:
 
-.. console::
+.. code:: console
 
     $ aura -A python-pyrodigal
 
