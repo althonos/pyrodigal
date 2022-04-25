@@ -1,5 +1,5 @@
 ---
-title: 'Pyrodigal: Python bindings and interface to Prodigal, an efficient method for gene prediction in prokaryotes.'
+title: 'Pyrodigal: Python bindings and interface to Prodigal, an efficient method for gene prediction in prokaryotes'
 tags:
   - Python
   - Cython
@@ -20,7 +20,7 @@ bibliography: paper.bib
 
 Improvements in sequencing technologies have seen the amount of available
 genomic data expand considerably over the last twenty years. One of the key
-step for analysing is the prediction of protein-coding regions in genomic
+steps for analysing is the prediction of protein-coding regions in genomic
 sequences, known as Open Reading Frames (ORFs), which span between
 a start and a stop codon. A recent comparison of several ORF prediction methods
 [@AssessORF:2019] has shown that Prodigal [@Prodigal:2010], a prokaryotic gene
