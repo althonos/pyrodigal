@@ -79,6 +79,7 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
+    "sphinx.ext.extlinks",
     "sphinx_bootstrap_theme",
     "nbsphinx",
     "recommonmark",
@@ -214,3 +215,12 @@ nbsphinx_execute_arguments = [
     "--InlineBackend.figure_formats={'svg', 'pdf'}",
     "--InlineBackend.rc={'figure.dpi': 96}",
 ]
+
+# -- Options for extlinks extension ------------------------------------------
+
+extlinks = {
+    'doi': ('https://doi.org/%s', 'doi:'),
+    'pmid': ('https://pubmed.ncbi.nlm.nih.gov/%s', 'PMID:'),
+    'pmc': ('https://pubmed.ncbi.nlm.nih.gov/%s', 'PMID:'),
+    'isbn': ('https://www.worldcat.org/isbn/%s', 'ISBN:'),
+}
