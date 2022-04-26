@@ -10,6 +10,10 @@ sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
 import tqdm
 
+
+sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
+
+
 from pyrodigal import Nodes, Sequence
 from pyrodigal._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
 from pyrodigal.tests.fasta import parse

@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 import scipy.stats
 from palettable.cartocolors.qualitative import Bold_4
 
-plt.rcParams["svg.fonttype"] = "none"
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", required=True)
@@ -44,6 +42,7 @@ for color, (backend, group) in zip(
     plt.plot([ 0, max(X) ], [ reg.intercept, reg.slope*max(X) + reg.intercept ], color=color, linestyle="--", marker="")
     # ci = [1.96 * r["stddev"] / math.sqrt(len(r["times"])) for r in group]
     plt.scatter(X, Y, marker="+", color=color, label=f"{backend} (R²={reg.rvalue**2:.3f})")
+
 plt.legend()
 plt.xlabel("Node count")
 plt.ylabel("Time (s)")
@@ -61,11 +60,13 @@ for color, (backend, group) in zip(
     plt.plot([ 0, max(X) ], [ reg.intercept, reg.slope*max(X) + reg.intercept ], color=color, linestyle="--", marker="")
     # ci = [1.96 * r["stddev"] / math.sqrt(len(r["times"])) for r in group]
     plt.scatter(X, Y, marker="+", color=color, label=f"{backend} (R²={reg.rvalue**2:.3f})")
+
 plt.legend()
 plt.xlabel("Nucleotide count (Mbp)")
 plt.ylabel("Time (s)")
 
 
+plt.tight_layout()
 output = args.output or args.input.replace(".json", ".svg")
 plt.savefig(output, transparent=True)
 if args.show:
