@@ -57,7 +57,7 @@ Pyrodigal |Stars|
 .. |Downloads| image:: https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal
    :target: https://pepy.tech/project/pyrodigal
 
-.. |Paper| image:: https://img.shields.io/badge/paper-JOSS-darkblue?style=flat-square&maxAge=86400
+.. |Paper| image:: https://img.shields.io/badge/paper-JOSS-9400ff?style=flat-square&maxAge=86400
    :target: https://doi.org/10.21105/joss.04296
 
 
