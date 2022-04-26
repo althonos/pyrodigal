@@ -11,12 +11,13 @@ Example:
 
         >>> import gzip
         >>> import Bio.SeqIO
-        >>> with gzip.open("pyrodigal/tests/data/KK037166.fna.gz", "rt") as f:
+        >>> seq_path = "pyrodigal/tests/data/KK037166.fna.gz"
+        >>> with gzip.open(seq_path, "rt") as f:
         ...     record = Bio.SeqIO.read(f, "fasta")
 
     Then use Pyrodigal to find the genes in *metagenomic* mode (without
-    training first), for instance to build a map of codon frequencies for
-    each gene::
+    training first), for instance to build a map of codon frequencies
+    for each gene::
 
         >>> from collections import Counter
         >>> import pyrodigal
@@ -48,10 +49,10 @@ References:
     - Larralde, M.
       *Pyrodigal: Python bindings and interface to Prodigal, an efficient
       method for gene prediction in prokaryotes*. Journal of Open Source
-      Software 7, no. 72 (25 April 2022): 4296. :doi:`10.21105/joss.04296`.
+      Software 7, no. 72 (25 April 2022). :doi:`10.21105/joss.04296`.
     - Hyatt D, Chen GL, Locascio PF, Land ML, Larimer FW, Hauser LJ.
-      *Prodigal: prokaryotic gene recognition and translation initiation site
-      identification’. BMC Bioinformatics 11, no. 1 (December 2010): 119.
+      *Prodigal: prokaryotic gene recognition and translation initiation
+      site identification*. BMC Bioinformatics 11, no. 1 (December 2010).
       :doi:`10.1186/1471-2105-11-119`. :pmid:`20211023`. :pmc:`2848648`.
 
 """
