@@ -7,7 +7,7 @@ Pyrodigal |Stars|
 *Cython bindings and Python interface to* `Prodigal <https://github.com/hyattpd/Prodigal/>`_,
 *an ORF finder for genomes and metagenomes*. **Now with SIMD!**
 
-|Actions| |Coverage| |PyPI| |Bioconda| |AUR| |Wheel| |Versions| |Implementations| |License| |Source| |Mirror| |Issues| |Docs| |Changelog| |Downloads| |DOI|
+|Actions| |Coverage| |PyPI| |Bioconda| |AUR| |Wheel| |Versions| |Implementations| |License| |Source| |Mirror| |Issues| |Docs| |Changelog| |Downloads| |Paper|
 
 .. |Actions| image:: https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/main?logo=github&style=flat-square&maxAge=300
    :target: https://github.com/althonos/pyrodigal/actions
@@ -57,8 +57,8 @@ Pyrodigal |Stars|
 .. |Downloads| image:: https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal
    :target: https://pepy.tech/project/pyrodigal
 
-.. |DOI| image:: https://img.shields.io/badge/doi-10.5281%2Fzenodo.4015169-purple?style=flat-square&maxAge=86400
-   :target: https://doi.org/10.5281/zenodo.4015169
+.. |Paper| image:: https://img.shields.io/badge/paper-JOSS-darkblue?style=flat-square&maxAge=86400
+   :target: https://doi.org/10.21105/joss.04296
 
 
 Overview

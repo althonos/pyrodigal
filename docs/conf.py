@@ -221,6 +221,6 @@ nbsphinx_execute_arguments = [
 extlinks = {
     'doi': ('https://doi.org/%s', 'doi:'),
     'pmid': ('https://pubmed.ncbi.nlm.nih.gov/%s', 'PMID:'),
-    'pmc': ('https://pubmed.ncbi.nlm.nih.gov/%s', 'PMID:'),
+    'pmc': ('https://www.ncbi.nlm.nih.gov/pmc/articles/PMC%s', 'PMC'),
     'isbn': ('https://www.worldcat.org/isbn/%s', 'ISBN:'),
 }

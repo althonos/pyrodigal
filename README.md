@@ -17,7 +17,7 @@ finder for genomes and metagenomes. **Now with SIMD!***
 [![Docs](https://img.shields.io/readthedocs/pyrodigal/latest?style=flat-square&maxAge=600)](https://pyrodigal.readthedocs.io)
 [![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md)
 [![Downloads](https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal)](https://pepy.tech/project/pyrodigal)
-[![DOI](https://img.shields.io/badge/doi-10.5281%2Fzenodo.4015169-purple?style=flat-square&maxAge=86400)](https://doi.org/10.5281/zenodo.4015169)
+[![Paper](https://img.shields.io/badge/paper-JOSS-darkblue?style=flat-square&maxAge=86400)](https://doi.org/10.21105/joss.04296)
 
 
 ## 🗺️ Overview
@@ -131,8 +131,8 @@ format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder) 
-in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal), 
+To use the [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal),
 you must explicitly call the
 [`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.train) method
 with the sequence you want to use for training before trying to find genes,
@@ -182,6 +182,20 @@ for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
 *We need to use the [`view`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.view.html)
 method to get the sequence viewable by Cython as an array of `unsigned char`.*
 
+
+## 🔖 Citation
+
+Pyrodigal is scientific software, with a
+[published paper](https://doi.org/10.21105/joss.04296)
+in the [Journal of Open-Source Software](https://joss.theoj.org/). Please
+cite both [Pyrodigal](https://doi.org/10.21105/joss.04296)
+and [Prodigal](https://doi.org/10.1186/1471-2105-11-119) if you are using it in
+an academic work, for instance as:
+
+> Pyrodigal (Larralde, 2022), a Python library binding to Prodigal (Hyatt *et al.*, 2010).
+
+Detailed references are available on the [Publications page](https://pyrodigal.readthedocs.io/en/stable/publications.html) of the
+[online documentation](https://pyrodigal.readthedocs.io/).
 
 ## 💭 Feedback
 

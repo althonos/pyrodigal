@@ -37,11 +37,22 @@ Caution:
     symbol will be treated as an unknown nucleotide. Be careful to remove
     the gap characters if loading sequences from a multiple alignment file.
 
+Note:
+    To cite Pyrodigal, please cite both the original method and the short
+    paper for the Python library itself, for instance as:
+
+      Pyrodigal (Larralde, 2022), a Python library binding to Prodigal
+      (Hyatt *et al.*, 2010).
+
 References:
+    - Larralde, M.
+      *Pyrodigal: Python bindings and interface to Prodigal, an efficient
+      method for gene prediction in prokaryotes*. Journal of Open Source
+      Software 7, no. 72 (25 April 2022): 4296. :doi:`10.21105/joss.04296`.
     - Hyatt D, Chen GL, Locascio PF, Land ML, Larimer FW, Hauser LJ.
-      *Prodigal: prokaryotic gene recognition and translation initiation
-      site identification.* BMC Bioinformatics. 2010 Mar 8;11:119.
-      doi:10.1186/1471-2105-11-119. PMID:20211023. PMCID:PMC2848648.
+      *Prodigal: prokaryotic gene recognition and translation initiation site
+      identification’. BMC Bioinformatics 11, no. 1 (December 2010): 119.
+      :doi:`10.1186/1471-2105-11-119`. :pmid:`20211023`. :pmc:`2848648`.
 
 """
 
