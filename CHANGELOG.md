@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.0.1...HEAD
+
+
+## [v1.0.1] - 2022-04-28
+[v1.0.1]: https://github.com/althonos/pyrodigal/compare/v1.0.0...v1.0.1
+
+### Changed
+- `pyrodigal.cli` now concatenates training sequences the same way as Prodigal does.
 
 
 ## [v1.0.0] - 2022-04-20
