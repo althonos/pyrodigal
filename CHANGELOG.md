@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.0.2...HEAD
+
+
+## [v1.0.2] - 2022-05-13
+[v1.0.2]: https://github.com/althonos/pyrodigal/compare/v1.0.1...v1.0.2
+
+### Fixed
+- Detection of Arm64 platform in `setup.py` ([#16](https://github.com/althonos/pyrodigal/issues/16)).
 
 
 ## [v1.0.1] - 2022-04-28
