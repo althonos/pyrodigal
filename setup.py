@@ -27,10 +27,10 @@ SYSTEM  = platform.system()
 MACHINE = platform.machine()
 if re.match("^mips", MACHINE):
     TARGET_CPU = "mips"
+elif re.match("^(aarch64|arm64)$", MACHINE):
+    TARGET_CPU = "aarch64"
 elif re.match("^arm", MACHINE):
     TARGET_CPU = "arm"
-elif re.match("^aarch64", MACHINE):
-    TARGET_CPU = "aarch64"
 elif re.match("(x86_64)|(AMD64|amd64)|(^i.86$)", MACHINE):
     TARGET_CPU = "x86"
 elif re.match("^(powerpc|ppc)", MACHINE):
