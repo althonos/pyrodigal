@@ -23,7 +23,6 @@ except ImportError as err:
 
 # --- Constants -----------------------------------------------------------------
 
-SYSTEM  = platform.system()
 MACHINE = platform.machine()
 if re.match("^mips", MACHINE):
     TARGET_CPU = "mips"
@@ -35,6 +34,20 @@ elif re.match("(x86_64)|(AMD64|amd64)|(^i.86$)", MACHINE):
     TARGET_CPU = "x86"
 elif re.match("^(powerpc|ppc)", MACHINE):
     TARGET_CPU = "ppc"
+else:
+    TARGET_CPU = None
+
+SYSTEM  = platform.system()
+if SYSTEM == "Linux" or SYSTEM == "Java":
+    TARGET_SYSTEM = "linux_or_android"
+elif SYSTEM.endswith("FreeBSD"):
+    TARGET_SYSTEM = "freebsd"
+elif SYSTEM == "Darwin":
+    TARGET_SYSTEM = "macos"
+elif SYSTEM.startswith(("Windows", "MSYS", "MINGW", "CYGWIN")):
+    TARGET_SYSTEM = "windows"
+else:
+    TARGET_SYSTEM = None
 
 # --- Utils ------------------------------------------------------------------
 
@@ -271,6 +284,7 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
                 "TARGET_CPU": TARGET_CPU,
+                "TARGET_SYSTEM": TARGET_SYSTEM,
                 "AVX2_BUILD_SUPPORT": False,
                 "NEON_BUILD_SUPPORT": False,
                 "SSE2_BUILD_SUPPORT": False,
@@ -524,18 +538,18 @@ setuptools.setup(
         ),
         Library(
             "cpu_features",
-            sources=[
+            sources=list(filter(os.path.exists, [
                 os.path.join("vendor", "cpu_features", "src", "{}.c".format(base))
                 for base in [
-                    "cpuinfo_{}".format(TARGET_CPU),
+                    "impl_{}_{}".format(TARGET_CPU, TARGET_SYSTEM),
                     "filesystem",
                     "stack_line_reader",
                     "string_view",
                 ]
-            ],
+            ])),
             include_dirs=[os.path.join("vendor", "cpu_features", "include")],
             define_macros=[("STACK_LINE_READER_BUFFER_SIZE", 1024)]
-        )
+        ),
     ],
     ext_modules=[
         Extension(

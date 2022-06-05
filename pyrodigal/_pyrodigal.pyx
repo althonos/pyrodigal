@@ -108,17 +108,12 @@ from pyrodigal._connection cimport (
 )
 from pyrodigal.impl.generic cimport skippable_generic
 
-IF TARGET_CPU == "x86":
-    from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
-    IF SSE2_BUILD_SUPPORT:
-        from pyrodigal.impl.sse cimport skippable_sse
-    IF AVX2_BUILD_SUPPORT:
-        from pyrodigal.impl.avx cimport skippable_avx
-ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
-    IF TARGET_CPU == "arm":
-        from pyrodigal.cpu_features.arm cimport GetArmInfo, ArmInfo
-    IF NEON_BUILD_SUPPORT:
-        from pyrodigal.impl.neon cimport skippable_neon
+IF SSE2_BUILD_SUPPORT:
+    from pyrodigal.impl.sse cimport skippable_sse
+IF AVX2_BUILD_SUPPORT:
+    from pyrodigal.impl.avx cimport skippable_avx
+IF NEON_BUILD_SUPPORT:
+    from pyrodigal.impl.neon cimport skippable_neon
 
 IF SYS_IMPLEMENTATION_NAME == "pypy":
     cdef int MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
@@ -911,19 +906,26 @@ _AVX2_BUILD_SUPPORT   = False
 _NEON_BUILD_SUPPORT   = False
 _SSE2_BUILD_SUPPORT   = False
 
-IF TARGET_CPU == "x86":
+IF TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
+    from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
     cdef X86Info cpu_info = GetX86Info()
-    _SSE2_RUNTIME_SUPPORT = cpu_info.features.sse2 != 0
-    _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
     _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
     _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
-ELIF TARGET_CPU == "arm":
+    _SSE2_RUNTIME_SUPPORT = cpu_info.features.sse2 != 0
+    _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
+ELIF TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
+    from pyrodigal.cpu_features.arm cimport GetArmInfo, ArmInfo
     cdef ArmInfo cpu_info = GetArmInfo()
+    _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT = cpu_info.features.neon != 0
+ELIF TARGET_CPU == "aarch64" and TARGET_SYSTEM == "linux_or_android":
+    from pyrodigal.cpu_features.arm cimport GetAarch64Info, Aarch64Info
+    cdef Aarch64Info cpu_info = GetAarch64Info()
+    _NEON_BUILD_SUPPORT       = NEON_BUILD_SUPPORT
+    _NEON_RUNTIME_SUPPORT     = cpu_info.features.asimd != 0
+ELIF TARGET_CPU == "aarch64" and TARGET_SYSTEM == "macos":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
-ELIF TARGET_CPU == "aarch64":
     _NEON_RUNTIME_SUPPORT = True
-    _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
 
 cdef enum simd_backend:
     NONE = 0
