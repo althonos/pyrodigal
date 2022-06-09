@@ -920,13 +920,13 @@ ELIF TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT = cpu_info.features.neon != 0
 ELIF TARGET_CPU == "aarch64" and TARGET_SYSTEM == "linux_or_android":
-    from pyrodigal.cpu_features.arm cimport GetAarch64Info, Aarch64Info
+    from pyrodigal.cpu_features.aarch64 cimport GetAarch64Info, Aarch64Info
     cdef Aarch64Info cpu_info = GetAarch64Info()
     _NEON_BUILD_SUPPORT       = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT     = cpu_info.features.asimd != 0
 ELIF TARGET_CPU == "aarch64" and TARGET_SYSTEM == "macos":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
-    _NEON_RUNTIME_SUPPORT = True
+    _NEON_RUNTIME_SUPPORT = NEON_BUILD_SUPPORT
 
 cdef enum simd_backend:
     NONE = 0
