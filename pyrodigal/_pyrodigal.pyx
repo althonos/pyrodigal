@@ -124,9 +124,10 @@ ELSE:
 
 # ----------------------------------------------------------------------------
 
-import warnings
+import itertools
 import textwrap
 import threading
+import warnings
 
 include "_version.py"
 
@@ -4697,14 +4698,19 @@ cdef class OrfFinder:
     def train(
         self,
         object sequence,
-        *,
+        *sequences,
         bint force_nonsd=False,
         double start_weight=4.35,
         int translation_table=11
     ):
-        """train(self, sequence, *, force_nonsd=False, start_weight=4.35, translation_table=11)\n--
+        """train(self, sequence, *sequences, force_nonsd=False, start_weight=4.35, translation_table=11)\n--
 
         Search parameters for the ORF finder using a training sequence.
+
+        If more than one sequence is provided, it is assumed that they are
+        different contigs part of the same genome. Like in the original
+        Prodigal implementation, they will be merged together in a single
+        sequence joined by ``TTAATTAATTAA`` linkers.
 
         Arguments:
             sequence (`str` or buffer): The nucleotide sequence to use,
@@ -4754,8 +4760,12 @@ cdef class OrfFinder:
         if isinstance(sequence, Sequence):
             seq = sequence
         elif isinstance(sequence, str):
+            if sequences:
+                sequence = "TTAATTAATTAA".join(itertools.chain([sequence], sequences, [""]))
             seq = Sequence.from_string(sequence, mask=self.mask)
         else:
+            if sequences:
+                sequence = b"TTAATTAATTAA".join(itertools.chain([sequence], sequences, [b""]))
             seq = Sequence.from_bytes(sequence, mask=self.mask)
 
         # check sequence length
