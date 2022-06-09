@@ -145,25 +145,21 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
             # pre-train if in training mode
             if args.p == "single":
                 # use the same interleaving logic as Prodigal
-                sequences = [] 
-                for i, seq in enumerate(parse(args.i)):
-                    if i > 0:
-                        sequences.append("TTAATTAATTAA")
-                    sequences.append(seq.seq)
-                if len(sequences) > 1:
-                    sequences.append("TTAATTAATTAA")
+                sequences = list(parse(args.i))
                 training_info = pyrodigal.train(
-                    "".join(sequences),
+                    *(seq.seq for seq in sequences),
                     force_nonsd=args.n,
-                    translation_table=args.g                    
+                    translation_table=args.g
                 )
                 # save the training info is desired
                 if args.t is not None and not os.path.exists(args.t):
                     with open(args.t, "wb") as f:
                         training_info.dump(f)
+            else:
+                sequences = parse(args.i)
 
             # find genes
-            for i, seq in enumerate(parse(args.i)):
+            for i, seq in enumerate(sequences):
                 # find genes with Pyrodigal
                 preds = pyrodigal.find_genes(seq.seq)
                 # write output in GFF format
