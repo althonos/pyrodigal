@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.1.0...HEAD
+
+
+## [v1.1.0] - 2022-06-09
+[v1.1.0]: https://github.com/althonos/pyrodigal/compare/v1.0.2...v1.1.0
+
+### Changed
+- `OrfFinder.train` can now be given more than one sequence argument to train on contigs from an unclosed genome.
+- Updated `cpu_features` to `v0.7.0` and added hardware detection of NEON features on Linux Aarch64 platforms.
 
 
 ## [v1.0.2] - 2022-05-13
