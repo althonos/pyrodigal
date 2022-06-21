@@ -56,6 +56,17 @@ else:
 def _eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
 
+def _patch_osx_compiler(compiler):
+    # On newer OSX, Python has been compiled as a universal binary, so
+    # it will attempt to pass universal binary flags when building the
+    # extension. This will not work because the code makes use of SSE2.
+    for tool in ("compiler", "compiler_so", "linker_so"):
+        flags = getattr(compiler, tool)
+        i = next((i for i in range(1, len(flags)) if flags[i-1] == "-arch" and flags[i] != platform.machine()), None)
+        if i is not None:
+            flags.pop(i)
+            flags.pop(i-1)
+
 # --- Commands ------------------------------------------------------------------
 
 class Extension(setuptools.extension.Extension):
@@ -256,6 +267,9 @@ class build_ext(_build_ext):
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
         else:
             ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
+        # remove universal binary CFLAGS from the compiler if any
+        if SYSTEM == "Darwin":
+            _patch_osx_compiler(self.compiler)
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
@@ -455,6 +469,7 @@ class build_clib(_build_clib):
 
         # check for functions required for libcpu_features on OSX
         if SYSTEM == "Darwin":
+            _patch_osx_compiler(self.compiler)
             if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
                 self.compiler.define_macro("HAVE_SYSCTLBYNAME", 1)
 
