@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.1.1...HEAD
+
+## [v1.1.1]
+[v1.1.1]: https://github.com/althonos/pyrodigal/compare/v1.1.0...v1.1.1
+
+### Fixed
+- Some `cpu_features` source files not being included in source distribution.
 
 
 ## [v1.1.0] - 2022-06-09

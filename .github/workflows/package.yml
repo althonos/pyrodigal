@@ -352,11 +352,11 @@ jobs:
       uses: actions/download-artifact@v2
       with:
           name: dist
-          path: dist
+          path: dist/
     - name: Update pip to latest version
       run: python -m pip install -U pip setuptools wheel
     - name: Install built wheel
-      run: python -m pip install --no-binary pyrodigal --no-index --find-links=dist pyrodigal
+      run: python -m pip install --no-binary pyrodigal --find-links=dist pyrodigal
     - name: Run tests without coverage
       run: python -m unittest pyrodigal.tests -vv
 
