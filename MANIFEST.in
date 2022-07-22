@@ -2,6 +2,7 @@ include COPYING
 include CHANGELOG.md
 include CONTRIBUTING.md
 include README.md
+include CITATION.cff
 
 recursive-include pyrodigal/tests      *.py *.txt
 recursive-include pyrodigal/tests/data *

@@ -1,0 +1,26 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Pyrodigal: Python bindings and interface to
+  Prodigal, an efficient method for gene prediction
+  in prokaryotes
+message: Please cite this software using these metadata.
+type: software
+authors:
+  - given-names: Martin
+    family-names: Larralde
+    email: martin.larralde@embl.de
+    affiliation: European Molecular Biology Laboratory
+    orcid: 'https://orcid.org/0000-0002-3947-4444'
+identifiers:
+  - type: doi
+    value: 10.21105/joss.04296
+    description: JOSS paper
+repository-code: 'https://github.com/althonos/pyrodigal'
+url: 'https://pyrodigal.readthedocs.io'
+keywords:
+  - orf-finder
+  - gene
+license: MIT
