@@ -1180,6 +1180,9 @@ cdef class Node:
 
     # --- Magic methods ------------------------------------------------------
 
+    def __init__(self):
+        raise TypeError("Cannot instantiate `Node` objects directly")
+
     def __repr__(self):
         ty = type(self)
         return "<{}.{} index={!r} strand={:+} type={!r} edge={!r}>".format(
@@ -2442,6 +2445,9 @@ cdef class Gene:
     """
 
     # --- Magic methods ------------------------------------------------------
+
+    def __init__(self):
+        raise TypeError("Cannot instantiate `Gene` objects directly")
 
     def __repr__(self):
         ty = type(self)
