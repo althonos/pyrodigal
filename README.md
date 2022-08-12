@@ -39,7 +39,9 @@ internals, which has the following advantages:
   you save some more memory when running several *meta*-mode analyses
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
-  save from a third to half the runtime depending on the sequence.
+  save from a third to half the runtime depending on the sequence. See the
+  [JOSS paper](https://doi.org/10.21105/joss.04296) for details about
+  optimizations implemented in Pyrodigal.
 
 ### 📋 Features
 
