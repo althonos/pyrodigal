@@ -159,7 +159,7 @@ class build_ext(_build_ext):
         try:
             self.mkpath(self.build_temp)
             objects = self.compiler.compile([testfile], extra_preargs=flags)
-            self.compiler.link_executable(objects, base, output_dir=self.build_temp)
+            self.compiler.link_executable(objects, base, extra_preargs=flags, output_dir=self.build_temp)
             subprocess.run([binfile], check=True)
         except CompileError:
             _eprint("no")
@@ -253,6 +253,8 @@ class build_ext(_build_ext):
                         )
                     )
                 ext.extra_objects.extend(objects)
+                if simd == "NEON":
+                    ext.extra_link_args.extend(self._simd_flags[simd])
 
     def build_extension(self, ext):
         # show the compiler being used
