@@ -8,7 +8,7 @@ import math
 import numpy
 import matplotlib.pyplot as plt
 import scipy.stats
-from palettable.cartocolors.qualitative import Bold_4
+from palettable.colorbrewer.qualitative import Dark2_5
 
 
 parser = argparse.ArgumentParser()
@@ -16,6 +16,9 @@ parser.add_argument("-i", "--input", required=True)
 parser.add_argument("-o", "--output")
 parser.add_argument("-s", "--show", action="store_true")
 args = parser.parse_args()
+
+
+palette = dict(zip(["Generic", "NEON", "SSE", "AVX", "None"], Dark2_5.hex_colors))
 
 
 with open(args.input) as f:
@@ -32,16 +35,26 @@ plt.figure(1, figsize=(12, 6))
 
 plt.subplot(1, 2, 1)
 data["results"].sort(key=lambda r: (r["backend"], r["node_count"]))
-for color, (backend, group) in zip(
-    Bold_4.hex_colors, itertools.groupby(data["results"], key=lambda r: r["backend"])
-):
+for backend, group in itertools.groupby(data["results"], key=lambda r: r["backend"]):
     group = list(group)
     X = numpy.array([r["node_count"] for r in group])
     Y = numpy.array([r["mean"] for r in group])
     reg = scipy.stats.linregress(X, Y)
-    plt.plot([ 0, max(X) ], [ reg.intercept, reg.slope*max(X) + reg.intercept ], color=color, linestyle="--", marker="")
+    plt.plot(
+        [0, max(X)],
+        [reg.intercept, reg.slope * max(X) + reg.intercept],
+        color=palette[backend],
+        linestyle="--",
+        marker="",
+    )
     # ci = [1.96 * r["stddev"] / math.sqrt(len(r["times"])) for r in group]
-    plt.scatter(X, Y, marker="+", color=color, label=f"{backend} (R²={reg.rvalue**2:.3f})")
+    plt.scatter(
+        X,
+        Y,
+        marker="+",
+        color=palette[backend],
+        label=f"{backend} (R²={reg.rvalue**2:.3f})",
+    )
 
 plt.legend()
 plt.xlabel("Node count")
@@ -50,16 +63,26 @@ plt.ylabel("Time (s)")
 
 plt.subplot(1, 2, 2)
 data["results"].sort(key=lambda r: (r["backend"], r["nucleotide_count"]))
-for color, (backend, group) in zip(
-    Bold_4.hex_colors, itertools.groupby(data["results"], key=lambda r: r["backend"])
-):
+for backend, group in itertools.groupby(data["results"], key=lambda r: r["backend"]):
     group = list(group)
     X = numpy.array([r["nucleotide_count"] / 1_000_000 for r in group])
     Y = numpy.array([r["mean"] for r in group])
     reg = scipy.stats.linregress(X, Y)
-    plt.plot([ 0, max(X) ], [ reg.intercept, reg.slope*max(X) + reg.intercept ], color=color, linestyle="--", marker="")
+    plt.plot(
+        [0, max(X)],
+        [reg.intercept, reg.slope * max(X) + reg.intercept],
+        color=palette[backend],
+        linestyle="--",
+        marker="",
+    )
     # ci = [1.96 * r["stddev"] / math.sqrt(len(r["times"])) for r in group]
-    plt.scatter(X, Y, marker="+", color=color, label=f"{backend} (R²={reg.rvalue**2:.3f})")
+    plt.scatter(
+        X,
+        Y,
+        marker="+",
+        color=palette[backend],
+        label=f"{backend} (R²={reg.rvalue**2:.3f})",
+    )
 
 plt.legend()
 plt.xlabel("Nucleotide count (Mbp)")

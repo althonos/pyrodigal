@@ -63,7 +63,9 @@ SAMPLES = [
 data_folder = os.path.dirname(os.path.realpath(__file__))
 for sample in tqdm.tqdm(SAMPLES):
     tax_id = sample.split(".")[0]
-    url = "https://progenomes.embl.de/dumpSequence.cgi?p={}&t=c&a={}".format(sample, tax_id)
+    url = "https://progenomes.embl.de/dumpSequence.cgi?p={}&t=c&a={}".format(
+        sample, tax_id
+    )
     with urllib.request.urlopen(url) as res:
         with gzip.open(res) as src:
             with open(os.path.join(data_folder, "{}.fna".format(sample)), "wb") as dst:

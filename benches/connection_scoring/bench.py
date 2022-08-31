@@ -5,14 +5,11 @@ import time
 import statistics
 import json
 import sys
-
-sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
+import platform
 
 import tqdm
 
-
 sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
-
 
 from pyrodigal import Nodes, Sequence
 from pyrodigal._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
@@ -24,6 +21,14 @@ parser.add_argument("-r", "--runs", default=10, type=int)
 parser.add_argument("-d", "--data", required=True)
 parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
+
+
+if platform.machine() == "x86_64":
+    BACKENDS = ["avx", "sse", "generic", None]
+elif platform.machine().startswith("arm") or platform.machine() == "aarch64":
+    BACKENDS = ["neon", "generic", None]
+else:
+    BACKENDS = ["generic", None]
 
 
 def score_connections(nodes, scorer, tinf):
@@ -50,7 +55,7 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
     nodes.extract(seq, translation_table=tinf.translation_table)
 
     # run connection scoring
-    for backend in ["avx", "sse", "generic", None]:
+    for backend in BACKENDS:
         times = []
         for run in tqdm.tqdm(range(args.runs), desc=str(backend), leave=False):
             # initialize scorer
@@ -63,18 +68,20 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
             # record runtime
             times.append(t2 - t1)
         # store benchmark result
-        results["results"].append({
-            "sequence": os.path.basename(filename),
-            "backend": backend,
-            "node_count": len(nodes),
-            "nucleotide_count": len(seq),
-            "times": times,
-            "mean": statistics.mean(times),
-            "stddev": statistics.stdev(times),
-            "median": statistics.median(times),
-            "min": min(times),
-            "max": max(times),
-        })
+        results["results"].append(
+            {
+                "sequence": os.path.basename(filename),
+                "backend": backend,
+                "node_count": len(nodes),
+                "nucleotide_count": len(seq),
+                "times": times,
+                "mean": statistics.mean(times),
+                "stddev": statistics.stdev(times),
+                "median": statistics.median(times),
+                "min": min(times),
+                "max": max(times),
+            }
+        )
 
 
 with open(args.output, "w") as f:
