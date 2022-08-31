@@ -100,6 +100,7 @@ Library
    Installation <install>
    Contributing <contributing>
    Publications <publications>
+   Benchmarks <benchmarks>
    API Reference <api/index>
    Changelog <changes>
 
