@@ -32,20 +32,14 @@ an `Intel NUC <https://ark.intel.com/content/www/de/de/ark/products/188814/intel
 `ARM Cortex-A72 <https://developer.arm.com/Processors/Cortex-A72>`_ @ 1.5GHz.
 
 
-v1.1.2
+x86-64
 ------
 
-x86-64
-^^^^^^
+.. image:: _images/bench-x86-v1.1.2.svg
+
+
+
+Arm
+---
 
 .. image:: _images/bench-arm-v1.1.2.svg
-
-
-
-v1.0.1
-------
-
-x86-64
-^^^^^^
-
-.. image:: _images/bench-x86-v1.0.1.svg
