@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [v1.1.2] - 2022-08-31
-[v1.1.1]: https://github.com/althonos/pyrodigal/compare/v1.1.1...v1.1.2
+[v1.1.2]: https://github.com/althonos/pyrodigal/compare/v1.1.1...v1.1.2
 
 ### Changed
 - Use the `vbicq` Arm intrinsic in the NEON implementation to combine `vandq` and `vmvnq`.
