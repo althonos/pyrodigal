@@ -6,7 +6,6 @@ void skippable_generic(
     const int8_t* strands,
     const uint8_t* types,
     const uint8_t* frames,
-
     const int min,
     const int i,
     uint8_t* skip

@@ -6,83 +6,29 @@
 
 #include <arm_neon.h>
 
+#include "template.h"
+
+#define simd_t            uint8x16_t
+#define simd_load(m)      vld1q_u8((uint8_t*) (m))
+#define simd_store(x, m)  vst1q_u8((uint8_t*) (m), x)
+#define simd_set1(x)      vdupq_n_u8(x)
+#define simd_or(x, y)     vorrq_u8(x, y)
+#define simd_eq(x, y)     vceqq_u8(x, y)
+#define simd_and(x, y)    vandq_u8(x, y)
+#define simd_andnot(x, y) vbicq_u8(x, y)
+
+#define SIMD_LANES 16
+#define SIMD_MASK  0xF
+
 void skippable_neon(
     const int8_t* strands,
     const uint8_t* types,
     const uint8_t* frames,
-
     const int min,
     const int i,
     uint8_t* skip
 ) {
-
-  const uint8x16_t all_stops  = vdupq_n_u8(STOP);
-  const uint8x16_t all_fwd    = vdupq_n_u8(1);
-  const uint8x16_t all_bwd    = vdupq_n_u8(-1);
-
-  int j;
-  uint8x16_t x;
-  uint8x16_t s;
-  uint8x16_t n1_strands;
-  uint8x16_t n1_types;
-  uint8x16_t n1_frames;
-  uint8x16_t n2_strands = vdupq_n_u8(strands[i]);
-  uint8x16_t n2_types   = vdupq_n_u8(types[i]);
-  uint8x16_t n2_frames  = vdupq_n_u8(frames[i]);
-
-  for (j = min; j < ((min + 0xF) & (~0xF)); j++)
-      skippable_generic_single(strands, types, frames, j, i, skip);
-  for (; j + 15 < i; j += 16) {
-      n1_strands = vld1q_u8((uint8_t*) &strands[j]);
-      n1_types   = vld1q_u8(&types[j]);
-      n1_frames  = vld1q_u8(&frames[j]);
-      s          = vdupq_n_u8(0);
-      // 5'fwd->5'fwd
-      // n1->strand == n2->strand && n2->type != STOP && n1->type != STOP
-      x =             vceqq_u8(n1_strands, n2_strands);
-      x = vbicq_u8(x, vceqq_u8(n2_types, all_stops));
-      x = vbicq_u8(x, vceqq_u8(n1_types, all_stops));
-      s = vorrq_u8(x, s);
-      // 5'fwd->5'ref, 5'fwd->3'rev
-      // n2->strand == -1 && n1->strand == 1 && n1->type != STOP
-      x =             vceqq_u8(n2_strands, all_bwd);
-      x = vandq_u8(x, vceqq_u8(n1_strands, all_fwd));
-      x = vbicq_u8(x, vceqq_u8(n1_types, all_stops));
-      s = vorrq_u8(x, s);
-      // 5'fwd
-      // n1->type == STOP && n1->strand == -1 && n2->strand == -1
-      x =             vceqq_u8(n1_types, all_stops);
-      x = vandq_u8(x, vceqq_u8(n1_strands, all_bwd));
-      x = vandq_u8(x, vceqq_u8(n2_strands, all_fwd));
-      s = vorrq_u8(x, s);
-      // 5'rev->3'fwd
-      // n2->type == STOP && n1->strand == -1 && n2->strand == 1 && n1->type != STOP
-      x =             vceqq_u8(n2_types, all_stops);
-      x = vandq_u8(x, vceqq_u8(n1_strands, all_bwd));
-      x = vandq_u8(x, vceqq_u8(n2_strands, all_fwd));
-      x = vbicq_u8(x, vceqq_u8(n1_types, all_stops));
-      s = vorrq_u8(x, s);
-      // 5'fwd->3'fwd
-      // n1->strand == n2->strand && n1->strand == 1 && n1->type != STOP && n2->type == STOP && n1->ndx%3 != n2->ndx%3
-      x =             vceqq_u8(n1_strands, n2_strands);
-      x = vandq_u8(x, vceqq_u8(n1_strands, all_fwd));
-      x = vbicq_u8(x, vceqq_u8(n1_types,   all_stops));
-      x = vandq_u8(x, vceqq_u8(n2_types,   all_stops));
-      x = vbicq_u8(x, vceqq_u8(n1_frames,  n2_frames));
-      s = vorrq_u8(x, s);
-      // 3'rev->5'rev
-      // n1->strand == n2->strand && n1->strand == -1 && n1->type == STOP && n2->type != STOP && n1->ndx%3 != n2->ndx%3
-      x =             vceqq_u8(n1_strands, n2_strands);
-      x = vandq_u8(x, vceqq_u8(n1_strands, all_bwd));
-      x = vandq_u8(x, vceqq_u8(n1_types,   all_stops));
-      x = vbicq_u8(x, vceqq_u8(n2_types,   all_stops));
-      x = vbicq_u8(x, vceqq_u8(n1_frames,  n2_frames));
-      s = vorrq_u8(x, s);
-
-      // store result mask
-      vst1q_u8(&skip[j], s);
-  }
-  for (; j < i; j++)
-      skippable_generic_single(strands, types, frames, j, i, skip);
+    skippable_simd(strands, types, frames, min, i, skip);
 }
+
 #endif
