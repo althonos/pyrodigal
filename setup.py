@@ -104,6 +104,7 @@ class build_ext(_build_ext):
     user_options = _build_ext.user_options + [
         ("disable-avx2", None, "Force compiling the extension without AVX2 instructions"),
         ("disable-sse2", None, "Force compiling the extension without SSE2 instructions"),
+        ("disable-mmx", None, "Force compiling the extension without MMX instructions"),
         ("disable-neon", None, "Force compiling the extension without NEON instructions"),
     ]
 
@@ -112,17 +113,19 @@ class build_ext(_build_ext):
         self.disable_avx2 = False
         self.disable_sse2 = False
         self.disable_neon = False
+        self.disable_mmx  = False
 
     def finalize_options(self):
         _build_ext.finalize_options(self)
         # record SIMD-specific options
-        self._simd_supported = dict(AVX2=False, SSE2=False, NEON=False)
-        self._simd_defines = dict(AVX2=[], SSE2=[], NEON=[])
-        self._simd_flags = dict(AVX2=[], SSE2=[], NEON=[])
+        self._simd_supported = dict(AVX2=False, SSE2=False, NEON=False, MMX=False)
+        self._simd_defines = dict(AVX2=[], SSE2=[], NEON=[], MMX=[])
+        self._simd_flags = dict(AVX2=[], SSE2=[], NEON=[], MMX=[])
         self._simd_disabled = {
             "AVX2": self.disable_avx2,
             "SSE2": self.disable_sse2,
             "NEON": self.disable_neon,
+            "MMX": self.disable_mmx,
         }
         # transfer arguments to the build_clib method
         self._clib_cmd = self.get_finalized_command("build_clib")
@@ -136,7 +139,7 @@ class build_ext(_build_ext):
 
     # --- Autotools-like helpers ---
 
-    def _check_simd_generic(self, name, flags, header, vector, set, op, extract):
+    def _check_simd_generic(self, name, flags, program):
         _eprint('checking whether compiler can build', name, 'code', end="... ")
 
         base = "have_{}".format(name)
@@ -146,15 +149,7 @@ class build_ext(_build_ext):
 
         self.mkpath(self.build_temp)
         with open(testfile, "w") as f:
-            f.write("""
-                #include <{}>
-                int main() {{
-                    {}      a = {}(1);
-                            a = {}(a);
-                    short   x = {}(a, 1);
-                    return (x == 1) ? 0 : 1;
-                }}
-            """.format(header, vector, set, op, extract))
+            f.write(program)
 
         try:
             self.mkpath(self.build_temp)
@@ -189,11 +184,15 @@ class build_ext(_build_ext):
         return self._check_simd_generic(
             "AVX2",
             self._avx2_flags(),
-            header="immintrin.h",
-            vector="__m256i",
-            set="_mm256_set1_epi16",
-            op="_mm256_abs_epi32",
-            extract="_mm256_extract_epi16",
+            program="""
+                #include <immintrin.h>
+                int main() {{
+                    __m256i a = _mm256_set1_epi16(-1);
+                            a = _mm256_abs_epi16(a);
+                    short   x = _mm256_extract_epi16(a, 1);
+                    return (x == 1) ? 0 : 1;
+                }}
+            """,
         )
 
     def _sse2_flags(self):
@@ -205,11 +204,15 @@ class build_ext(_build_ext):
         return self._check_simd_generic(
             "SSE2",
             self._sse2_flags(),
-            header="emmintrin.h",
-            vector="__m128i",
-            set="_mm_set1_epi16",
-            op="_mm_move_epi64",
-            extract="_mm_extract_epi16",
+            program="""
+                #include <emmintrin.h>
+                int main() {{
+                    __m128i a = _mm_set1_epi16(-1);
+                            a = _mm_and_si128(a, a);
+                    short   x = _mm_extract_epi16(a, 1);
+                    return (x == -1) ? 0 : 1;
+                }}
+            """,
         )
 
     def _neon_flags(self):
@@ -219,11 +222,32 @@ class build_ext(_build_ext):
         return self._check_simd_generic(
             "NEON",
             self._neon_flags(),
-            header="arm_neon.h",
-            vector="int16x8_t",
-            set="vdupq_n_s16",
-            op="vabsq_s16",
-            extract="vgetq_lane_s16"
+            program="""
+                #include <arm_neon.h>
+                int main() {{
+                    int16x8_t a = vdupq_n_s16(-1);
+                              a = vabsq_s16(a);
+                    short     x = vgetq_lane_s16(a, 1);
+                    return (x == 1) ? 0 : 1;
+                }}
+            """,
+        )
+    
+    def _mmx_flags(self):
+        return []
+
+    def _check_mmx(self):
+        return self._check_simd_generic(
+            "MMX",
+            self._mmx_flags(),
+            program="""
+                #include <mmintrin.h>
+                int main() {{
+                    __m64 a = _mm_set1_pi16(1);
+                    short x = (short) _m_to_int(a);
+                    return (x == 1) ? 0 : 1;
+                }}
+            """,
         )
 
     # --- Build code ---
@@ -307,6 +331,7 @@ class build_ext(_build_ext):
                 "AVX2_BUILD_SUPPORT": False,
                 "NEON_BUILD_SUPPORT": False,
                 "SSE2_BUILD_SUPPORT": False,
+                "MMX_BUILD_SUPPORT": False,
             }
         }
         if self.force:
@@ -341,6 +366,11 @@ class build_ext(_build_ext):
                 self._simd_supported["SSE2"] = True
                 self._simd_flags["SSE2"].extend(self._sse2_flags())
                 self._simd_defines["SSE2"].append(("__SSE2__", 1))
+            if not self._simd_disabled["MMX"] and self._check_mmx():
+                cython_args["compile_time_env"]["MMX_BUILD_SUPPORT"] = True
+                self._simd_supported["MMX"] = True
+                self._simd_flags["MMX"].extend(self._mmx_flags())
+                self._simd_defines["MMX"].append(("__MMX__", 1))
         elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             if not self._simd_disabled["NEON"] and self._check_neon():
                 cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
@@ -606,6 +636,7 @@ setuptools.setup(
                 "AVX2": ["pyrodigal/impl/avx.c"],
                 "NEON": ["pyrodigal/impl/neon.c"],
                 "SSE2": ["pyrodigal/impl/sse.c"],
+                "MMX": ["pyrodigal/impl/mmx.c"],
             },
             include_dirs=[
                 "pyrodigal",

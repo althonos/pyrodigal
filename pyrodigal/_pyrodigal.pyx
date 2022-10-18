@@ -108,6 +108,8 @@ from pyrodigal._connection cimport (
 )
 from pyrodigal.impl.generic cimport skippable_generic
 
+IF MMX_BUILD_SUPPORT:
+    from pyrodigal.impl.mmx cimport skippable_mmx
 IF SSE2_BUILD_SUPPORT:
     from pyrodigal.impl.sse cimport skippable_sse
 IF AVX2_BUILD_SUPPORT:
@@ -919,15 +921,19 @@ _TARGET_CPU           = TARGET_CPU
 _AVX2_RUNTIME_SUPPORT = False
 _NEON_RUNTIME_SUPPORT = False
 _SSE2_RUNTIME_SUPPORT = False
+_MMX_RUNTIME_SUPPORT  = False
 _AVX2_BUILD_SUPPORT   = False
 _NEON_BUILD_SUPPORT   = False
 _SSE2_BUILD_SUPPORT   = False
+_MMX_BUILD_SUPPORT    = False
 
 IF TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
     from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
     cdef X86Info cpu_info = GetX86Info()
+    _MMX_BUILD_SUPPORT    = MMX_BUILD_SUPPORT
     _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
     _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
+    _MMX_RUNTIME_SUPPORT  = cpu_info.features.mmx  != 0
     _SSE2_RUNTIME_SUPPORT = cpu_info.features.sse2 != 0
     _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
 ELIF TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
@@ -941,10 +947,11 @@ ELIF TARGET_CPU == "aarch64":
 
 cdef enum simd_backend:
     NONE = 0
-    SSE2 = 1
-    AVX2 = 2
-    NEON = 3
-    GENERIC = 4
+    MMX = 1
+    SSE2 = 2
+    AVX2 = 3
+    NEON = 4
+    GENERIC = 5
 
 cdef class ConnectionScorer:
     """A dedicated class for the fast scoring of nodes.
@@ -974,12 +981,22 @@ cdef class ConnectionScorer:
         IF TARGET_CPU == "x86":
             if backend =="detect":
                 self.backend = simd_backend.NONE
+                IF MMX_BUILD_SUPPORT:
+                    if _MMX_RUNTIME_SUPPORT:
+                        self.backend = simd_backend.MMX
                 IF SSE2_BUILD_SUPPORT:
                     if _SSE2_RUNTIME_SUPPORT:
                         self.backend = simd_backend.SSE2
                 IF AVX2_BUILD_SUPPORT:
                     if _AVX2_RUNTIME_SUPPORT:
                         self.backend = simd_backend.AVX2
+            elif backend == "mmx":
+                IF not MMX_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without MMX support")
+                ELSE:
+                    if not _MMX_RUNTIME_SUPPORT:
+                        raise RuntimeError("Cannot run MMX instructions on this machine")
+                    self.backend = simd_backend.MMX
             elif backend == "sse":
                 IF not SSE2_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without SSE2 support")
@@ -1090,6 +1107,10 @@ cdef class ConnectionScorer:
         IF SSE2_BUILD_SUPPORT:
             if self.backend == simd_backend.SSE2:
                 skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+                return 0
+        IF MMX_BUILD_SUPPORT:
+            if self.backend == simd_backend.MMX:
+                skippable_mmx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
                 return 0
         IF NEON_BUILD_SUPPORT:
             if self.backend == simd_backend.NEON:
