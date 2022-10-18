@@ -665,7 +665,7 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) nogil:
+    ) nogil except -1:
         cdef int i
         cdef int j
         cdef int k
@@ -682,8 +682,16 @@ cdef class Sequence:
         # reset the match array
         match[0] = match[1] = match[2] = match[3] = match[4] = match[5] = -10
 
-        # Compare the 6-base region to AGGAGG
+        # compute distance to SD site
         limit = min(6, start - 4 - pos)
+
+        # check boundaries
+        if pos < 0:
+            raise IndexError(f"Invalid read at index {pos} of sequence of length {self.slen} using limit {limit}")
+        elif pos + limit >= self.slen:
+            raise IndexError(f"Invalid read at index {pos+limit} of sequence of length {self.slen} using limit {limit}")
+
+        # Compare the 6-base region to AGGAGG
         for i in range(limit):
             if i%3 == 0:
                 if _is_a(self.digits, self.slen, pos+i, strand):
@@ -763,7 +771,7 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) nogil:
+    ) nogil except -1:
         cdef int i
         cdef int j
         cdef int k
@@ -780,8 +788,16 @@ cdef class Sequence:
         # reset the match array
         match[0] = match[1] = match[2] = match[3] = match[4] = match[5] = -10
 
-        # Compare the 6-base region to AGGAGG
+        # compute distance to SD site
         limit = min(6, start - 4 - pos)
+
+        # check boundaries
+        if pos < 0:
+            raise IndexError(f"Invalid read at index {pos} of sequence of length {self.slen} using limit {limit}")
+        elif pos + limit >= self.slen:
+            raise IndexError(f"Invalid read at index {pos+limit} of sequence of length {self.slen} using limit {limit}")
+
+        # Compare the 6-base region to AGGAGG
         for i in range(limit):
             if i%3 == 0:
                 match[i] = 2 if _is_a(self.digits, self.slen, pos+i, strand) else -3
@@ -885,7 +901,7 @@ cdef class Sequence:
         if strand == 1 and pos > start - 5:
             raise ValueError(f"`pos` is too close to `start` (must be at most `start` - 5)")
         elif strand == -1 and pos < start + 6:
-            raise ValueError(f"`pos` is too close to `start` (must be at most `start + 6`)")
+            raise ValueError(f"`pos` is too close to `start` (must be at most `start` + 6)")
 
         cdef int phase
         with nogil:
@@ -2069,7 +2085,7 @@ cdef class Nodes:
 
             if self.nodes[i].strand == 1:
                 for j in range(self.nodes[i].ndx - 20, self.nodes[i].ndx - 5):
-                    if j < 0:
+                    if j < 0 or j >= slen:
                         continue
                     cur_sc[0] = seq._shine_dalgarno_exact(j, self.nodes[i].ndx, tinf, strand=1)
                     cur_sc[1] = seq._shine_dalgarno_mm(j, self.nodes[i].ndx, tinf, strand=1)
@@ -2079,7 +2095,7 @@ cdef class Nodes:
                         self.nodes[i].rbs[1] = cur_sc[1]
             else:
                 for j in range(slen - self.nodes[i].ndx - 21, slen - self.nodes[i].ndx - 6):
-                    if j + 1 > slen:
+                    if j < 0 or j >= slen:
                         continue
                     cur_sc[0] = seq._shine_dalgarno_exact(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
                     cur_sc[1] = seq._shine_dalgarno_mm(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
@@ -3681,13 +3697,13 @@ cdef class TrainingInfo:
 
         """
         cdef int    i
-        cdef int    right
         cdef int    counts[4096]
         cdef double prob[4096]
         cdef double bg[4096]
         cdef int    in_gene      = 0
         cdef int    path         = ipath
         cdef int    left         = -1
+        cdef int    right        = -1
         cdef int    glob
 
         for i in range(4096):
