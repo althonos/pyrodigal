@@ -11,7 +11,7 @@ import tqdm
 
 sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
-from pyrodigal import Nodes, Sequence
+from pyrodigal import _pyrodigal, Nodes, Sequence
 from pyrodigal._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
 from pyrodigal.tests.fasta import parse
 
@@ -22,13 +22,15 @@ parser.add_argument("-d", "--data", required=True)
 parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
 
-
-if platform.machine() == "x86_64":
-    BACKENDS = ["avx", "sse", "generic", None]
-elif platform.machine().startswith("arm") or platform.machine() == "aarch64":
-    BACKENDS = ["neon", "generic", None]
-else:
-    BACKENDS = ["generic", None]
+BACKENDS = ["generic", None]
+if _pyrodigal._AVX2_RUNTIME_SUPPORT:
+    BACKENDS.append("avx")
+if _pyrodigal._MMX_RUNTIME_SUPPORT:
+    BACKENDS.append("mmx")
+if _pyrodigal._SSE2_RUNTIME_SUPPORT:
+    BACKENDS.append("sse")
+if _pyrodigal._NEON_RUNTIME_SUPPORT:
+    BACKENDS.append("neon")
 
 
 def score_connections(nodes, scorer, tinf):

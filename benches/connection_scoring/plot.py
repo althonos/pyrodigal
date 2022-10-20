@@ -8,7 +8,7 @@ import math
 import numpy
 import matplotlib.pyplot as plt
 import scipy.stats
-from palettable.colorbrewer.qualitative import Dark2_5
+from palettable.colorbrewer.qualitative import Dark2_6
 
 
 parser = argparse.ArgumentParser()
@@ -18,7 +18,7 @@ parser.add_argument("-s", "--show", action="store_true")
 args = parser.parse_args()
 
 
-palette = dict(zip(["Generic", "NEON", "SSE", "AVX", "None"], Dark2_5.hex_colors))
+palette = dict(zip(["Generic", "NEON", "SSE", "AVX", "None", "MMX"], Dark2_6.hex_colors))
 
 
 with open(args.input) as f:
