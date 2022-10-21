@@ -164,16 +164,16 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 preds = pyrodigal.find_genes(seq.seq)
                 # write output in GFF format
                 if args.f == "gff":
-                    preds.write_gff(out_file, prefix="{}_".format(seq.id))
+                    preds.write_gff(out_file, seq.id)
                 # if asked, write nucleotide sequences of genes
                 if nuc_file is not None:
-                    preds.write_genes(nuc_file, prefix="{}_".format(seq.id))
+                    preds.write_genes(nuc_file, seq.id)
                 # if asked, write amino acide sequences of proteins
                 if prot_file is not None:
-                    preds.write_translations(prot_file, prefix="{}_".format(seq.id))
+                    preds.write_translations(prot_file, seq.id)
                 # if asked, write scores
                 if scores_file is not None:
-                    preds.write_scores(scores_file, prefix="{}_".format(seq.id))
+                    preds.write_scores(scores_file, seq.id)
 
         except Exception as err:
             print("Error: {}".format(err))

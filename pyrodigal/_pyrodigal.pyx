@@ -3192,7 +3192,7 @@ cdef class Genes:
     # --- Python interface ---------------------------------------------------
 
     cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=True) except -1:
-        """write_gff(self, file, prefix="gene_", width=60)\n--
+        """write_gff(self, file, sequence_id, header=True)\n--
 
         Write the genes to ``file`` in General Feature Format.
 
@@ -3266,16 +3266,16 @@ cdef class Genes:
 
         return n
 
-    cpdef ssize_t write_genes(self, object file, str prefix="gene_", object width=70) except -1:
-        """write_genes(self, file, prefix="gene_", width=70)\n--
+    cpdef ssize_t write_genes(self, object file, str sequence_id, object width=70) except -1:
+        """write_genes(self, file, sequence_id, width=70)\n--
 
         Write nucleotide sequences of genes to ``file`` in FASTA format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
                 the nucleotide sequences.
-            prefix (`str`): The prefix to use to make identifiers for each
-                predicted gene.
+            sequence_id (`str`): The identifier of the sequence these
+                genes were extracted from.
             width (`int`): The width to use to wrap sequence lines. Prodigal
                 uses 70 for nucleotide sequences.
 
@@ -3289,7 +3289,8 @@ cdef class Genes:
 
         for i, gene in enumerate(self):
             n += file.write(">")
-            n += file.write(prefix)
+            n += file.write(sequence_id)
+            n += file.write("_")
             n += file.write(str(i+1))
             n += file.write(" # ")
             n += file.write(str(gene.begin))
@@ -3306,16 +3307,16 @@ cdef class Genes:
 
         return n
 
-    cpdef ssize_t write_translations(self, object file, str prefix="gene_", object width=60, object translation_table=None) except -1:
-        """write_translations(self, file, prefix="gene_", width=60, translation_table=None)\n--
+    cpdef ssize_t write_translations(self, object file, str sequence_id, object width=60, object translation_table=None) except -1:
+        """write_translations(self, file, sequence_id, width=60, translation_table=None)\n--
 
         Write protein sequences of genes to ``file`` in FASTA format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
                 the protein sequences.
-            prefix (`str`): The prefix to use to make identifiers for each
-                predicted gene.
+            sequence_id (`str`): The identifier of the sequence these
+                genes were extracted from.
             width (`int`): The width to use to wrap sequence lines. Prodigal
                 uses 60 for protein sequences.
             translation_table (`int`, optional): A different translation to
@@ -3335,7 +3336,8 @@ cdef class Genes:
 
         for i, gene in enumerate(self):
             n += file.write(">")
-            n += file.write(prefix)
+            n += file.write(sequence_id)
+            n += file.write("_")
             n += file.write(str(i+1))
             n += file.write(" # ")
             n += file.write(str(gene.begin))
@@ -3352,14 +3354,16 @@ cdef class Genes:
 
         return n
 
-    cpdef ssize_t write_scores(self, object file, bint header=True) except -1:
-        """write_scores(self, file, header=True)\n--
+    cpdef ssize_t write_scores(self, object file, str sequence_id, bint header=True) except -1:
+        """write_scores(self, file, sequence_id, header=True)\n--
 
         Write the start scores to ``file`` in tabular format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
                 the features.
+            sequence_id (`str`): The identifier of the sequence these
+                genes were extracted from.
             header (`bool`): `True` to write a header line, `False` otherwise.
 
         Returns:
@@ -3389,7 +3393,7 @@ cdef class Genes:
                 # FIXME: missing some header data
                 # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
                 # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
-                n += file.write(f"# Sequence Data: seqnum={self._num_seq};seqlen={len(self.sequence)}\n")
+                n += file.write(f'# Sequence Data: seqnum={self._num_seq};seqlen={len(self.sequence)};seqhdr="{sequence_id}"\n')
                 n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
                 # write column names
                 n += file.write(

@@ -201,18 +201,31 @@ class Genes(typing.Sequence[Gene]):
     def __getstate__(self) -> Dict[str, object]: ...
     def __setstate__(self, state: Dict[str, object]) -> None: ...
     def clear(self) -> None: ...
-    def write_gff(self, file: TextIO, sequence_id: str) -> int: ...
+    def write_gff(
+        self,
+        file: TextIO,
+        sequence_id: str,
+        header: bool = True,
+    ) -> int: ...
     def write_genes(
-        self, file: TextIO, prefix: str = "gene_", width: typing.Optional[int] = 70
+        self,
+        file: TextIO,
+        sequence_id: str,
+        width: typing.Optional[int] = 70
     ) -> int: ...
     def write_translations(
         self,
         file: TextIO,
-        prefix: str = "gene_",
+        sequence_id: str,
         width: typing.Optional[int] = 60,
         translation_table: typing.Optional[int] = None,
     ) -> int: ...
-    def write_scores(self, file: TextIO, header: bool = True) -> int: ...
+    def write_scores(
+        self,
+        file: TextIO,
+        sequence_id: str,
+        header: bool = True,
+    ) -> int: ...
 
 # --- Training Info ----------------------------------------------------------
 

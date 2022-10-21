@@ -61,7 +61,7 @@ class TestGenes(unittest.TestCase):
 
     def test_write_scores(self):
         buffer = io.StringIO()
-        self.genes.write_scores(buffer)
+        self.genes.write_scores(buffer, "NODE_23_length_79939_cov_26.984653")
         actual = [
             line.strip()
             for line in buffer.getvalue().splitlines()
@@ -85,7 +85,7 @@ class TestGenes(unittest.TestCase):
             self.assertEqual(row1[7], row2[7], "RBS motifs differ")
             self.assertEqual(row1[8], row2[8], "RBS spacers differ")
 
-        # NOTE(@althonos): This is rather convulated but unfortunately we cannot
+        # NOTE(@althonos): This is rather convoluted but unfortunately we cannot
         #                  compare lines directly because of rounding issues that
         #                  can occur between different platforms: for instance,
         #                  depending on the compilation flags, the score
