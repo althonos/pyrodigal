@@ -2517,7 +2517,7 @@ cdef class Gene:
 
     @property
     def _score_data(self):
-        return "conf={:.2f};score={:.2f};cscore={:.2f};sscore={:.2f};rscore={:.2f};uscore={:.2f};tscore={:.2f}".format(
+        return "conf={:.2f};score={:.2f};cscore={:.2f};sscore={:.2f};rscore={:.2f};uscore={:.2f};tscore={:.2f};".format(
             self.confidence(),
             self.score,
             self.cscore,
@@ -3191,7 +3191,7 @@ cdef class Genes:
 
     # --- Python interface ---------------------------------------------------
 
-    cpdef ssize_t write_gff(self, object file, str sequence_id) except -1:
+    cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=True) except -1:
         """write_gff(self, file, prefix="gene_", width=60)\n--
 
         Write the genes to ``file`` in General Feature Format.
@@ -3199,9 +3199,11 @@ cdef class Genes:
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
                 the features.
-            sequence_id (`str`): The identifier of the sequence these 
-                genes were extracted from. Used in the first column of the 
+            sequence_id (`str`): The identifier of the sequence these
+                genes were extracted from. Used in the first column of the
                 GFF-formated output.
+            header (`bool`): `True` to write a GFF header line,
+                `False` otherwise.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3210,6 +3212,25 @@ cdef class Genes:
         cdef Gene    gene
         cdef int     i
         cdef ssize_t n    = 0
+
+        if header:
+            file.write("##gff-version  3\n")
+
+        file.write(
+            f"# Sequence Data: "
+            f"seqnum={self._num_seq};"
+            f"seqlen={len(self.sequence)};"
+            f'seqhdr="{sequence_id}"\n'
+        )
+        file.write(
+            f"# Model Data: "
+            f"version=pyrodigal.v{__version__};"
+            f"run_type=N/A;" # FIXME: Single or Metagenomic
+            f"model=N/A;" # FIXME: "Ab initio" or "{metagenomic bin name}"
+            f"gc_cont={self.training_info.gc:.2f};"
+            f"transl_table={self.training_info.translation_table};"
+            f"uses_sd={int(self.training_info.uses_sd)}\n"
+        )
 
         for i, gene in enumerate(self):
             n += file.write(sequence_id)
