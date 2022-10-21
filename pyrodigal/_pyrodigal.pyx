@@ -3191,16 +3191,17 @@ cdef class Genes:
 
     # --- Python interface ---------------------------------------------------
 
-    cpdef ssize_t write_gff(self, object file, str prefix="gene_") except -1:
+    cpdef ssize_t write_gff(self, object file, str sequence_id) except -1:
         """write_gff(self, file, prefix="gene_", width=60)\n--
 
         Write the genes to ``file`` in General Feature Format.
 
         Arguments:
-           file (`io.TextIOBase`): A file open in text mode where to write
-               the features.
-           prefix (`str`): The prefix to use to make identifiers for each
-               predicted gene.
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the features.
+            sequence_id (`str`): The identifier of the sequence these 
+                genes were extracted from. Used in the first column of the 
+                GFF-formated output.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3211,8 +3212,7 @@ cdef class Genes:
         cdef ssize_t n    = 0
 
         for i, gene in enumerate(self):
-            n += file.write(prefix)
-            n += file.write(str(i+1))
+            n += file.write(sequence_id)
             n += file.write("\t")
             n += file.write("pyrodigal_v")
             n += file.write(__version__)

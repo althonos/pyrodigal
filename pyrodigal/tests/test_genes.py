@@ -95,3 +95,17 @@ class TestGenes(unittest.TestCase):
         genes = pickle.loads(pickle.dumps(self.genes))
         for gene1, gene2 in zip(self.genes, genes):
             self.assertEqual(gene1._gene_data, gene2._gene_data)
+
+    def test_write_gff(self):
+        buffer = io.StringIO()
+        self.genes.write_gff(buffer)
+        actual = buffer.getvalue().splitlines()
+
+        data = os.path.realpath(os.path.join(__file__, "..", "data"))
+        gff = os.path.join(data, "SRR492066.meta.gff")
+        with open(gff) as f:
+            expected = f.read().splitlines()
+        
+        for line_actual, line_expected in zip(actual, expected):
+            self.assertEqual(line_actual, line_expected)
+

@@ -287,7 +287,7 @@ cdef class Genes:
     ) nogil
     cdef int _clear(self) nogil except 1
 
-    cpdef ssize_t write_gff(self, object file, str prefix=*) except -1
+    cpdef ssize_t write_gff(self, object file, str sequence_id) except -1
     cpdef ssize_t write_genes(self, object file, str prefix=*, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str prefix=*, object width=*, object translation_table=?) except -1
     cpdef ssize_t write_scores(self, object file, bint header=*) except -1
