@@ -30,8 +30,7 @@ $ python -m unittest discover -vv
 
 The `benches` folder contains benchmarks for evaluating the performance of
 the node connection scoring step, essentially to make sure that the SIMD
-code makes it faster. To run the benchmark you need a CPU that supports
-SSE2 and AVX2.
+code makes it faster.
 
 Start by building `pyrodigal` locally:
 ```console

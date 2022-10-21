@@ -18,9 +18,9 @@ the total cycle count used for finding genes with the original Prodigal code
 In Pyrodigal, the connection scoring step is being accelerated with a
 pre-filtering step so that invalid connections can be skipped. This pre-filtering
 step can be computed using SIMD instruction, processing several nodes at once.
-Platform-accelerated code is available for SSE, AVX, and NEON instruction sets.
-In addition, a "generic" implementation of the pre-filter is available in plain
-C for testing purposes. The pre-filtering can be disabled, in which case
+Platform-accelerated code is available for MMX, SSE, AVX, and NEON instruction
+sets. In addition, a "generic" implementation of the pre-filter is available in
+plain C for testing purposes. The pre-filtering can be disabled, in which case
 Pyrodigal will fall back to using the original Prodigal code.
 
 
