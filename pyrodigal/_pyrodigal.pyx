@@ -3389,7 +3389,7 @@ cdef class Genes:
                 # FIXME: missing some header data
                 # Sequence Data: seqnum=1;seqlen=20000;seqhdr="KK037166.1 Kutzneria sp. 744 genomic scaffold supercont1.1, whole genome shotgun sequence"
                 # Run Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=66.03;transl_table=11;uses_sd=0
-                n += file.write(f"# Sequence Data: seqlen={len(self.sequence)}\n")
+                n += file.write(f"# Sequence Data: seqnum={self._num_seq};seqlen={len(self.sequence)}\n")
                 n += file.write(f"# Run Data: version=pyrodigal.v{__version__};gc_cont={tinf.gc*100:.2f};transl_table={tinf.trans_table};uses_sd={tinf.uses_sd}\n")
                 # write column names
                 n += file.write(
