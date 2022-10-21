@@ -3213,6 +3213,15 @@ cdef class Genes:
         cdef int     i
         cdef ssize_t n    = 0
 
+        for mb in METAGENOMIC_BINS:
+            if self.training_info is mb.training_info:
+                run_type = "Metagenomic"
+                model = mb.description
+                break
+        else:
+            run_type = "Single"
+            model = "Ab initio"
+
         if header:
             file.write("##gff-version  3\n")
 
@@ -3225,9 +3234,9 @@ cdef class Genes:
         file.write(
             f"# Model Data: "
             f"version=pyrodigal.v{__version__};"
-            f"run_type=N/A;" # FIXME: Single or Metagenomic
-            f"model=N/A;" # FIXME: "Ab initio" or "{metagenomic bin name}"
-            f"gc_cont={self.training_info.gc:.2f};"
+            f"run_type={run_type};"
+            f'model="{model}";'
+            f"gc_cont={self.training_info.gc*100:.2f};"
             f"transl_table={self.training_info.translation_table};"
             f"uses_sd={int(self.training_info.uses_sd)}\n"
         )
