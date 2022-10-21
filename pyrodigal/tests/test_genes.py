@@ -106,11 +106,17 @@ class TestGenes(unittest.TestCase):
         with open(gff) as f:
             expected = f.read().splitlines()
 
+        self.assertEqual(actual[0], expected[0])
+        self.assertEqual(actual[1], expected[1])
+        self.assertEqual(actual[2].split(";")[1:], expected[2].split(";")[1:])
+
         for line_actual, line_expected in zip(actual[3:], expected[3:]):
             row_actual = line_actual.split("\t", maxsplit=8)
             row_expected = line_expected.split("\t", maxsplit=8)
             self.maxDiff = None
             self.assertEqual(row_actual[0], row_expected[0])
             self.assertEqual(row_actual[2:8], row_expected[2:8])
-            # self.assertEqual(row_actual[8], row_expected[8]) # FIXME
+            # NOTE(@althonos): Don't compare last part because there are some
+            #                  discrepancies in the score data, see issue #19
+            # self.assertEqual(row_actual[8], row_expected[8]) 
 
