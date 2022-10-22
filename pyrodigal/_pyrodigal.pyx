@@ -3626,8 +3626,7 @@ cdef class TrainingInfo:
         cdef int j
         cdef int k
         # allocate memory if possible / needed
-        if not self.owned:
-            raise RuntimeError("Cannot call `__setstate__` on a shared `TrainingInfo` instance")
+        self._on_modification()
         if self.tinf == NULL:
             self.__init__(state["gc"])
         # copy data
@@ -3669,6 +3668,7 @@ cdef class TrainingInfo:
         assert self.tinf != NULL
         if table not in _TRANSLATION_TABLES:
             raise ValueError(f"{table} is not a valid translation table index")
+        self._on_modification()
         self.raw.trans_table = table
 
     @property
@@ -3681,6 +3681,7 @@ cdef class TrainingInfo:
     @gc.setter
     def gc(self, double gc):
         assert self.tinf != NULL
+        self._on_modification()
         self.tinf.gc = gc
 
     @property
@@ -3693,6 +3694,7 @@ cdef class TrainingInfo:
     @bias.setter
     def bias(self, object bias):
         assert self.tinf != NULL
+        self._on_modification()
         self.tinf.bias = bias
 
     @property
@@ -3705,17 +3707,20 @@ cdef class TrainingInfo:
     @type_weights.setter
     def type_weights(self, object type_weights):
         assert self.tinf != NULL
+        self._on_modification()
         self.tinf.type_wt = type_weights
 
     @property
     def uses_sd(self):
         """`bool`: `True` if the sequence uses a Shine/Dalgarno motif.
         """
+        assert self.tinf != NULL
         return self.tinf.uses_sd
 
     @uses_sd.setter
     def uses_sd(self, bint uses_sd):
         assert self.tinf != NULL
+        self._on_modification()
         self.tinf.uses_sd = uses_sd
 
     @property
@@ -3727,9 +3732,17 @@ cdef class TrainingInfo:
 
     @start_weight.setter
     def start_weight(self, double st_wt):
+        assert self.tinf != NULL
+        self._on_modification()
         self.tinf.st_wt = st_wt
 
     # --- C interface --------------------------------------------------------
+
+    cdef void _on_modification(self) except * nogil:
+        """Raise an error when attempting to modify a shared `TrainingInfo`.
+        """
+        if not self.owned:
+            raise RuntimeError("Cannot modify a metagenomic `TrainingInfo` instance")
 
     @staticmethod
     cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil:
@@ -3784,7 +3797,7 @@ cdef class TrainingInfo:
         elif stage == 2:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil:
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil:
         """Compute the dicodon frequency in genes and in the background.
 
         Stores the log-likelihood of each 6-mer relative to the background.
@@ -3799,6 +3812,8 @@ cdef class TrainingInfo:
         cdef int    left         = -1
         cdef int    right        = -1
         cdef int    glob
+
+        self._on_modification()
 
         for i in range(4096):
             prob[i] = 0.0
@@ -3855,10 +3870,12 @@ cdef class TrainingInfo:
             elif self.tinf.gene_dc[i] < -5.0:
                 self.tinf.gene_dc[i] = -5.0
 
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) nogil:
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) except * nogil:
         cdef int start
         cdef int j
         cdef int i     = 0
+
+        self._on_modification()
 
         if strand == 1:
             for j in range(1, 3):
@@ -3880,7 +3897,7 @@ cdef class TrainingInfo:
                     self.tinf.ups_comp[i][_complement[seq.digits[pos+j]] & 0b11] += 1
                 i += 1
 
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil:
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil:
         cdef int phase
         cdef int rbs[3]
         cdef int type[3]
@@ -3898,6 +3915,8 @@ cdef class TrainingInfo:
         cdef ssize_t i
         cdef ssize_t j
         cdef ssize_t nn = nodes.length
+
+        self._on_modification()
 
         # reset training info
         for j in range(3):
@@ -4090,7 +4109,7 @@ cdef class TrainingInfo:
                   if self.tinf.ups_comp[i][j] < -4.0:
                       self.tinf.ups_comp[i][j] = -4.0
 
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil:
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -4111,6 +4130,8 @@ cdef class TrainingInfo:
         cdef double wt                = self.tinf.st_wt
         cdef double sthresh           = 35.0;
         cdef int    nn                = nodes.length
+
+        self._on_modification()
 
         for i in range(32):
             for j in range(4):

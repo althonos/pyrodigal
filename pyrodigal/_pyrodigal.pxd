@@ -307,13 +307,15 @@ cdef class TrainingInfo:
     cpdef dict __getstate__(self)
     cpdef object __setstate__(self, dict state)
 
+    cdef void _on_modification(self) nogil except *
+
     @staticmethod
     cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) nogil
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) except * nogil
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil
 
     cpdef object dump(self, object fp)
 
