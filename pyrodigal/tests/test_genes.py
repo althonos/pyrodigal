@@ -61,7 +61,7 @@ class TestGenes(unittest.TestCase):
 
     def test_write_scores(self):
         buffer = io.StringIO()
-        self.genes.write_scores(buffer, "NODE_23_length_79939_cov_26.984653")
+        self.genes.write_scores(buffer, self.record.id)
         actual = [
             line.strip()
             for line in buffer.getvalue().splitlines()
@@ -102,9 +102,33 @@ class TestGenes(unittest.TestCase):
         self.assertIs(genes.training_info, mb.training_info)
         self.assertIs(genes.training_info.metagenomic_bin, mb)
 
+    def test_write_translations(self):
+        buffer = io.StringIO()
+        self.genes.write_translations(buffer, self.record.id)
+        actual = buffer.getvalue()
+        
+        data = os.path.realpath(os.path.join(__file__, "..", "data"))
+        faa = os.path.join(data, "SRR492066.meta.faa.gz")
+        with gzip.open(faa) as f:
+            expected = f.read().decode()
+
+        self.assertEqual(actual, expected)
+
+    def test_write_genes(self):
+        buffer = io.StringIO()
+        self.genes.write_genes(buffer, self.record.id)
+        actual = buffer.getvalue()
+        
+        data = os.path.realpath(os.path.join(__file__, "..", "data"))
+        fna = os.path.join(data, "SRR492066.meta.fna.gz")
+        with gzip.open(fna) as f:
+            expected = f.read().decode()
+
+        self.assertEqual(actual, expected)
+
     def test_write_gff(self):
         buffer = io.StringIO()
-        self.genes.write_gff(buffer, "NODE_23_length_79939_cov_26.984653")
+        self.genes.write_gff(buffer, self.record.id)
         actual = buffer.getvalue().splitlines()
 
         data = os.path.realpath(os.path.join(__file__, "..", "data"))
@@ -131,4 +155,3 @@ class TestGenes(unittest.TestCase):
             self.assertEqual(attributes_actual['rbs_motif'], attributes_expected['rbs_motif'])
             self.assertEqual(attributes_actual['rbs_spacer'], attributes_expected['rbs_spacer'])
             self.assertEqual(attributes_actual['start_type'], attributes_expected['start_type'])
-            
