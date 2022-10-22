@@ -2905,6 +2905,7 @@ cdef class Genes:
         self.genes = NULL
         self.capacity = 0
         self.length = 0
+        self._meta = False
 
     def __dealloc__(self):
         PyMem_Free(self.genes)
@@ -2936,6 +2937,7 @@ cdef class Genes:
 
         state = {
             "_num_seq": self._num_seq,
+            "_meta": self._meta,
             "nodes": self.nodes,
             "sequence": self.sequence,
             "genes": [
@@ -2972,6 +2974,7 @@ cdef class Genes:
 
         # copy attributes
         self._num_seq = state["_num_seq"]
+        self._meta = state["_meta"]
         self.nodes = state["nodes"]
         self.sequence = state["sequence"]
 
@@ -3230,13 +3233,8 @@ cdef class Genes:
         cdef int            i
         cdef ssize_t        n    = 0
         cdef MetagenomicBin mb   = self.training_info.metagenomic_bin
-
-        if mb is not None:
-            run_type = "Metagenomic"
-            model = mb.description
-        else:
-            run_type = "Single"
-            model = "Ab initio"
+        cdef str            run  = "Metagenomic" if self._meta else "Single" 
+        cdef str            desc = "Ab initio" if mb is None else mb.description
 
         if header:
             file.write("##gff-version  3\n")
@@ -3249,8 +3247,8 @@ cdef class Genes:
         file.write(
             f"# Model Data: "
             f"version=pyrodigal.v{__version__};"
-            f"run_type={run_type};"
-            f'model="{model}";'
+            f"run_type={run};"
+            f'model="{desc}";'
             f"gc_cont={self.training_info.gc*100:.2f};"
             f"transl_table={self.training_info.translation_table};"
             f"uses_sd={int(self.training_info.uses_sd)}\n"
@@ -4825,6 +4823,7 @@ cdef class OrfFinder:
         genes.sequence = seq
         genes.nodes = nodes
         genes.training_info = tinf
+        genes._meta = self.meta
         return genes
 
     def train(

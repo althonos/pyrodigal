@@ -92,13 +92,15 @@ class TestGenes(unittest.TestCase):
         #                  `-32.2550` may be rounded as `-32.25` or `-32.26`.
 
     def test_pickle(self):
-
         genes = pickle.loads(pickle.dumps(self.genes))
         mb = self.genes.training_info.metagenomic_bin
-        self.assertIs(genes.training_info, mb.training_info)
-        self.assertIs(genes.training_info.metagenomic_bin, mb)
+        # gene data should be the same before/after pickling
         for gene1, gene2 in zip(self.genes, genes):
             self.assertEqual(gene1._gene_data(1), gene2._gene_data(1))
+        # training info should be preserved, in particular if coming
+        # from a metagenomic bin the references should be the same
+        self.assertIs(genes.training_info, mb.training_info)
+        self.assertIs(genes.training_info.metagenomic_bin, mb)
 
     def test_write_gff(self):
         buffer = io.StringIO()
