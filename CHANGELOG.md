@@ -6,7 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.1...HEAD
+
+
+## [v2.0.0-rc.1] - 2022-10-22
+[v2.0.0-rc.1]: https://github.com/althonos/pyrodigal/compare/v1.1.2...v2.0.0-rc.1
+
+### Added
+- MMX implementation of the SIMD prefilter.
+- Propert GFF headers and metadata section to GFF output.
+
+### Fixed
+- Out of bound access to sequence data in `Sequence._shine_dalgarno_mm` and `Sequence._shine_dalgarno_exact`.
+- Gene identifier being used instead of the sequence identifier in the GFF output ([#18](https://github.com/althonos/pyrodigal/issues/18)).
+
+### Changed
+- Rewrite SIMD prefilter using a generic template with C macros.
+- Make all write methods of `Genes` objects require a ``sequence_id`` argument instead of using the internal sequence number.
 
 
 ## [v1.1.2] - 2022-08-31
@@ -18,7 +34,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Prevent direct instantiation of `Node` and `Gene` objects from Python code.
 - Configuration of platform-specific NEON flags in `setup.py` not being applied to the linker.
-
 
 
 ## [v1.1.1] - 2022-07-08

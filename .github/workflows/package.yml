@@ -3,7 +3,7 @@ name: Package
 on:
   push:
     tags:
-      - v*.*.*
+      - v*
 
 jobs:
 

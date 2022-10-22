@@ -3209,7 +3209,7 @@ cdef class Genes:
         Returns:
             `int`: The number of bytes written to the file.
 
-        .. versionchanged:: 1.2.0
+        .. versionchanged:: 2.0.0
             Replaced optional``prefix`` argument with ``sequence_id``.
 
         """
@@ -3286,7 +3286,7 @@ cdef class Genes:
         Returns:
             `int`: The number of bytes written to the file.
 
-        .. versionchanged:: 1.2.0
+        .. versionchanged:: 2.0.0
             Replaced optional``prefix`` argument with ``sequence_id``.
 
         """
@@ -3333,7 +3333,7 @@ cdef class Genes:
         Returns:
             `int`: The number of bytes written to the file.
 
-        .. versionchanged:: 1.2.0
+        .. versionchanged:: 2.0.0
             Replaced optional``prefix`` argument with ``sequence_id``.
 
         """
@@ -3381,7 +3381,7 @@ cdef class Genes:
 
         .. versionadded:: 0.7.0
 
-        .. versionadded:: 1.2.0
+        .. versionadded:: 2.0.0
             The ``sequence_id`` argument.
 
         """
