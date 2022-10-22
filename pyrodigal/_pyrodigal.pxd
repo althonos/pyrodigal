@@ -247,6 +247,9 @@ cdef class Gene:
     cdef Genes  owner
     cdef _gene* gene
 
+    cpdef str _gene_data(self, object sequence_id)
+    cpdef str _score_data(self)
+
     cpdef double confidence(self)
     cpdef str sequence(self)
     cpdef str translate(

@@ -27,7 +27,7 @@ class TestGenes(unittest.TestCase):
 
     def test_indexing(self):
         length = len(self.genes)
-        self.assertEqual(self.genes[0]._gene_data, self.genes[-length]._gene_data)
+        self.assertEqual(self.genes[0]._gene_data(1), self.genes[-length]._gene_data(1))
         with self.assertRaises(IndexError):
             self.genes[length]
         with self.assertRaises(IndexError):
@@ -35,11 +35,11 @@ class TestGenes(unittest.TestCase):
 
     def test_iter(self):
         for i, gene in zip(range(len(self.genes)), self.genes):
-            self.assertEqual(gene._gene_data, self.genes[i]._gene_data)
+            self.assertEqual(gene._gene_data(1), self.genes[i]._gene_data(1))
 
     def test_reversed(self):
         for i, gene in zip(range(1, len(self.genes) + 1), reversed(self.genes)):
-            self.assertEqual(gene._gene_data, self.genes[-i]._gene_data)
+            self.assertEqual(gene._gene_data(1), self.genes[-i]._gene_data(1))
 
     def test_bool(self):
         self.assertTrue(bool(self.genes))
@@ -94,7 +94,7 @@ class TestGenes(unittest.TestCase):
     def test_pickle(self):
         genes = pickle.loads(pickle.dumps(self.genes))
         for gene1, gene2 in zip(self.genes, genes):
-            self.assertEqual(gene1._gene_data, gene2._gene_data)
+            self.assertEqual(gene1._gene_data(1), gene2._gene_data(1))
 
     def test_write_gff(self):
         buffer = io.StringIO()

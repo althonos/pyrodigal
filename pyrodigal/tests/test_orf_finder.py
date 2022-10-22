@@ -86,7 +86,7 @@ class _OrfFinderTestCase(object):
         self.assertEqual(len(predictions), len(proteins))
         for gene, protein in zip(predictions, proteins):
             *_, gene_data = protein.description.split(" # ")
-            self.assertEqual(gene._gene_data, gene_data.strip())
+            self.assertEqual(gene._gene_data(1), gene_data.strip())
 
     def assertPredictionsEqual(self, predictions, proteins):
         self.assertTranslationsEqual(predictions, proteins)

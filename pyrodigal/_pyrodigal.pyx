@@ -2502,32 +2502,6 @@ cdef class Gene:
     # --- Properties ---------------------------------------------------------
 
     @property
-    def _gene_data(self):
-        cdef size_t node_index = <size_t> (self.gene - &self.owner.genes[0])
-        return "ID={}_{};partial={}{};start_type={};rbs_motif={};rbs_spacer={};gc_cont={:.3f}".format(
-            self.owner._num_seq,
-            node_index + 1,
-            int(self.partial_begin),
-            int(self.partial_end),
-            self.start_type,
-            self.rbs_motif,
-            self.rbs_spacer,
-            self.owner.nodes.nodes[self.gene.start_ndx].gc_cont
-        )
-
-    @property
-    def _score_data(self):
-        return "conf={:.2f};score={:.2f};cscore={:.2f};sscore={:.2f};rscore={:.2f};uscore={:.2f};tscore={:.2f};".format(
-            self.confidence(),
-            self.score,
-            self.cscore,
-            self.sscore,
-            self.rscore,
-            self.uscore,
-            self.tscore,
-        )
-
-    @property
     def begin(self):
         """`int`: The coordinate at which the gene begins.
         """
@@ -2714,6 +2688,33 @@ cdef class Gene:
         """`~pyrodigal.Node`: The stop node at the end of this gene.
         """
         return self.owner.nodes[self.gene.stop_ndx]
+
+
+    # --- Utils --------------------------------------------------------------
+
+    cpdef str _gene_data(self, object sequence_id):
+        cdef size_t node_index = <size_t> (self.gene - &self.owner.genes[0])
+        return "ID={}_{};partial={}{};start_type={};rbs_motif={};rbs_spacer={};gc_cont={:.3f}".format(
+            sequence_id,
+            node_index + 1,
+            int(self.partial_begin),
+            int(self.partial_end),
+            self.start_type,
+            self.rbs_motif,
+            self.rbs_spacer,
+            self.owner.nodes.nodes[self.gene.start_ndx].gc_cont
+        )
+
+    cpdef str _score_data(self):
+        return "conf={:.2f};score={:.2f};cscore={:.2f};sscore={:.2f};rscore={:.2f};uscore={:.2f};tscore={:.2f};".format(
+            self.confidence(),
+            self.score,
+            self.cscore,
+            self.sscore,
+            self.rscore,
+            self.uscore,
+            self.tscore,
+        )
 
     # --- Python interface ---------------------------------------------------
 
@@ -3262,9 +3263,9 @@ cdef class Genes:
             n += file.write("\t")
             n += file.write("0")
             n += file.write("\t")
-            n += file.write(gene._gene_data)
+            n += file.write(gene._gene_data(sequence_id))
             n += file.write(";")
-            n += file.write(gene._score_data)
+            n += file.write(gene._score_data())
             n += file.write("\n")
 
         return n
@@ -3305,7 +3306,7 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(str(gene.strand))
             n += file.write(" # ")
-            n += file.write(gene._gene_data)
+            n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
             for line in textwrap.wrap(gene.sequence(), width=width):
                 n += file.write(line)
@@ -3355,7 +3356,7 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(str(gene.strand))
             n += file.write(" # ")
-            n += file.write(gene._gene_data)
+            n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
             for line in textwrap.wrap(gene.translate(translation_table), width=width):
                 n += file.write(line)
