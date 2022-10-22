@@ -3213,22 +3213,20 @@ cdef class Genes:
             Replaced optional``prefix`` argument with ``sequence_id``.
 
         """
-        cdef Gene    gene
-        cdef int     i
-        cdef ssize_t n    = 0
-
-        for mb in METAGENOMIC_BINS:
-            if self.training_info is mb.training_info:
-                run_type = "Metagenomic"
-                model = mb.description
-                break
+        cdef Gene           gene
+        cdef int            i
+        cdef ssize_t        n    = 0
+        cdef MetagenomicBin mb   = self.training_info.metagenomic_bin
+       
+        if mb is not None:
+            run_type = "Metagenomic"
+            model = mb.description
         else:
             run_type = "Single"
             model = "Ab initio"
 
         if header:
             file.write("##gff-version  3\n")
-
         file.write(
             f"# Sequence Data: "
             f"seqnum={self._num_seq};"
@@ -3630,6 +3628,19 @@ cdef class TrainingInfo:
         self.tinf.gene_dc = state["gene_dc"]
 
     # --- Properties -------------------------------------------------------
+
+    @property
+    def metagenomic_bin(self):
+        """`MetagenomicBin` or `None`: The metagenomic bin of this model.
+
+        .. versionadded:: 2.0.0
+
+        """
+        cdef ssize_t i 
+        for i in range(NUM_META):
+            if self.tinf == _METAGENOMIC_BINS[i].tinf:
+                return METAGENOMIC_BINS[i]
+        return None
 
     @property
     def translation_table(self):
