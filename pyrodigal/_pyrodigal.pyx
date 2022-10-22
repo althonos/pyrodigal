@@ -4356,13 +4356,12 @@ cdef class MetagenomicBin:
         return self.bin.desc.decode('ascii')
 
 # Allocate raw C memory for the C structs
+cdef _training _METAGENOMIC_TRAINING_INFO[NUM_META]
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 cdef ssize_t _i
 for _i in range(NUM_META):
     memset(&_METAGENOMIC_BINS[_i], 0, sizeof(_metagenomic_bin))
-    _METAGENOMIC_BINS[_i].tinf = <_training*> PyMem_Malloc(sizeof(_training))
-    if not _METAGENOMIC_BINS[_i].tinf:
-        raise MemoryError()
+    _METAGENOMIC_BINS[_i].tinf = &_METAGENOMIC_TRAINING_INFO[_i]
     memset(_METAGENOMIC_BINS[_i].tinf, 0, sizeof(_training))
 initialize_metagenomic_bins(_METAGENOMIC_BINS)
 
