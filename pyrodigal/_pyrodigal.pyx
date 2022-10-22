@@ -2930,12 +2930,14 @@ cdef class Genes:
         return self.capacity * sizeof(_gene) + sizeof(self)
 
     cpdef dict __getstate__(self):
-        cdef size_t i
-        return {
+        cdef size_t         i
+        cdef dict           state
+        cdef MetagenomicBin mb    = self.training_info.metagenomic_bin
+
+        state = {
             "_num_seq": self._num_seq,
             "nodes": self.nodes,
             "sequence": self.sequence,
-            "training_info": self.training_info,
             "genes": [
                 {
                     "begin": self.genes[i].begin,
@@ -2946,6 +2948,12 @@ cdef class Genes:
                 for i in range(self.length)
             ]
         }
+        if mb is None:
+            state["training_info"] =  self.training_info
+        else:
+            state["metagenomic_bin"] = mb.index
+
+        return state
 
     cpdef object __setstate__(self, dict state):
         cdef size_t i
@@ -2966,7 +2974,6 @@ cdef class Genes:
         self._num_seq = state["_num_seq"]
         self.nodes = state["nodes"]
         self.sequence = state["sequence"]
-        self.training_info = state["training_info"]
 
         # copy gene data from the state dictionary
         for i, gene in enumerate(genes):
@@ -2974,6 +2981,12 @@ cdef class Genes:
             self.genes[i].end = gene["end"]
             self.genes[i].start_ndx = gene["start_ndx"]
             self.genes[i].stop_ndx = gene["stop_ndx"]
+
+        # recover training info
+        if "metagenomic_bin" in state:
+            self.training_info = METAGENOMIC_BINS[state["metagenomic_bin"]].training_info
+        else:
+            self.training_info = state["training_info"]
 
     # --- C interface --------------------------------------------------------
 
@@ -3217,7 +3230,7 @@ cdef class Genes:
         cdef int            i
         cdef ssize_t        n    = 0
         cdef MetagenomicBin mb   = self.training_info.metagenomic_bin
-       
+
         if mb is not None:
             run_type = "Metagenomic"
             model = mb.description
@@ -3636,7 +3649,7 @@ cdef class TrainingInfo:
         .. versionadded:: 2.0.0
 
         """
-        cdef ssize_t i 
+        cdef ssize_t i
         for i in range(NUM_META):
             if self.tinf == _METAGENOMIC_BINS[i].tinf:
                 return METAGENOMIC_BINS[i]

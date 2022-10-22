@@ -56,3 +56,9 @@ class TestTrainingInfo(unittest.TestCase):
         t1 = METAGENOMIC_BINS[0].training_info
         t2 = pickle.loads(pickle.dumps(t1))
         self.assertTrainingInfoEqual(t1, t2)
+
+    def test_metagenomic_bin(self):
+        t1 = TrainingInfo(gc=0.5)
+        self.assertIs(t1.metagenomic_bin, None)
+        t2 = METAGENOMIC_BINS[0].training_info
+        self.assertIs(t2.metagenomic_bin, METAGENOMIC_BINS[0])
