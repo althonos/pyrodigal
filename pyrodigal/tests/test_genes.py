@@ -116,7 +116,13 @@ class TestGenes(unittest.TestCase):
             self.maxDiff = None
             self.assertEqual(row_actual[0], row_expected[0])
             self.assertEqual(row_actual[2:8], row_expected[2:8])
-            # NOTE(@althonos): Don't compare last part because there are some
-            #                  discrepancies in the score data, see issue #19
-            # self.assertEqual(row_actual[8], row_expected[8]) 
-
+            # NOTE: Don't compare all attributes because:
+            #       - IDs are differents, see #18
+            #       - some discrepancies in the score data, see #19
+            attributes_actual = dict(x.split("=", 1) for x in row_actual[8].split(";") if x)
+            attributes_expected = dict(x.split("=", 1) for x in row_expected[8].split(";") if x)
+            self.assertEqual(attributes_actual['partial'], attributes_expected['partial'])
+            self.assertEqual(attributes_actual['rbs_motif'], attributes_expected['rbs_motif'])
+            self.assertEqual(attributes_actual['rbs_spacer'], attributes_expected['rbs_spacer'])
+            self.assertEqual(attributes_actual['start_type'], attributes_expected['start_type'])
+            
