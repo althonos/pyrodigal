@@ -2887,8 +2887,6 @@ cdef class Gene:
 cdef class Genes:
     """A list of raw genes found by Prodigal in a single sequence.
 
-    .. versionadded:: 0.5.4
-
     Attributes:
         sequence (`pyrodigal.Sequence`): The compressed input sequence for
             which the gene predictions were made.
@@ -2896,6 +2894,13 @@ cdef class Genes:
             training info these predictions were obtained with.
         nodes (`pyrodigal.Nodes`): A collection of raw nodes found in the
             input sequence.
+        meta (`bool`): Whether these genes have been found after a run 
+            in metagenomic mode, or in single mode.
+
+    .. versionadded:: 0.5.4
+
+    .. versionadded:: 2.0.0
+        The ``meta`` attribute.
 
     """
 
@@ -2905,7 +2910,7 @@ cdef class Genes:
         self.genes = NULL
         self.capacity = 0
         self.length = 0
-        self._meta = False
+        self.meta = False
 
     def __dealloc__(self):
         PyMem_Free(self.genes)
@@ -2937,7 +2942,7 @@ cdef class Genes:
 
         state = {
             "_num_seq": self._num_seq,
-            "_meta": self._meta,
+            "meta": self.meta,
             "nodes": self.nodes,
             "sequence": self.sequence,
             "genes": [
@@ -2974,7 +2979,7 @@ cdef class Genes:
 
         # copy attributes
         self._num_seq = state["_num_seq"]
-        self._meta = state["_meta"]
+        self.meta = state["meta"]
         self.nodes = state["nodes"]
         self.sequence = state["sequence"]
 
@@ -3233,7 +3238,7 @@ cdef class Genes:
         cdef int            i
         cdef ssize_t        n    = 0
         cdef MetagenomicBin mb   = self.training_info.metagenomic_bin
-        cdef str            run  = "Metagenomic" if self._meta else "Single" 
+        cdef str            run  = "Metagenomic" if self.meta else "Single" 
         cdef str            desc = "Ab initio" if mb is None else mb.description
 
         if header:
@@ -4823,7 +4828,7 @@ cdef class OrfFinder:
         genes.sequence = seq
         genes.nodes = nodes
         genes.training_info = tinf
-        genes._meta = self.meta
+        genes.meta = self.meta
         return genes
 
     def train(

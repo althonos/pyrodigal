@@ -265,7 +265,7 @@ cdef class Genes:
     cdef          size_t       length
     # References to source data
     cdef          size_t       _num_seq
-    cdef          bint         _meta
+    cdef readonly bint         meta
     cdef readonly Nodes        nodes
     cdef readonly Sequence     sequence
     cdef readonly TrainingInfo training_info
