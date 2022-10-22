@@ -98,6 +98,7 @@ Library
    :maxdepth: 2
 
    Installation <install>
+   Output Formats <outputs>
    Contributing <contributing>
    Publications <publications>
    Benchmarks <benchmarks>
