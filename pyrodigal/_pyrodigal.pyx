@@ -3511,12 +3511,12 @@ cdef class TrainingInfo:
 
         Danger:
             This method is not safe to use across different machines. The
-            internal binary structure will be dumped as-is, and because the
+            internal binary structure will be loaded as-is, and because the
             C types can change in size and representation between CPUs and
-            OS, the file will not portable. This method is only provided
-            to offer the same kind of features as the Prodigal binary. For
-            a safe way of storing and sharing a `TrainingInfo`, use the
-            `pickle` module.
+            OS, the deserialized data may be invalid. This method is only 
+            provided to load a training info file created by the Prodigal 
+            binary. For a safe way of sharing and loading a `TrainingInfo`, 
+            use the `pickle` module.
 
         Raises:
             `EOFError`: When less bytes than expected could be read from
@@ -3547,6 +3547,7 @@ cdef class TrainingInfo:
 
     def __cinit__(self):
         self.owned = True
+        self.meta_index = -1
         self.tinf = NULL
 
     def __init__(self, double gc, double start_weight=4.35, int translation_table=11):
@@ -3554,6 +3555,7 @@ cdef class TrainingInfo:
             raise RuntimeError("TrainingInfo.__init__ called more than once")
         # reallocate the training info memory, if needed
         self.owned = True
+        self.meta_index = -1
         self.tinf = <_training*> PyMem_Malloc(sizeof(_training))
         if self.tinf == NULL:
             raise MemoryError("Failed to allocate training info")
@@ -3590,6 +3592,7 @@ cdef class TrainingInfo:
         cdef int j
         cdef int k
         return {
+            "meta_index": self.meta_index,
             "gc": self.tinf.gc,
             "translation_table": self.tinf.trans_table,
             "start_weight": self.tinf.st_wt,
@@ -3628,6 +3631,7 @@ cdef class TrainingInfo:
         if self.tinf == NULL:
             self.__init__(state["gc"])
         # copy data
+        self.meta_index = state["meta_index"]
         self.tinf.gc = state["gc"]
         self.tinf.trans_table = state["translation_table"]
         self.tinf.st_wt = state["start_weight"]
@@ -3649,11 +3653,9 @@ cdef class TrainingInfo:
         .. versionadded:: 2.0.0
 
         """
-        cdef ssize_t i
-        for i in range(NUM_META):
-            if self.tinf == _METAGENOMIC_BINS[i].tinf:
-                return METAGENOMIC_BINS[i]
-        return None
+        if self.meta_index == -1:
+            return None
+        return METAGENOMIC_BINS[self.meta_index]
 
     @property
     def translation_table(self):
@@ -4379,7 +4381,7 @@ cdef class MetagenomicBin:
         assert self.bin != NULL
         return self.bin.desc.decode('ascii')
 
-# Allocate raw C memory for the C structs
+# Reserve raw C memory for the C structs without allocation
 cdef _training _METAGENOMIC_TRAINING_INFO[NUM_META]
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 cdef ssize_t _i
@@ -4397,6 +4399,7 @@ for _i in range(NUM_META):
     _bin.bin = &_METAGENOMIC_BINS[_i]
     _bin.training_info = TrainingInfo.__new__(TrainingInfo)
     _bin.training_info.owned = False
+    _bin.training_info.meta_index = _i
     _bin.training_info.tinf = _bin.bin.tinf
     PyTuple_SET_ITEM(_m, _i, _bin)
     Py_INCREF(_bin)

@@ -300,6 +300,7 @@ cdef class Genes:
 
 cdef class TrainingInfo:
     cdef bint       owned
+    cdef int8_t     meta_index
     cdef _training* tinf
 
     cpdef size_t __sizeof__(self)
