@@ -24,11 +24,11 @@ static inline int _is_g(const uint8_t* digits, const int slen, const int i, cons
 static inline int _is_gc(const uint8_t* digits, const int slen, const int i, const int strand) {
     // NB(@althonos): In the original Prodigal implementation, any unknown
     //                character gets encoded as a C, so it gets counted
-    //                when computing the GC percent. We reproduce this
+    //                when computing the most GC frame. We reproduce this
     //                behaviour here, but a better solution would be to
     //                count only known letters.
     uint_fast8_t nuc = (strand == 1) ? digits[i] : digits[slen - 1 - i];
-    return nuc == C || nuc == G || nuc == N;
+    return (nuc != A) && (nuc != T);
 }
 
 static inline int _is_start(const uint8_t* digits, const int slen, const int i, const int tt, const int strand) {

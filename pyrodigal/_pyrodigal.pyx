@@ -3739,6 +3739,30 @@ cdef class TrainingInfo:
         self._on_modification()
         self.tinf.st_wt = st_wt
 
+    @property
+    def rbs_weights(self):
+        assert self.tinf != NULL
+        return [ self.tinf.rbs_wt[i] for i in range(28) ]
+
+    @property
+    def upstream_compositions(self):
+        assert self.tinf != NULL
+        return [
+            tuple(self.tinf.ups_comp[i][j] for j in range(4))
+            for i in range(32)
+        ]
+
+    @property
+    def motif_weights(self):
+        assert self.tinf != NULL
+        return [
+            [
+                [ self.tinf.mot_wt[i][j][k] for k in range(4096) ]
+                for j in range(4)
+            ]
+            for i in range(4)
+        ]
+
     # --- C interface --------------------------------------------------------
 
     cdef void _on_modification(self) except * nogil:
@@ -4955,7 +4979,7 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
         free(bwd)
         free(tot)
         with gil:
-            raise MemoryError("could not allocate GC frame buffers")
+            raise MemoryError("Could not allocate GC frame buffers")
 
     for i in range(slen):
         fwd[i] = 0
@@ -4963,25 +4987,28 @@ cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
         tot[i] = 0
         gp[i] = -1
 
-    for j in range(0, slen):
-        if j < 3:
-            fwd[j] = _is_gc(seq.digits, seq.slen, j, 1)
-            bwd[seq.slen-j-1] = _is_gc(seq.digits, seq.slen, j, -1)
-        else:
-            fwd[j] = fwd[j-3] + _is_gc(seq.digits, seq.slen, j, 1)
-            bwd[slen-j-1] = bwd[slen-j+2] + _is_gc(seq.digits, seq.slen, j, -1)
+    for i in range(3):
+        for j in range(i, slen):
+            if j < 3:
+                fwd[j] = _is_gc(seq.digits, slen, j, 1)
+                bwd[slen-j-1] = _is_gc(seq.digits, slen, j, -1)
+            else:
+                fwd[j] = fwd[j-3] + _is_gc(seq.digits, slen, j, 1)
+                bwd[slen-j-1] = bwd[slen-j+2] + _is_gc(seq.digits, slen, j, -1)
+
     for i in range(slen):
-        tot[i] = fwd[i] + bwd[i] - _is_gc(seq.digits, seq.slen, i, 1);
-        if i >= WINDOW//2:
-            tot[i] -= fwd[i-WINDOW//2]
-        if i + WINDOW//2 < seq.slen:
-            tot[i] -= bwd[i+WINDOW//2]
+        tot[i] = fwd[i] + bwd[i] - _is_gc(seq.digits, slen, i, 1)
+        if i - WINDOW/2 >= 0:
+            tot[i] -= fwd[i-WINDOW/2]
+        if i + WINDOW/2 < slen:
+            tot[i] -= bwd[i+WINDOW/2]
     free(fwd)
     free(bwd)
+
     for i in range(0, slen-2, 3):
         win = sequence.max_fr(tot[i], tot[i+1], tot[i+2])
         for j in range(3):
             gp[i+j] = win
     free(tot)
 
-    return gp;
+    return gp
