@@ -1,10 +1,12 @@
 import abc
 import gzip
 import os
+import sys
 import tempfile
 import textwrap
 import unittest
 import pickle
+import platform
 import warnings
 
 from .. import OrfFinder, TrainingInfo
@@ -21,11 +23,13 @@ class TestTrainingInfo(unittest.TestCase):
         self.assertEqual(t1.type_weights, t2.type_weights)
         self.assertEqual(t1.uses_sd, t2.uses_sd)
         self.assertEqual(t1.start_weight, t2.start_weight)
+        self.assertEqual(t1.upstream_compositions, t2.upstream_compositions)
+        self.assertEqual(t1.motif_weights, t2.motif_weights)
+        self.assertEqual(t1.rbs_weights, t2.rbs_weights)
 
     @classmethod
     def setUpClass(cls):
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
             cls.record = load_record("SRR492066")
             cls.training_info = OrfFinder().train(cls.record.seq)
 
@@ -76,3 +80,15 @@ class TestTrainingInfo(unittest.TestCase):
             t1.gc = 0.50
         with self.assertRaises(RuntimeError):
             t1.uses_sd = False
+
+    @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
+    @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")
+    def test_train(self):   
+        data_path = os.path.realpath(os.path.join(__file__, "..", "data"))
+        with gzip.open(os.path.join(data_path, "GCF_000009045.1_ASM904v1_genomic.fna.gz"), "rt") as f:
+            records = list(parse(f))
+        with open(os.path.join(data_path, "GCF_000009045.1_ASM904v1_genomic.tinf.bin"), "rb") as f:
+            expected = TrainingInfo.load(f)
+        orf_finder = OrfFinder(closed=True)
+        actual = orf_finder.train(*(str(r.seq) for r in records))
+        self.assertTrainingInfoEqual(actual, expected)
