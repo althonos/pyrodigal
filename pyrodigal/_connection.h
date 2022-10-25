@@ -250,6 +250,7 @@ static void _score_connection_backward_stop(
     int right = n2->ndx;
 
     double maxval;
+    double curval;
     double score   = 0.0;
     double scr_mod = 0.0;
 
@@ -270,27 +271,23 @@ static void _score_connection_backward_stop(
         // Overlapping Gene Case 2: Three consecutive overlapping genes f r r
         maxfr = -1;
         maxval = 0.0;
-        if (n1->traceb != -1) {
-            for (i = 0; i < 3; i++) {
-                if (n2->star_ptr[i] == -1)
-                    continue;
-                n3 = &nodes[n2->star_ptr[i]];
-                ovlp = left - n3->stop_val + 3;
-                if ((ovlp <= 0) || (ovlp >= MAX_OPP_OVLP))
-                    continue;
-                if (ovlp >= n3->ndx - left)
-                    continue;
-                if (ovlp >= n3->stop_val - nodes[n1->traceb].ndx - 2)
-                    continue;
-                // record max frame
-                if (final)
-                    score = n3->cscore + n3->sscore + _intergenic_mod(n3, n2, tinf->st_wt);
-                else
-                    score = tinf->bias[0]*n3->gc_score[0] + tinf->bias[1]*n3->gc_score[1] + tinf->bias[2]*n3->gc_score[2];
-                if (score > maxval) {
-                    maxfr = i;
-                    maxval = score;
-                }
+        for(i = 0; i < 3; i++) {
+            if(n2->star_ptr[i] == -1)
+                continue;
+            n3 = &(nodes[n2->star_ptr[i]]);
+            ovlp = left - n3->stop_val + 3;
+            if(ovlp <= 0 || ovlp >= MAX_OPP_OVLP)
+                continue;
+            if(ovlp >= n3->ndx - left)
+                continue;
+            if(n1->traceb == -1)
+                continue;
+            if(ovlp >= n3->stop_val - nodes[n1->traceb].ndx - 2)
+                continue;
+            curval = n3->cscore + n3->sscore + _intergenic_mod(n3, n2, tinf->st_wt);
+            if((final && curval > maxval) || (!final && tinf->bias[0]*n3->gc_score[0] + tinf->bias[1]*n3->gc_score[1] + tinf->bias[2]*n3->gc_score[2] > maxval)) {
+                maxfr = i;
+                maxval = curval;
             }
         }
         if (maxfr != -1) {
