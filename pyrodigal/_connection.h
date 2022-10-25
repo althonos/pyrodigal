@@ -1,3 +1,33 @@
+/* An optimized version of the `score_connection` function from Prodigal.
+ *
+ * In the original Prodigal code, the dynamic programming routine scores 
+ * connections between any pair of node reasonably distant from each other
+ * (at most MAX_NODE_DIST=500 nodes). The function responsible for doing so
+ * is the `score_connection` function in the `dprog.c` file.
+ *
+ * Now consider this for a given node `i`, the `score_connection` function 
+ * is called up to 500 times with the second node being (`i-500`, ..., `i-1`).
+ * For the duration of this loop, the node `i` is basically constant. However,
+ * the current code will keep checking over and over for the strand and type
+ * of node `i` to compute the score.
+ *
+ * By refactoring the original function, it's possible to take out these 
+ * comparisons by moving the code into 4 functions based on the type and
+ * strand of the node `i` (named `n2` in the signatures): either forward
+ * or backward strand, and either stop or start type.
+ *
+ * Doing so means that we can then skip the comparison for strand and type
+ * combinations that we already know won't happen. In addition, we can also
+ * reduce the computation of the intergenic modifier based on whether the 
+ * nodes are on the same or a different strand.
+ *
+ * Benchmarking on an example sequence (`GCF_000009045.1_ASM904v1_genomic`, 
+ * 4,215,606 nucleotides, 196,071 nodes) showed a 20% improvement in the 
+ * runtime for a metagenomic gene search (19.690s to 15.744s) by using this
+ * implementation instead of the original
+ * 
+ */
+
 #ifndef _PYRODIGAL_CONNECTION_H
 #define _PYRODIGAL_CONNECTION_H
 
