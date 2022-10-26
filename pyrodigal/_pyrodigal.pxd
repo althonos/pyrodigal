@@ -72,6 +72,7 @@ cdef class Sequence:
     ) nogil except 1
 
     cdef int _allocate(self, int slen) except 1
+    cdef int* _frame_plot(self, int window_size) nogil except NULL
     cdef char _amino(
         self,
         int i,
@@ -94,6 +95,7 @@ cdef class Sequence:
         const _training* tinf,
         const int strand
     ) nogil except -1
+    
 
     cpdef size_t __sizeof__(self)
     cpdef dict __getstate__(self)
@@ -371,8 +373,3 @@ cdef class OrfFinder:
     ) nogil except -1
 
     cpdef Genes find_genes(self, object sequence)
-
-
-# --- C-level API reimplementation -------------------------------------------
-
-cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL

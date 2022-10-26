@@ -565,6 +565,52 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
+    cdef int* _frame_plot(self, int window_size) nogil except NULL:
+        cdef int  i
+        cdef int  j
+        cdef int  win
+        cdef int* fwd  = <int*> malloc(self.slen*sizeof(int))
+        cdef int* bwd  = <int*> malloc(self.slen*sizeof(int))
+        cdef int* tot  = <int*> malloc(self.slen*sizeof(int))
+        cdef int* gp   = <int*> malloc(self.slen*sizeof(int))
+
+        if fwd == NULL or bwd == NULL or gp == NULL or tot == NULL:
+            free(gp)
+            free(fwd)
+            free(bwd)
+            free(tot)
+            with gil:
+                raise MemoryError("Could not allocate GC frame buffers")
+
+        memset(fwd, 0, self.slen*sizeof(int))
+        memset(bwd, 0, self.slen*sizeof(int))
+        memset(tot, 0, self.slen*sizeof(int))
+        memset(gp, -1, self.slen*sizeof(int))
+
+        for i in range(min(3, self.slen)):
+            fwd[i] = _is_gc(self.digits, self.slen, i, 1)
+            bwd[self.slen-i-1] = _is_gc(self.digits, self.slen, i, -1)
+        for i in range(3, self.slen):
+            fwd[i] = fwd[i-3] + _is_gc(self.digits, self.slen, i, 1)
+            bwd[self.slen-i-1] = bwd[self.slen-i+2] + _is_gc(self.digits, self.slen, i, -1)
+
+        for i in range(self.slen):
+            tot[i] = fwd[i] + bwd[i] - _is_gc(self.digits, self.slen, i, 1)
+            if i >= WINDOW/2:
+                tot[i] -= fwd[i-WINDOW/2]
+            if i + WINDOW/2 < self.slen:
+                tot[i] -= bwd[i+WINDOW/2]
+        free(fwd)
+        free(bwd)
+
+        for i in range(0, self.slen-2, 3):
+            win = sequence.max_fr(tot[i], tot[i+1], tot[i+2])
+            for j in range(i, i+3):
+                gp[j] = win
+        free(tot)
+
+        return gp
+
     cdef char _amino(
         self,
         int i,
@@ -4650,7 +4696,7 @@ cdef class OrfFinder:
         scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
-        gc_frame = calc_most_gc_frame(sequence)
+        gc_frame = sequence._frame_plot(WINDOW)
         if not gc_frame:
             raise MemoryError()
         node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)
@@ -4964,60 +5010,3 @@ cdef class OrfFinder:
             self.training_info = tinf
 
         return tinf
-
-
-# --- C-level API reimplementation -------------------------------------------
-
-cdef int* calc_most_gc_frame(Sequence seq) nogil except NULL:
-    cdef int  i
-    cdef int  j
-    cdef int  win
-    cdef int* fwd
-    cdef int* bwd
-    cdef int* tot
-    cdef int* gp
-    cdef int  slen = seq.slen
-
-    gp = <int*> malloc(seq.slen*sizeof(int));
-    fwd = <int*> malloc(seq.slen*sizeof(int));
-    bwd = <int*> malloc(seq.slen*sizeof(int));
-    tot = <int*> malloc(seq.slen*sizeof(int));
-    if fwd == NULL or bwd == NULL or gp == NULL or tot == NULL:
-        free(gp)
-        free(fwd)
-        free(bwd)
-        free(tot)
-        with gil:
-            raise MemoryError("Could not allocate GC frame buffers")
-
-    for i in range(slen):
-        fwd[i] = 0
-        bwd[i] = 0
-        tot[i] = 0
-        gp[i] = -1
-
-    for i in range(3):
-        for j in range(i, slen):
-            if j < 3:
-                fwd[j] = _is_gc(seq.digits, slen, j, 1)
-                bwd[slen-j-1] = _is_gc(seq.digits, slen, j, -1)
-            else:
-                fwd[j] = fwd[j-3] + _is_gc(seq.digits, slen, j, 1)
-                bwd[slen-j-1] = bwd[slen-j+2] + _is_gc(seq.digits, slen, j, -1)
-
-    for i in range(slen):
-        tot[i] = fwd[i] + bwd[i] - _is_gc(seq.digits, slen, i, 1)
-        if i - WINDOW/2 >= 0:
-            tot[i] -= fwd[i-WINDOW/2]
-        if i + WINDOW/2 < slen:
-            tot[i] -= bwd[i+WINDOW/2]
-    free(fwd)
-    free(bwd)
-
-    for i in range(0, slen-2, 3):
-        win = sequence.max_fr(tot[i], tot[i+1], tot[i+2])
-        for j in range(3):
-            gp[i+j] = win
-    free(tot)
-
-    return gp
