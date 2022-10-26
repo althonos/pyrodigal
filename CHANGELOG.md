@@ -6,7 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.2...HEAD
+
+
+## [v2.0.0-rc.2] - 2022-10-26
+[v2.0.0-rc.2]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.1...v2.0.0-rc.2
+
+### Added
+- `metagenomic_bin` property to `TrainingInfo` to support recovering the object corresponding to a pre-trained model.
+- `meta` attribute to `Genes` to store whether genes were predicted in single or in meta mode.
+
+### Fixed
+- Pickling and unpickling of `TrainingInfo` objects corresponding to pre-trained models.
+- Implementation of `calc_most_gc_frame` being inconsistent with the Prodigal implementation.
+- Implementation of the maximum search in `score_connection_forward_start` not following the (weird?) behaviour from Prodigal.
 
 
 ## [v2.0.0-rc.1] - 2022-10-22
