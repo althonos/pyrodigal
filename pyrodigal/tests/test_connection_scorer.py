@@ -32,7 +32,7 @@ class TestConnectionScorer(unittest.TestCase):
         fna = os.path.join(data, "MIIJ01000039.fna.gz")
         with gzip.open(fna, "rt") as f:
             cls.record = next(parse(f))
-        fna_train = os.path.join(data, "GCF_000009045.1_ASM904v1_genomic.fna.gz")
+        fna_train = os.path.join(data, "GCF_001457455.1_NCTC11397_genomic.fna.gz")
         with gzip.open(fna_train, "rt") as f:
             cls.record_train = next(parse(f))
 
@@ -52,7 +52,7 @@ class TestConnectionScorer(unittest.TestCase):
         # use copies to compute both scores
         nodes_simd = nodes.copy()
         nodes_none = nodes.copy()
-        for i in range(500, len(nodes)):
+        for i in range(len(nodes)):
             # compute boundary (MAX_NODE_DIST = 500)
             j = 0 if i < 500 else i - 500
             # score connections without fast-indexing skippable nodes
@@ -75,14 +75,14 @@ class TestConnectionScorer(unittest.TestCase):
         nodes = Nodes()
         nodes.extract(seq, closed=True)
         nodes.sort()
-        self.assertEqual(len(nodes), 196059)
+        self.assertEqual(len(nodes), 153296)
         # index nodes for the scorers
         scorer_simd.index(nodes)
         scorer_none.index(nodes)
         # use copies to compute both scores
         nodes_simd = nodes.copy()
         nodes_none = nodes.copy()
-        for i in range(500, len(nodes)):
+        for i in range(len(nodes)):
             # compute boundary (MAX_NODE_DIST = 500)
             j = 0 if i < 500 else i - 500
             # score connections without fast-indexing skippable nodes

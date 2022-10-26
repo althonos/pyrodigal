@@ -85,9 +85,9 @@ class TestTrainingInfo(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")
     def test_train_closed(self):
         data_path = os.path.realpath(os.path.join(__file__, "..", "data"))
-        with gzip.open(os.path.join(data_path, "GCF_000009045.1_ASM904v1_genomic.fna.gz"), "rt") as f:
+        with gzip.open(os.path.join(data_path, "GCF_001457455.1_NCTC11397_genomic.fna.gz"), "rt") as f:
             records = list(parse(f))
-        with open(os.path.join(data_path, "GCF_000009045.1_ASM904v1_genomic.tinf.bin"), "rb") as f:
+        with open(os.path.join(data_path, "GCF_001457455.1_NCTC11397_genomic.tinf_closed.bin"), "rb") as f:
             expected = TrainingInfo.load(f)
         orf_finder = OrfFinder(closed=True)
         actual = orf_finder.train(*(str(r.seq) for r in records))
