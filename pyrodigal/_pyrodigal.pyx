@@ -2897,7 +2897,7 @@ cdef class Genes:
             training info these predictions were obtained with.
         nodes (`pyrodigal.Nodes`): A collection of raw nodes found in the
             input sequence.
-        meta (`bool`): Whether these genes have been found after a run 
+        meta (`bool`): Whether these genes have been found after a run
             in metagenomic mode, or in single mode.
 
     .. versionadded:: 0.5.4
@@ -3241,7 +3241,7 @@ cdef class Genes:
         cdef int            i
         cdef ssize_t        n    = 0
         cdef MetagenomicBin mb   = self.training_info.metagenomic_bin
-        cdef str            run  = "Metagenomic" if self.meta else "Single" 
+        cdef str            run  = "Metagenomic" if self.meta else "Single"
         cdef str            desc = "Ab initio" if mb is None else mb.description
 
         if header:
@@ -3519,9 +3519,9 @@ cdef class TrainingInfo:
             This method is not safe to use across different machines. The
             internal binary structure will be loaded as-is, and because the
             C types can change in size and representation between CPUs and
-            OS, the deserialized data may be invalid. This method is only 
-            provided to load a training info file created by the Prodigal 
-            binary. For a safe way of sharing and loading a `TrainingInfo`, 
+            OS, the deserialized data may be invalid. This method is only
+            provided to load a training info file created by the Prodigal
+            binary. For a safe way of sharing and loading a `TrainingInfo`,
             use the `pickle` module.
 
         Raises:
@@ -3907,13 +3907,19 @@ cdef class TrainingInfo:
 
         self._on_modification()
 
+        # NOTE: This function is patched not to read out of sequence
+        #       boundaries, which can happen in the original Prodigal
+        #       code when `count_upstream_composition` is called with
+        #       a position less than 45 nucleotides away from the
+        #       edges (this can be observed with Valgrind).
+
         if strand == 1:
             for j in range(1, 3):
-                if pos - j >= 0:
+                if pos >= j:
                     self.tinf.ups_comp[i][seq.digits[pos-j] & 0b11] += 1
                 i += 1
             for j in range(15, 45):
-                if pos - j >= 0:
+                if pos >= j:
                     self.tinf.ups_comp[i][seq.digits[pos-j] & 0b11] += 1
                 i += 1
         else:
