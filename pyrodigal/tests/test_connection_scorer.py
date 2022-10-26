@@ -1,17 +1,46 @@
 import collections.abc
+import functools
 import gzip
 import os
 import sys
 import unittest
+import random
 
 from .. import TrainingInfo, Nodes, Sequence, _pyrodigal
 from .._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
 from . import data
 
 
-@unittest.skipUnless(data.resources, "importlib.resources not available")
-class TestConnectionScorer(unittest.TestCase):
-    backend = "generic"
+@functools.lru_cache()
+def extract_nodes(record):
+    seq = Sequence.from_string(record.seq)
+    tinf = METAGENOMIC_BINS[0].training_info
+    nodes = Nodes()
+    nodes.extract(seq, translation_table=tinf.translation_table)
+    nodes.sort()
+    return nodes
+
+
+@functools.lru_cache()
+def scored_nodes(record, final=True, backend=None):
+    # extract nodes from the record
+    tinf = METAGENOMIC_BINS[0].training_info
+    scorer = ConnectionScorer(backend=backend)
+    nodes = extract_nodes(record).copy()
+    scorer.index(nodes)
+    # compute scores only for some pseudo-randomly selected positions
+    rng = random.Random(42)
+    for i in rng.sample(range(len(nodes)), 10):
+        # compute boundary (MAX_NODE_DIST = 500)
+        j = 0 if i < 500 else i - 500
+        # score connections without fast-indexing skippable nodes
+        scorer.compute_skippable(j, i)
+        scorer.score_connections(nodes, j, i, tinf, final=final)
+    return nodes
+
+
+class _TestConnectionScorerBase:
+    backend = None
 
     def assertNodeEqual(self, n1, n2):
         self.assertEqual(n1.index, n2.index)
@@ -26,90 +55,46 @@ class TestConnectionScorer(unittest.TestCase):
         self.assertAlmostEqual(n1.sscore, n2.sscore)
         self.assertAlmostEqual(n1.tscore, n2.tscore)
 
-    @classmethod
-    def setUpClass(cls):
-        cls.record = data.load_record("MIIJ01000039.fna.gz")
-        cls.record_train = data.load_record("GCF_001457455.1_NCTC11397_genomic.fna.gz")
-
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_score_connections_final(self):
-        # setup
-        seq = Sequence.from_string(self.record.seq)
-        tinf = METAGENOMIC_BINS[0].training_info
-        scorer_simd = ConnectionScorer(backend=self.backend)
-        scorer_none = ConnectionScorer(backend=None)
-        # add nodes from the sequence
-        nodes = Nodes()
-        nodes.extract(seq, translation_table=tinf.translation_table)
-        nodes.sort()
-        # index nodes for the scorers
-        scorer_simd.index(nodes)
-        scorer_none.index(nodes)
-        # use copies to compute both scores
-        nodes_simd = nodes.copy()
-        nodes_none = nodes.copy()
-        for i in range(len(nodes)):
-            # compute boundary (MAX_NODE_DIST = 500)
-            j = 0 if i < 500 else i - 500
-            # score connections without fast-indexing skippable nodes
-            scorer_none.compute_skippable(j, i)
-            scorer_none.score_connections(nodes_none, j, i, tinf, final=True)
-            # compute skippable nodes with SIMD and then score connections
-            scorer_simd.compute_skippable(j, i)
-            scorer_simd.score_connections(nodes_simd, j, i, tinf, final=True)
-        # check that both methods scored the same
-        for n1, n2 in zip(nodes_none, nodes_simd):
+        record = data.load_record("MIIJ01000039.fna.gz")
+        nodes_expected = scored_nodes(record, final=True, backend=None)
+        nodes_actual = scored_nodes(record, final=True, backend=self.backend)
+        for n1, n2 in zip(nodes_expected, nodes_actual):
             self.assertNodeEqual(n1, n2)
 
-    def test_score_connections_training(self):
-        # setup
-        seq = Sequence.from_string(self.record_train.seq)
-        tinf = TrainingInfo(seq.gc, translation_table=11)
-        scorer_simd = ConnectionScorer(backend=self.backend)
-        scorer_none = ConnectionScorer(backend=None)
-        # add nodes from the sequence
-        nodes = Nodes()
-        nodes.extract(seq, closed=True)
-        nodes.sort()
-        self.assertEqual(len(nodes), 153296)
-        # index nodes for the scorers
-        scorer_simd.index(nodes)
-        scorer_none.index(nodes)
-        # use copies to compute both scores
-        nodes_simd = nodes.copy()
-        nodes_none = nodes.copy()
-        for i in range(len(nodes)):
-            # compute boundary (MAX_NODE_DIST = 500)
-            j = 0 if i < 500 else i - 500
-            # score connections without fast-indexing skippable nodes
-            scorer_none.compute_skippable(j, i)
-            scorer_none.score_connections(nodes_none, j, i, tinf, final=False)
-            # compute skippable nodes with SIMD and then score connections
-            scorer_simd.compute_skippable(j, i)
-            scorer_simd.score_connections(nodes_simd, j, i, tinf, final=False)
-        # check that both methods scored the same
-        for n1, n2 in zip(nodes_none, nodes_simd):
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    def test_score_connections_train(self):
+        record = data.load_record("GCF_001457455.1_NCTC11397_genomic.fna.gz")
+        nodes_expected = scored_nodes(record, final=False, backend=None)
+        nodes_actual = scored_nodes(record, final=False, backend=self.backend)
+        for n1, n2 in zip(nodes_expected, nodes_actual):
             self.assertNodeEqual(n1, n2)
+
+
+class TestConnectionScorerGeneric(_TestConnectionScorerBase, unittest.TestCase):
+    backend = "generic"
 
 
 @unittest.skipUnless(_pyrodigal._MMX_BUILD_SUPPORT, "extension compiled without MMX support")
 @unittest.skipUnless(_pyrodigal._MMX_RUNTIME_SUPPORT, "requires machine with MMX support")
-class TestConnectionScorerMMX(TestConnectionScorer):
+class TestConnectionScorerMMX(_TestConnectionScorerBase, unittest.TestCase):
     backend = "mmx"
 
 
 @unittest.skipUnless(_pyrodigal._SSE2_BUILD_SUPPORT, "extension compiled without SSE2 support")
 @unittest.skipUnless(_pyrodigal._SSE2_RUNTIME_SUPPORT, "requires machine with SSE2 support")
-class TestConnectionScorerSSE(TestConnectionScorer):
+class TestConnectionScorerSSE(_TestConnectionScorerBase, unittest.TestCase):
     backend = "sse"
 
 
 @unittest.skipUnless(_pyrodigal._AVX2_BUILD_SUPPORT, "extension compiled without AVX2 support")
 @unittest.skipUnless(_pyrodigal._AVX2_RUNTIME_SUPPORT, "requires machine with AVX2 support")
-class TestConnectionScorerAVX(TestConnectionScorer):
+class TestConnectionScorerAVX(_TestConnectionScorerBase, unittest.TestCase):
     backend = "avx"
 
 
 @unittest.skipUnless(_pyrodigal._NEON_BUILD_SUPPORT, "extension compiled without NEON support")
 @unittest.skipUnless(_pyrodigal._NEON_RUNTIME_SUPPORT, "requires machine with NEON support")
-class TestConnectionScorerNEON(TestConnectionScorer):
+class TestConnectionScorerNEON(_TestConnectionScorerBase, unittest.TestCase):
     backend = "neon"
