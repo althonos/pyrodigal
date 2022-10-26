@@ -72,7 +72,7 @@ cdef class Sequence:
     ) nogil except 1
 
     cdef int _allocate(self, int slen) except 1
-    cdef int* _frame_plot(self, int window_size) nogil except NULL
+    cdef int* _gc_frame_plot(self, int window_size) nogil except NULL
     cdef char _amino(
         self,
         int i,
@@ -101,6 +101,7 @@ cdef class Sequence:
     cpdef dict __getstate__(self)
     cpdef object __setstate__(self, dict state)
 
+    cpdef object gc_frame_plot(self, int window_size=*)
     cpdef int shine_dalgarno(
         self,
         int pos,

@@ -125,6 +125,7 @@ ELSE:
 
 # ----------------------------------------------------------------------------
 
+import array
 import itertools
 import textwrap
 import threading
@@ -565,7 +566,7 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
-    cdef int* _frame_plot(self, int window_size) nogil except NULL:
+    cdef int* _gc_frame_plot(self, int window_size) nogil except NULL:
         cdef int  i
         cdef int  j
         cdef int  win
@@ -905,6 +906,35 @@ cdef class Sequence:
         return max_val
 
     # --- Python interface ---------------------------------------------------
+
+    cpdef object gc_frame_plot(self, int window_size=WINDOW):
+        """frame_plot(self, window_size=120)\n--
+
+        Create a GC frame plot for the sequence using the given window size.
+
+        Arguments:
+            window_size (`int`): The width of the sliding window to 
+                use for computing the frame plot.
+
+        Returns:
+            `array.array`: An array of `int` values recording the frame
+            with the highest GC content within a window for each position
+            of the sequence.
+
+        """
+        if window_size < 0:
+            raise ValueError(f"Invalid window size {window_size!r}")
+        
+        cdef int*   gc   = self._gc_frame_plot(window_size)
+        cdef object mem  = PyMemoryView_FromMemory(<char*> gc, self.slen*sizeof(int), MVIEW_READ)
+        cdef object plot = array.array('i')
+
+        plot.frombytes(mem)
+        free(gc)
+        
+        if len(plot) != self.slen:
+            raise BufferError("Failed to copy result data from C memory")
+        return plot
 
     cpdef int shine_dalgarno(
         self,
@@ -4696,7 +4726,7 @@ cdef class OrfFinder:
         scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
-        gc_frame = sequence._frame_plot(WINDOW)
+        gc_frame = sequence._gc_frame_plot(WINDOW)
         if not gc_frame:
             raise MemoryError()
         node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)
