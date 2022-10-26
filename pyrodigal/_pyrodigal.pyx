@@ -83,13 +83,12 @@ from pyrodigal._unicode cimport *
 from pyrodigal._sequence cimport (
     nucleotide,
     _is_a,
+    _is_c,
     _is_g,
+    _is_t,
     _is_gc,
     _is_stop,
     _is_start,
-    _is_atg,
-    _is_ttg,
-    _is_gtg,
     _mer_ndx,
     _letters,
     _complement
@@ -1824,7 +1823,7 @@ cdef class Nodes:
                 continue
             # check if the current phase encountered a start
             if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, 1):
-                if _is_atg(sequence.digits, sequence.slen, i, 1):
+                if _is_a(sequence.digits, sequence.slen, i, 1):
                     saw_start[i%3] = True
                     self._add_node(
                         ndx = i,
@@ -1834,7 +1833,7 @@ cdef class Nodes:
                         edge = False
                     )
                     nn += 1
-                elif _is_ttg(sequence.digits, sequence.slen, i, 1):
+                elif _is_t(sequence.digits, sequence.slen, i, 1):
                     saw_start[i%3] = True
                     self._add_node(
                         ndx = i,
@@ -1844,7 +1843,7 @@ cdef class Nodes:
                         edge = False
                     )
                     nn += 1
-                elif _is_gtg(sequence.digits, sequence.slen, i, 1):
+                elif _is_g(sequence.digits, sequence.slen, i, 1):
                     saw_start[i%3] = True
                     self._add_node(
                         ndx = i,
@@ -1918,7 +1917,7 @@ cdef class Nodes:
                 continue
             # check if the current phase encountered a start
             if last[i%3] - i + 3 >= min_dist[i%3] and _is_start(sequence.digits, sequence.slen, i, tt, -1):
-                if _is_atg(sequence.digits, sequence.slen, i, -1):
+                if _is_a(sequence.digits, sequence.slen, i, -1):
                     saw_start[i%3] = True
                     self._add_node(
                         ndx = sequence.slen - i - 1,
@@ -1928,7 +1927,7 @@ cdef class Nodes:
                         edge = False
                     )
                     nn += 1
-                elif _is_gtg(sequence.digits, sequence.slen, i, -1):
+                elif _is_g(sequence.digits, sequence.slen, i, -1):
                     saw_start[i%3] = True
                     self._add_node(
                         ndx = sequence.slen - i - 1,
@@ -1938,7 +1937,7 @@ cdef class Nodes:
                         edge = False
                     )
                     nn += 1
-                elif _is_ttg(sequence.digits, sequence.slen, i, -1):
+                elif _is_t(sequence.digits, sequence.slen, i, -1):
                     saw_start[i%3] = 1
                     self._add_node(
                         ndx = sequence.slen - i - 1,

@@ -21,6 +21,14 @@ static inline int _is_g(const uint8_t* digits, const int slen, const int i, cons
     return (strand == 1) ? digits[i] == G : digits[slen - 1 - i] == C;
 }
 
+static inline int _is_c(const uint8_t* digits, const int slen, const int i, const int strand) {
+    return (strand == 1) ? digits[i] == C : digits[slen - 1 - i] == G;
+}
+
+static inline int _is_t(const uint8_t* digits, const int slen, const int i, const int strand) {
+    return (strand == 1) ? digits[i] == T : digits[slen - 1 - i] == A;
+}
+
 static inline int _is_gc(const uint8_t* digits, const int slen, const int i, const int strand) {
     // NB(@althonos): In the original Prodigal implementation, any unknown
     //                character gets encoded as a C, so it gets counted
