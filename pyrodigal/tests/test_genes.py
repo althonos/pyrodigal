@@ -9,19 +9,14 @@ import unittest
 import pickle
 
 from .. import OrfFinder, METAGENOMIC_BINS
-from .fasta import parse
+from . import data
 
 
+@unittest.skipUnless(data.resources, "importlib.resources not available")
 class TestGenes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        fna = os.path.join(data, "SRR492066.fna.gz")
-        meta_faa = os.path.join(data, "SRR492066.meta.faa.gz")
-
-        with gzip.open(fna, "rt") as f:
-            cls.record = next(parse(f))
-
+        cls.record = data.load_record("SRR492066.fna.gz")
         cls.p = OrfFinder(meta=True)
         cls.genes = cls.p.find_genes(str(cls.record.seq))
 
@@ -67,13 +62,11 @@ class TestGenes(unittest.TestCase):
             for line in buffer.getvalue().splitlines()
             if not line.startswith("#") and line.strip()
         ]
-
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        tsv = os.path.join(data, "SRR492066.meta.tsv")
-        with open(tsv) as f:
-            expected = [
-                line.strip() for line in f if not line.startswith("#") and line.strip()
-            ]
+        expected = [
+            line.strip()
+            for line in data.load_text("SRR492066.meta.tsv").splitlines()
+            if not line.startswith("#") and line.strip()
+        ]
 
         r1 = csv.reader(actual, dialect="excel-tab")
         r2 = csv.reader(expected, dialect="excel-tab")
@@ -106,35 +99,21 @@ class TestGenes(unittest.TestCase):
         buffer = io.StringIO()
         self.genes.write_translations(buffer, self.record.id)
         actual = buffer.getvalue()
-        
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        faa = os.path.join(data, "SRR492066.meta.faa.gz")
-        with gzip.open(faa) as f:
-            expected = f.read().decode()
-
+        expected = data.load_text("SRR492066.meta.faa.gz")
         self.assertEqual(actual, expected)
 
     def test_write_genes(self):
         buffer = io.StringIO()
         self.genes.write_genes(buffer, self.record.id)
         actual = buffer.getvalue()
-        
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        fna = os.path.join(data, "SRR492066.meta.fna.gz")
-        with gzip.open(fna) as f:
-            expected = f.read().decode()
-
+        expected = data.load_text("SRR492066.meta.fna.gz")
         self.assertEqual(actual, expected)
 
     def test_write_gff(self):
         buffer = io.StringIO()
         self.genes.write_gff(buffer, self.record.id)
         actual = buffer.getvalue().splitlines()
-
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        gff = os.path.join(data, "SRR492066.meta.gff")
-        with open(gff) as f:
-            expected = f.read().splitlines()
+        expected = data.load_text("SRR492066.meta.gff").splitlines()
 
         self.assertEqual(actual[0], expected[0])
         self.assertEqual(actual[1], expected[1])

@@ -6,10 +6,10 @@ import unittest
 
 from .. import TrainingInfo, Nodes, Sequence, _pyrodigal
 from .._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
+from . import data
 
-from .fasta import parse
 
-
+@unittest.skipUnless(data.resources, "importlib.resources not available")
 class TestConnectionScorer(unittest.TestCase):
     backend = "generic"
 
@@ -28,13 +28,8 @@ class TestConnectionScorer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        fna = os.path.join(data, "MIIJ01000039.fna.gz")
-        with gzip.open(fna, "rt") as f:
-            cls.record = next(parse(f))
-        fna_train = os.path.join(data, "GCF_001457455.1_NCTC11397_genomic.fna.gz")
-        with gzip.open(fna_train, "rt") as f:
-            cls.record_train = next(parse(f))
+        cls.record = data.load_record("MIIJ01000039.fna.gz")
+        cls.record_train = data.load_record("GCF_001457455.1_NCTC11397_genomic.fna.gz")
 
     def test_score_connections_final(self):
         # setup

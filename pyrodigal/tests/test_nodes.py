@@ -7,7 +7,7 @@ import unittest
 
 from .. import Nodes, Sequence
 from .._pyrodigal import METAGENOMIC_BINS
-
+from . import data
 from .fasta import parse
 
 
@@ -25,15 +25,10 @@ class TestNodes(unittest.TestCase):
         self.assertEqual(n1.sscore, n2.sscore, "sscores differ")
         self.assertEqual(n1.tscore, n2.tscore, "tscores differ")
 
-    @classmethod
-    def setUpClass(cls):
-        data = os.path.realpath(os.path.join(__file__, "..", "data"))
-        fna = os.path.join(data, "SRR492066.fna.gz")
-        with gzip.open(fna, "rt") as f:
-            cls.record = next(parse(f))
-
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_add_nodes_metagenomic_bins(self):
-        seq = Sequence.from_string(self.record.seq)
+        record = data.load_record("SRR492066.fna.gz")
+        seq = Sequence.from_string(record.seq)
         nodes = Nodes()
         # nodes should start empty
         self.assertEqual(len(nodes), 0)
@@ -45,9 +40,11 @@ class TestNodes(unittest.TestCase):
             self.assertEqual(len(nodes), expected)
             nodes.clear()
 
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_copy(self):
+        record = data.load_record("SRR492066.fna.gz")
         tt = METAGENOMIC_BINS[0].training_info.translation_table
-        seq = Sequence.from_string(self.record.seq)
+        seq = Sequence.from_string(record.seq)
         nodes1 = Nodes()
         nodes1.extract(seq, translation_table=tt)
         nodes2 = nodes1.copy()
@@ -60,9 +57,11 @@ class TestNodes(unittest.TestCase):
         self.assertEqual(len(nodes), 0)
         self.assertEqual(len(copy), 0)
 
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_pickle(self):
+        record = data.load_record("SRR492066.fna.gz")
         tt = METAGENOMIC_BINS[0].training_info.translation_table
-        seq = Sequence.from_string(self.record.seq)
+        seq = Sequence.from_string(record.seq)
         nodes1 = Nodes()
         nodes1.extract(seq, translation_table=tt)
         nodes2 = pickle.loads(pickle.dumps(nodes1))

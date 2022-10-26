@@ -11,8 +11,7 @@ import warnings
 
 from .. import OrfFinder, TrainingInfo
 from .._pyrodigal import METAGENOMIC_BINS
-from .fasta import parse
-from .utils import load_record
+from . import data
 
 
 class TestTrainingInfo(unittest.TestCase):
@@ -27,23 +26,18 @@ class TestTrainingInfo(unittest.TestCase):
         self.assertEqual(t1.motif_weights, t2.motif_weights)
         self.assertEqual(t1.rbs_weights, t2.rbs_weights)
 
-    @classmethod
-    def setUpClass(cls):
-        with warnings.catch_warnings():
-            cls.record = load_record("SRR492066")
-            cls.training_info = OrfFinder().train(cls.record.seq)
-
     def test_roundtrip(self):
         try:
+            tinf = METAGENOMIC_BINS[0].training_info
             fd, filename = tempfile.mkstemp()
             with os.fdopen(fd, "wb") as dst:
-                self.training_info.dump(dst)
+                tinf.dump(dst)
             with open(filename, "rb") as src:
-                tinf = TrainingInfo.load(src)
+                tinf2 = TrainingInfo.load(src)
         finally:
             if os.path.exists(filename):
                 os.remove(filename)
-        self.assertTrainingInfoEqual(tinf, self.training_info)
+        self.assertTrainingInfoEqual(tinf, tinf2)
 
     def test_load_error(self):
         try:
@@ -56,7 +50,15 @@ class TestTrainingInfo(unittest.TestCase):
             if os.path.exists(filename):
                 os.remove(filename)
 
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_pickle(self):
+        with warnings.catch_warnings():
+            record = data.load_record("SRR492066.fna.gz")
+            t1 = OrfFinder().train(record.seq)
+        t2 = pickle.loads(pickle.dumps(t1))
+        self.assertTrainingInfoEqual(t1, t2)
+
+    def test_pickle_metagenomic(self):
         t1 = METAGENOMIC_BINS[0].training_info
         t2 = pickle.loads(pickle.dumps(t1))
         self.assertTrainingInfoEqual(t1, t2)
@@ -81,13 +83,12 @@ class TestTrainingInfo(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             t1.uses_sd = False
 
+    @unittest.skipUnless(data.resources, "importlib.resources not available")
     @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")
     def test_train_closed(self):
-        data_path = os.path.realpath(os.path.join(__file__, "..", "data"))
-        with gzip.open(os.path.join(data_path, "GCF_001457455.1_NCTC11397_genomic.fna.gz"), "rt") as f:
-            records = list(parse(f))
-        with open(os.path.join(data_path, "GCF_001457455.1_NCTC11397_genomic.tinf_closed.bin"), "rb") as f:
+        records = data.load_records("GCF_001457455.1_NCTC11397_genomic.fna.gz")
+        with data.load("GCF_001457455.1_NCTC11397_genomic.tinf_closed.bin", "rb") as f:
             expected = TrainingInfo.load(f)
         orf_finder = OrfFinder(closed=True)
         actual = orf_finder.train(*(str(r.seq) for r in records))
