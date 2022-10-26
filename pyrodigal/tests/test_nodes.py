@@ -75,3 +75,27 @@ class TestNodes(unittest.TestCase):
         nodes2 = pickle.loads(pickle.dumps(nodes1))
         self.assertEqual(len(nodes1), 0)
         self.assertEqual(len(nodes2), 0)
+
+    def test_extract_edge_start(self):
+        # make sure that start nodes on edges are not extracted twice
+        # when in open genome mode as it was a bug at some point (#22)
+        nodes = Nodes()
+        seq = Sequence.from_string(
+            "ATGGTTAACGCTTCCGGCGACCCCGTAATCGAGGCCGCCC"   # "ATG" at index 0
+            "ACATCTGGTCAGACACGCTGACGGTGCTCAAACACAGCGC"
+            "TTCGCTCAGCCCACGAGAAAAAGGCTGGTTGGAAGGCGTT"
+            "GTTCCTGAAGGCGTCTTCGGTTCGACCATCGTGCTGTGTG"
+            "TGGACAACAACGACACGCTTCAAGCCATTCAGGGTGATTT"
+            "GAACGATTCCCTGCTTCAGGCATTGCGTACGGTAACCGGC"
+            "GAAAATATGTTTCCCGCGTTCAAGGTCGTGCCGAAAACCG"
+        )
+        nodes.extract(seq, closed=False)
+        nodes.sort()
+        # check the first node is *not* an edge not despite being on
+        # the edge and the node extraction running in open genome mode
+        self.assertEqual(nodes[0].index, 0)
+        self.assertFalse(nodes[0].edge)
+        self.assertEqual(nodes[0].strand, 1)
+        self.assertEqual(nodes[0].type, "ATG")
+        # check the second node is *not* at index 0
+        self.assertNotEqual(nodes[1].index, 0)

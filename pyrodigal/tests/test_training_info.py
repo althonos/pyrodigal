@@ -83,7 +83,7 @@ class TestTrainingInfo(unittest.TestCase):
 
     @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")
-    def test_train(self):   
+    def test_train_closed(self):
         data_path = os.path.realpath(os.path.join(__file__, "..", "data"))
         with gzip.open(os.path.join(data_path, "GCF_000009045.1_ASM904v1_genomic.fna.gz"), "rt") as f:
             records = list(parse(f))
