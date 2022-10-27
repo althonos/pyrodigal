@@ -53,6 +53,7 @@ class TestTrainingInfo(unittest.TestCase):
     @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_pickle(self):
         with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
             record = data.load_record("SRR492066.fna.gz")
             t1 = OrfFinder().train(record.seq)
         t2 = pickle.loads(pickle.dumps(t1))
