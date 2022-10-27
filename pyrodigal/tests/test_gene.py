@@ -43,3 +43,8 @@ class TestGene(unittest.TestCase):
     def test_translate_error(self):
         gene = self.preds[0]
         self.assertRaises(ValueError, gene.translate, 7)
+
+    def test_sequence(self):
+        for gene in self.preds:
+            if gene.strand == 1:
+                self.assertEqual(gene.sequence(), self.record.seq[gene.begin-1:gene.end])

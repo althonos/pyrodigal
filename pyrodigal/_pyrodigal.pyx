@@ -144,6 +144,28 @@ cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(ra
 
 TRANSLATION_TABLES = frozenset(_TRANSLATION_TABLES)
 
+cdef list _RBS_MOTIF = [
+    None, "GGA/GAG/AGG", "3Base/5BMM", "4Base/6BMM", "AGxAG", "AGxAG",
+    "GGA/GAG/AGG", "GGxGG", "GGxGG", "AGxAG", "AGGAG(G)/GGAGG",
+    "AGGA/GGAG/GAGG", "AGGA/GGAG/GAGG", "GGA/GAG/AGG", "GGxGG",
+    "AGGA", "GGAG/GAGG", "AGxAGG/AGGxGG", "AGxAGG/AGGxGG",
+    "AGxAGG/AGGxGG", "AGGAG/GGAGG", "AGGAG", "AGGAG", "GGAGG",
+    "GGAGG", "AGGAGG", "AGGAGG", "AGGAGG",
+]
+
+cdef list _RBS_SPACER = [
+    None, "3-4bp", "13-15bp", "13-15bp", "11-12bp", "3-4bp",
+    "11-12bp", "11-12bp", "3-4bp", "5-10bp", "13-15bp", "3-4bp",
+    "11-12bp", "5-10bp", "5-10bp", "5-10bp", "5-10bp", "11-12bp",
+    "3-4bp", "5-10bp", "11-12bp", "3-4bp", "5-10bp", "3-4bp",
+    "5-10bp", "11-12bp", "3-4bp", "5-10bp",
+]
+
+cdef list _NODE_TYPE = [
+    "ATG", "GTG", "TTG" , "Edge",
+]
+
+
 cdef inline size_t new_capacity(size_t capacity) nogil:
     return capacity + (capacity >> 3) + 6
 
@@ -1362,6 +1384,10 @@ cdef class Node:
     def index(self):
         """`int`: The position of the node in the sequence.
 
+        Hint:
+            This coordinate is zero-based: a node at index 0 will correspond
+            to a start or stop codon at the very beginning of the sequence.
+
         .. versionadded:: 0.7.0
 
         """
@@ -2495,7 +2521,7 @@ cdef class Nodes:
     def clear(self):
         """clear(self)\n--
 
-        Remove all nodes from the vector.
+        Remove all nodes from the node list.
 
         """
         with nogil:
@@ -2570,7 +2596,7 @@ cdef class Nodes:
     ):
         """score(self, sequence, training_info, *, closed=False, is_meta=False)\n--
 
-        Score the start nodes currently scored.
+        Score the start nodes currently stored.
 
         Note:
             This function is reimplemented from the ``score_nodes`` function of
@@ -2605,6 +2631,12 @@ cdef struct _gene:
 
 cdef class Gene:
     """A single raw gene found by Prodigal within a DNA sequence.
+
+    Caution:
+        The gene coordinates follows the conventions from Prodigal, not
+        Python, so coordinates are 1-based, end-inclusive. To index the
+        original sequence with a gene object, remember to switch back
+        to zero-based coordinates: ``sequence[gene.begin-1:gene.end]``.
 
     .. versionadded:: 0.5.4
 
@@ -2650,7 +2682,7 @@ cdef class Gene:
 
     @property
     def partial_begin(self):
-        """`bool`: whether the gene overlaps with the start of the sequence.
+        """`bool`: Whether the gene overlaps with the start of the sequence.
         """
         if self.strand == 1:
             return self.owner.nodes.nodes[self.gene.start_ndx].edge == 1
@@ -2659,7 +2691,7 @@ cdef class Gene:
 
     @property
     def partial_end(self):
-        """`bool`: whether the gene overlaps with the end of the sequence.
+        """`bool`: Whether the gene overlaps with the end of the sequence.
         """
         if self.strand == 1:
             return self.owner.nodes.nodes[self.gene.stop_ndx].edge == 1
@@ -2866,6 +2898,14 @@ cdef class Gene:
         """sequence(self)\n--
 
         Build the nucleotide sequence of this predicted gene.
+
+        This function takes care of reverse-complementing the sequence
+        if it is on the reverse strand.
+
+        Note:
+            Since Pyrodigal uses a generic symbol for unknown nucleotides,
+            any unknown characters in the original sequence will be
+            rendered with an ``N``.
 
         .. versionadded:: 0.5.4
 
@@ -3805,7 +3845,7 @@ cdef class TrainingInfo:
 
     @property
     def gc(self):
-        """`float`: The GC content of the training sequence.
+        """`float`: The GC content of the training sequence, as a fraction.
         """
         assert self.tinf != NULL
         return self.tinf.gc
@@ -4588,31 +4628,6 @@ for _i in range(NUM_META):
     Py_INCREF(_bin)
 METAGENOMIC_BINS = _m
 
-
-# --- Predictions ------------------------------------------------------------
-
-cdef list _RBS_MOTIF = [
-    None, "GGA/GAG/AGG", "3Base/5BMM", "4Base/6BMM", "AGxAG", "AGxAG",
-    "GGA/GAG/AGG", "GGxGG", "GGxGG", "AGxAG", "AGGAG(G)/GGAGG",
-    "AGGA/GGAG/GAGG", "AGGA/GGAG/GAGG", "GGA/GAG/AGG", "GGxGG",
-    "AGGA", "GGAG/GAGG", "AGxAGG/AGGxGG", "AGxAGG/AGGxGG",
-    "AGxAGG/AGGxGG", "AGGAG/GGAGG", "AGGAG", "AGGAG", "GGAGG",
-    "GGAGG", "AGGAGG", "AGGAGG", "AGGAGG",
-]
-
-cdef list _RBS_SPACER = [
-    None, "3-4bp", "13-15bp", "13-15bp", "11-12bp", "3-4bp",
-    "11-12bp", "11-12bp", "3-4bp", "5-10bp", "13-15bp", "3-4bp",
-    "11-12bp", "5-10bp", "5-10bp", "5-10bp", "5-10bp", "11-12bp",
-    "3-4bp", "5-10bp", "11-12bp", "3-4bp", "5-10bp", "3-4bp",
-    "5-10bp", "11-12bp", "3-4bp", "5-10bp",
-]
-
-cdef list _NODE_TYPE = [
-    "ATG", "GTG", "TTG" , "Edge",
-]
-
-
 # --- OrfFinder --------------------------------------------------------------
 
 cdef class OrfFinder:
@@ -5053,6 +5068,8 @@ cdef class OrfFinder:
 
         # extract sequence
         if isinstance(sequence, Sequence):
+            if sequences:
+                raise NotImplementedError("cannot use more than one `Sequence` object in `OrfFinder.train`")
             seq = sequence
         elif isinstance(sequence, str):
             if sequences:
