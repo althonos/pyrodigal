@@ -30,9 +30,9 @@ class TestSequence(unittest.TestCase):
         seq = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
         self.assertEqual(len(seq.masks), 2)
         self.assertEqual(seq.masks[0].begin, 4)
-        self.assertEqual(seq.masks[0].end, 13)
+        self.assertEqual(seq.masks[0].end, 14)
         self.assertEqual(seq.masks[1].begin, 18)
-        self.assertEqual(seq.masks[1].end, 25)
+        self.assertEqual(seq.masks[1].end, 26)
 
     def test_shine_dalgarno_exact(self):
         tinf = METAGENOMIC_BINS[0].training_info

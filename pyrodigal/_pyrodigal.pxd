@@ -27,6 +27,8 @@ cdef class Mask:
     cdef Masks  owner
     cdef _mask* mask
 
+    cpdef size_t __sizeof__(self)
+
     @staticmethod
     cdef bint _intersects(_mask* mask, int begin, int end) nogil
 

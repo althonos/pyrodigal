@@ -11,8 +11,7 @@ Example:
 
         >>> import gzip
         >>> import Bio.SeqIO
-        >>> seq_path = "pyrodigal/tests/data/KK037166.fna.gz"
-        >>> with gzip.open(seq_path, "rt") as f:
+        >>> with gzip.open("KK037166.fna.gz", "rt") as f:
         ...     record = Bio.SeqIO.read(f, "fasta")
 
     Then use Pyrodigal to find the genes in *metagenomic* mode (without
@@ -152,6 +151,13 @@ cdef inline size_t new_capacity(size_t capacity) nogil:
 
 cdef class Mask:
     """The coordinates of a masked region.
+
+    Hint:
+        The region indices follow the Python `slice` convention:
+        start-inclusive, end-exclusive. This allows the original sequence
+        to be indexed by the mask ``start`` and ``end`` coordinates
+        easily.
+
     """
     # --- Magic methods ------------------------------------------------------
 
@@ -175,14 +181,21 @@ cdef class Mask:
             return self.mask.begin == other.begin and self.mask.end == other.end
         return False
 
+    cpdef size_t __sizeof__(self):
+        return sizeof(_mask) + sizeof(self)
+
     # --- Properties ---------------------------------------------------------
 
     @property
     def begin(self):
+        """`int`: The leftmost coordinate of the masked region.
+        """
         return self.mask.begin
 
     @property
     def end(self):
+        """`int`: The rightmost coordinate of the masked region, exclusive.
+        """
         return self.mask.end
 
     # --- C interface -------------------------------------------------------
@@ -191,16 +204,44 @@ cdef class Mask:
     cdef bint _intersects(_mask* mask, int begin, int end) nogil:
         if mask == NULL:
             return False
-        return mask.begin <= end and begin <= mask.end
+        return mask.begin < end and begin < mask.end
 
     # --- Python interface ---------------------------------------------------
 
     cpdef bint intersects(self, int begin, int end):
+        """intersects(self, begin, end)\n--
+
+        Check whether the mask intersects a range of sequence coordinates.
+
+        Arguments:
+            begin (`int`): The rightmost coordinate of the region to
+                check for intersection (inclusive).
+            end (`int`): The leftmost coordinate of the region to check
+                for intersection (exclusive).
+
+        Example:
+            >>> mask = pyrodigal.Mask(3, 5)
+            >>> mask.intersects(2, 5)
+            True
+            >>> mask.intersects(1, 4)
+            True
+            >>> mask.intersects(1, 3)  # range end is exclusive
+            False
+            >>> mask.intersects(5, 7)  # mask end is exclusive
+            False
+
+        """
         return Mask._intersects(self.mask, begin, end)
 
 
 cdef class Masks:
     """A list of masked regions within a `~pyrodigal.Sequence`.
+
+    Prodigal and Pyrodigal support masking regions containing unknown
+    nucleotides to prevent genes to be predicting across them. This
+    collection allows storing the coordinates of the masked regions
+    in a more compact way than a plain bitmap masking each position.
+
     """
 
     # --- Magic methods ------------------------------------------------------
@@ -309,12 +350,20 @@ cdef class Masks:
     # --- Python interface ---------------------------------------------------
 
     cpdef void clear(self):
-        """Remove all masks from the vector.
+        """clear(self)\n--
+
+        Remove all masks from the list.
+
         """
         with nogil:
             self._clear()
 
     cpdef Masks copy(self):
+        """copy(self)\n--
+
+        Return a copy of this list of masks.
+
+        """
         cdef Masks new = Masks.__new__(Masks)
         new.capacity = self.capacity
         new.length = self.length
@@ -331,9 +380,11 @@ cdef class Sequence:
     """A digitized input sequence.
 
     Attributes:
-        gc (`float`): The GC content of the sequence, as a fraction.
+        gc (`float`): The GC content of the sequence, as a fraction
+            (between 0 and 1).
         masks (`~pyrodigal.Masks`): A list of masked regions within the
-            sequence.
+            sequence. It will be empty if the sequence was created with
+            ``mask=False``.
 
     """
 
@@ -348,7 +399,6 @@ cdef class Sequence:
               uint8_t* digits,
               Masks    masks,
     ) nogil except 1:
-
         cdef size_t  i
         cdef Py_UCS4 letter
         cdef int     gc_count   = 0
@@ -379,7 +429,7 @@ cdef class Sequence:
                         mask_begin = i
                 else:
                     if mask_begin != -1:
-                        masks._add_mask(mask_begin, i-1)
+                        masks._add_mask(mask_begin, i)
                         mask_begin = -1
 
         return 0
@@ -913,7 +963,7 @@ cdef class Sequence:
         Create a GC frame plot for the sequence using the given window size.
 
         Arguments:
-            window_size (`int`): The width of the sliding window to 
+            window_size (`int`): The width of the sliding window to
                 use for computing the frame plot.
 
         Returns:
@@ -924,14 +974,14 @@ cdef class Sequence:
         """
         if window_size < 0:
             raise ValueError(f"Invalid window size {window_size!r}")
-        
+
         cdef int*   gc   = self._gc_frame_plot(window_size)
         cdef object mem  = PyMemoryView_FromMemory(<char*> gc, self.slen*sizeof(int), MVIEW_READ)
         cdef object plot = array.array('i')
 
         plot.frombytes(mem)
         free(gc)
-        
+
         if len(plot) != self.slen:
             raise BufferError("Failed to copy result data from C memory")
         return plot

@@ -15,3 +15,9 @@ class TestMask(unittest.TestCase):
         self.assertEqual(m1, m2)
         self.assertNotEqual(m1, object())
         self.assertNotEqual(m1, None)
+
+    def test_intersect(self):
+        self.assertTrue(Mask(2, 4).intersects(1, 3))
+        self.assertTrue(Mask(2, 4).intersects(1, 5))
+        self.assertTrue(Mask(2, 4).intersects(2, 4))
+        self.assertFalse(Mask(2, 4).intersects(4, 6)) # range exclusive
