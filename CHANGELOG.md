@@ -6,7 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.3...HEAD
+
+
+## [v2.0.0-rc.3] - 2022-10-27
+[v2.0.0-rc.3]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.2...v2.0.0-rc.3
+
+### Added
+- `Sequence.gc_frame_plot` method to compute the max GC frame profile from Python.
+
+### Changed
+- Rewrite tests to use `importlib.resources` for managing test data.
+- Make connection scoring tests only score some randomly selected node pairs for faster runs.
+
+### Fixed
+- Duplicate extraction of start codons located on contig edges inside `Nodes._extract`.
 
 
 ## [v2.0.0-rc.2] - 2022-10-26
