@@ -7,6 +7,7 @@ from . import (
     test_orf_finder,
     test_sequence,
     test_training_info,
+    test_doctest,
 )
 
 
@@ -19,4 +20,5 @@ def load_tests(loader, suite, pattern):
     suite.addTests(loader.loadTestsFromModule(test_orf_finder))
     suite.addTests(loader.loadTestsFromModule(test_sequence))
     suite.addTests(loader.loadTestsFromModule(test_training_info))
+    test_doctest.load_tests(loader, suite, pattern)
     return suite
