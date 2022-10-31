@@ -26,8 +26,8 @@ with open(args.input) as f:
 for result in data["results"]:
     if result["backend"] is None:
         result["backend"] = "None"
-    elif result["backend"] == "generic":
-        result["backend"] = "Generic"
+    elif result["backend"] == "generic" or result["backend"] == "prodigal":
+        result["backend"] = result["backend"].capitalize()
     else:
         result["backend"] = result["backend"].upper()
 

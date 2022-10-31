@@ -34,8 +34,8 @@ if _pyrodigal._NEON_RUNTIME_SUPPORT:
     BACKENDS.append("neon")
 
 
-def run_pyrodigal(sequences):
-    orf_finder = OrfFinder()
+def run_pyrodigal(sequences, backend):
+    orf_finder = OrfFinder(backend=backend)
     orf_finder.train(*sequences)
     all_genes = [orf_finder.find_genes(seq) for seq in sequences]
     return sum(len(genes.nodes) for genes in all_genes)
@@ -59,7 +59,7 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
         for run in tqdm.tqdm(range(args.runs), desc=str(backend), leave=False):
             # time how long it takes to train & predict
             t1 = time.time()
-            node_count = run_pyrodigal(sequences)
+            node_count = run_pyrodigal(sequences, backend)
             t2 = time.time()
             # record runtime
             times.append(t2 - t1)
