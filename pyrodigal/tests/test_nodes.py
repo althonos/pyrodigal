@@ -28,7 +28,7 @@ class TestNodes(unittest.TestCase):
     @unittest.skipUnless(data.resources, "importlib.resources not available")
     def test_add_nodes_metagenomic_bins(self):
         record = data.load_record("SRR492066.fna.gz")
-        seq = Sequence.from_string(record.seq)
+        seq = Sequence(record.seq)
         nodes = Nodes()
         # nodes should start empty
         self.assertEqual(len(nodes), 0)
@@ -44,7 +44,7 @@ class TestNodes(unittest.TestCase):
     def test_copy(self):
         record = data.load_record("SRR492066.fna.gz")
         tt = METAGENOMIC_BINS[0].training_info.translation_table
-        seq = Sequence.from_string(record.seq)
+        seq = Sequence(record.seq)
         nodes1 = Nodes()
         nodes1.extract(seq, translation_table=tt)
         nodes2 = nodes1.copy()
@@ -61,7 +61,7 @@ class TestNodes(unittest.TestCase):
     def test_pickle(self):
         record = data.load_record("SRR492066.fna.gz")
         tt = METAGENOMIC_BINS[0].training_info.translation_table
-        seq = Sequence.from_string(record.seq)
+        seq = Sequence(record.seq)
         nodes1 = Nodes()
         nodes1.extract(seq, translation_table=tt)
         nodes2 = pickle.loads(pickle.dumps(nodes1))
@@ -79,7 +79,7 @@ class TestNodes(unittest.TestCase):
         # make sure that start nodes on edges are not extracted twice
         # when in open genome mode as it was a bug at some point (#22)
         nodes = Nodes()
-        seq = Sequence.from_string(
+        seq = Sequence(
             "ATGGTTAACGCTTCCGGCGACCCCGTAATCGAGGCCGCCC"   # "ATG" at index 0
             "ACATCTGGTCAGACACGCTGACGGTGCTCAAACACAGCGC"
             "TTCGCTCAGCCCACGAGAAAAAGGCTGGTTGGAAGGCGTT"

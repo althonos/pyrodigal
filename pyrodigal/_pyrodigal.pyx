@@ -427,12 +427,10 @@ cdef class Sequence:
         const size_t   length,
               double*  gc,
               uint8_t* digits,
-              Masks    masks,
     ) nogil except 1:
         cdef size_t  i
         cdef Py_UCS4 letter
         cdef int     gc_count   = 0
-        cdef int     mask_begin = -1
 
         for i in range(length):
             letter = PyUnicode_READ(kind, data, i)
@@ -452,93 +450,24 @@ cdef class Sequence:
         if length > 0:
             gc[0] = (<double> gc_count) / (<double> length)
 
-        if masks is not None:
-            for i in range(length):
-                if digits[i] == nucleotide.N:
-                    if mask_begin == -1:
-                        mask_begin = i
-                else:
-                    if mask_begin != -1:
-                        masks._add_mask(mask_begin, i)
-                        mask_begin = -1
-
         return 0
 
-    @classmethod
-    def from_bytes(cls, const unsigned char[:] sequence, bint mask = False):
-        """from_bytes(cls, sequence)\n--
-
-        Create a new `Sequence` object from an ASCII-encoded sequence.
-
-        Arguments:
-            sequence (`bytes`): The ASCII-encoded sequence to use. Any
-                object implementing the *buffer protocol* is supported.
-            mask (`bool`): Enable region-masking for spans of unknown
-                characters, preventing genes from being built across them.
-
-        """
-        cdef Sequence seq
-        cdef Masks    masks
-
-        seq = Sequence.__new__(Sequence)
-        seq._allocate(sequence.shape[0])
-        seq.masks = Masks.__new__(Masks)
-
-        masks = seq.masks if mask else None
-
-        with nogil:
-            Sequence._build(
-                PyUnicode_1BYTE_KIND,
-                &sequence[0],
-                seq.slen,
-                &seq.gc,
-                seq.digits,
-                masks,
-            )
-
-        return seq
-
-    @classmethod
-    def from_string(cls, str sequence, bint mask = False):
-        """from_string(cls, sequence)\n--
-
-        Create a new `Sequence` object from a Unicode sequence.
-
-        Arguments:
-            sequence (`str`): The Unicode sequence to use.
-            mask (`bool`): Enable region-masking for spans of unknown
-                characters, preventing genes from being built across them.
-
-        """
-        cdef Sequence seq
-        cdef int      kind
-        cdef void*    data
-        cdef Masks    masks
-
-        # make sure the unicode string is in canonical form,
-        # --> won't be needed anymore in Python 3.12
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 12:
-            PyUnicode_READY(sequence)
-
-        seq = Sequence.__new__(Sequence)
-        seq._allocate(PyUnicode_GET_LENGTH(sequence))
-        seq.masks = Masks.__new__(Masks)
-
-        masks = seq.masks if mask else None
-        kind  = PyUnicode_KIND(sequence)
-        data  = PyUnicode_DATA(sequence)
-
-        with nogil:
-            Sequence._build(
-                kind,
-                data,
-                seq.slen,
-                &seq.gc,
-                seq.digits,
-                masks,
-            )
-
-        return seq
+    @staticmethod
+    cdef int _mask(
+        const uint8_t* digits,
+        const size_t   length,
+              Masks    masks,
+    ) nogil except 1:
+        cdef int     mask_begin = -1
+        for i in range(length):
+            if digits[i] == nucleotide.N:
+                if mask_begin == -1:
+                    mask_begin = i
+            else:
+                if mask_begin != -1:
+                    masks._add_mask(mask_begin, i)
+                    mask_begin = -1
+        return 0
 
     # --- Magic methods ------------------------------------------------------
 
@@ -546,7 +475,59 @@ cdef class Sequence:
         self.slen = 0
         self.gc = 0.0
         self.digits = NULL
-        self.masks = None
+        self.masks = Masks.__new__(Masks)
+
+    def __init__(self, object sequence, bint mask = False):
+        """__init__(self, sequence, mask=False)\n--
+
+        Create a new `Sequence` object from a nucleotide sequence.
+
+        Arguments:
+            sequence (`str`, `bytes` or `Sequence`): The sequence to read 
+                from. `bytes` or byte-like buffers will be treated as 
+                ASCII-encoded strings.
+            mask (`bool`): Enable region-masking for spans of unknown
+                characters, preventing genes from being built across them.
+
+        """
+        cdef ssize_t                  i
+        cdef int                      kind
+        cdef const void*              data
+        cdef const unsigned char[::1] view
+
+        if isinstance(sequence, Sequence):
+            self._allocate(sequence.slen)
+            self.gc = sequence.gc
+            memcpy(self.digits, (<Sequence> sequence).digits, self.slen * sizeof(uint8_t))
+        else:
+            if isinstance(sequence, str):
+                # make sure the unicode string is in canonical form,
+                # --> won't be needed anymore in Python 3.12
+                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 12:
+                    PyUnicode_READY(sequence)
+                kind = PyUnicode_KIND(sequence)
+                data = PyUnicode_DATA(sequence)
+                self._allocate(PyUnicode_GET_LENGTH(sequence))
+            else:
+                view = sequence
+                kind = PyUnicode_1BYTE_KIND
+                data = &view[0]
+                self._allocate(view.shape[0])
+            with nogil:
+                Sequence._build(
+                    kind,
+                    data,
+                    self.slen,
+                    &self.gc,
+                    self.digits,
+                )
+
+        if mask:
+            Sequence._mask(
+                self.digits,
+                self.slen,
+                self.masks
+            )
 
     def __dealloc__(self):
         PyMem_Free(self.digits)
@@ -555,7 +536,7 @@ cdef class Sequence:
         """__len__(self)\n--
 
         Return the number of nucleotides in the sequence.
-        
+
         """
         return self.slen
 
@@ -651,7 +632,7 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
-    cdef int* _gc_frame_plot(self, int window_size) nogil except NULL:
+    cdef int* _max_gc_frame_plot(self, int window_size) nogil except NULL:
         cdef int  i
         cdef int  j
         cdef int  win
@@ -992,10 +973,10 @@ cdef class Sequence:
 
     # --- Python interface ---------------------------------------------------
 
-    cpdef object gc_frame_plot(self, int window_size=WINDOW):
-        """frame_plot(self, window_size=120)\n--
+    cpdef object max_gc_frame_plot(self, int window_size=WINDOW):
+        """max_gc_frame_plot(self, window_size=120)\n--
 
-        Create a GC frame plot for the sequence using the given window size.
+        Create a maximum GC frame plot for the sequence.
 
         Arguments:
             window_size (`int`): The width of the sliding window to
@@ -1010,7 +991,7 @@ cdef class Sequence:
         if window_size < 0:
             raise ValueError(f"Invalid window size {window_size!r}")
 
-        cdef int*   gc   = self._gc_frame_plot(window_size)
+        cdef int*   gc   = self._max_gc_frame_plot(window_size)
         cdef object mem  = PyMemoryView_FromMemory(<char*> gc, self.slen*sizeof(int), MVIEW_READ)
         cdef object plot = array.array('i')
 
@@ -4815,7 +4796,7 @@ cdef class OrfFinder:
         scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
-        gc_frame = sequence._gc_frame_plot(WINDOW)
+        gc_frame = sequence._max_gc_frame_plot(WINDOW)
         if not gc_frame:
             raise MemoryError()
         node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)
@@ -4994,12 +4975,7 @@ cdef class OrfFinder:
             raise RuntimeError("cannot find genes without having trained in single mode")
 
         # convert the input to a `Sequence` object
-        if isinstance(sequence, Sequence):
-            seq = sequence
-        elif isinstance(sequence, str):
-            seq = Sequence.from_string(sequence, mask=self.mask)
-        else:
-            seq = Sequence.from_bytes(sequence, mask=self.mask)
+        seq = Sequence(sequence, mask=self.mask)
 
         # extract the current sequence index
         with self.lock:
@@ -5098,11 +5074,11 @@ cdef class OrfFinder:
         elif isinstance(sequence, str):
             if sequences:
                 sequence = "TTAATTAATTAA".join(itertools.chain([sequence], sequences, [""]))
-            seq = Sequence.from_string(sequence, mask=self.mask)
+            seq = Sequence(sequence, mask=self.mask)
         else:
             if sequences:
                 sequence = b"TTAATTAATTAA".join(itertools.chain([sequence], sequences, [b""]))
-            seq = Sequence.from_bytes(sequence, mask=self.mask)
+            seq = Sequence(sequence, mask=self.mask)
 
         # check sequence length
         if seq.slen < MIN_SINGLE_GENOME:

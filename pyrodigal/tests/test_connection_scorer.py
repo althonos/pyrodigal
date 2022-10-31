@@ -13,7 +13,7 @@ from . import data
 
 @functools.lru_cache()
 def extract_nodes(record):
-    seq = Sequence.from_string(record.seq)
+    seq = Sequence(record.seq)
     tinf = METAGENOMIC_BINS[0].training_info
     nodes = Nodes()
     nodes.extract(seq, translation_table=tinf.translation_table)

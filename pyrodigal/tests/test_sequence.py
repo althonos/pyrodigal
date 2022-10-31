@@ -7,7 +7,7 @@ from .._pyrodigal import METAGENOMIC_BINS
 
 class TestSequence(unittest.TestCase):
     def test_pickle(self):
-        s1 = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
+        s1 = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
         s2 = pickle.loads(pickle.dumps(s1))
         self.assertEqual(len(s1), len(s2))
         self.assertEqual(str(s1), str(s2))
@@ -19,15 +19,15 @@ class TestSequence(unittest.TestCase):
 
     def test_str(self):
         s = "ATGCNNNNNNNNNNATGCNNNNNNNNTGC"
-        seq = Sequence.from_string(s, mask=False)
+        seq = Sequence(s, mask=False)
         self.assertEqual(str(seq), s)
 
     def test_no_region_masking(self):
-        seq = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=False)
+        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=False)
         self.assertEqual(len(seq.masks), 0)
 
     def test_region_masking(self):
-        seq = Sequence.from_string("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
+        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
         self.assertEqual(len(seq.masks), 2)
         self.assertEqual(seq.masks[0].begin, 4)
         self.assertEqual(seq.masks[0].end, 14)
@@ -36,12 +36,12 @@ class TestSequence(unittest.TestCase):
 
     def test_shine_dalgarno_exact(self):
         tinf = METAGENOMIC_BINS[0].training_info
-        seq = Sequence.from_string("AGGAGGTTAGCAAATATG")
+        seq = Sequence("AGGAGGTTAGCAAATATG")
         for i in range(10):
             # AGGAGG if i == 0 else AGG if i == 1 else None
             expected = 24 if i == 0 else 13 if i == 3 else 0
             self.assertEqual(seq.shine_dalgarno(i, 15, tinf), expected, i)
-        seq = Sequence.from_string("AGGTGGTTAGCAAATATG")
+        seq = Sequence("AGGTGGTTAGCAAATATG")
         for i in range(10):
             # AGG if i == 0 else AGG if i == 1 else None
             expected = 6 if i == 0 else 0
@@ -49,11 +49,11 @@ class TestSequence(unittest.TestCase):
 
     def test_shine_dalgarno_mismatch(self):
         tinf = METAGENOMIC_BINS[0].training_info
-        seq = Sequence.from_string("AGGAGGTTAGCAAATATG")
+        seq = Sequence("AGGAGGTTAGCAAATATG")
         for i in range(10):
             expected = 0
             self.assertEqual(seq.shine_dalgarno(i, 15, tinf, exact=False), expected, i)
-        seq = Sequence.from_string("AGGTGGTTAGCAAATATG")
+        seq = Sequence("AGGTGGTTAGCAAATATG")
         for i in range(10):
             # AGGxGG if i == 0 else None
             expected = 19 if i == 0 else 0
