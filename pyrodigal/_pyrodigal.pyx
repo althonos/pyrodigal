@@ -3910,8 +3910,19 @@ cdef class TrainingInfo:
 
     @property
     def rbs_weights(self):
+        """`tuple` of `float`: The weights for RBS scores.
+
+        .. versionadded:: 2.0.0
+
+        """
         assert self.tinf != NULL
-        return [ self.tinf.rbs_wt[i] for i in range(28) ]
+        return tuple(self.tinf.rbs_wt)
+
+    @rbs_weights.setter
+    def rbs_weights(self, object rbs_weights):
+        assert self.tinf != NULL
+        self._on_modification()
+        self.tinf.rbs_wt = rbs_weights
 
     @property
     def upstream_compositions(self):
