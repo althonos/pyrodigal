@@ -344,13 +344,14 @@ cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 
 cdef class OrfFinder:
     cdef readonly size_t       _num_seq
+    cdef readonly str          backend
     cdef readonly bint         closed
     cdef readonly object       lock
-    cdef readonly bint         meta
     cdef readonly bint         mask
+    cdef readonly int          max_overlap
+    cdef readonly bint         meta
     cdef readonly int          min_gene
     cdef readonly int          min_edge_gene
-    cdef readonly int          max_overlap
     cdef readonly TrainingInfo training_info
 
     cpdef dict __getstate__(self)

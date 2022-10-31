@@ -483,8 +483,8 @@ cdef class Sequence:
         Create a new `Sequence` object from a nucleotide sequence.
 
         Arguments:
-            sequence (`str`, `bytes` or `Sequence`): The sequence to read 
-                from. `bytes` or byte-like buffers will be treated as 
+            sequence (`str`, `bytes` or `Sequence`): The sequence to read
+                from. `bytes` or byte-like buffers will be treated as
                 ASCII-encoded strings.
             mask (`bool`): Enable region-masking for spans of unknown
                 characters, preventing genes from being built across them.
@@ -4660,6 +4660,7 @@ cdef class OrfFinder:
 
     def __cinit__(self):
         self._num_seq = 1
+        self.backend = "detect"
 
     def __init__(
         self,
@@ -4671,8 +4672,9 @@ cdef class OrfFinder:
         int min_gene=MIN_GENE,
         int min_edge_gene=MIN_EDGE_GENE,
         int max_overlap=MAX_SAM_OVLP,
+        str backend="detect",
     ):
-        """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60, max_overlap=60)\n--
+        """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60, max_overlap=60, backend="detect")\n--
 
         Instantiate and configure a new ORF finder.
 
@@ -4697,6 +4699,10 @@ cdef class OrfFinder:
             max_overlap (`int`): The maximum number of nucleotides that can
                 overlap between two genes on the same strand. **This must be
                 lower or equal to the minimum gene length**.
+            backend (`str`): The backend implementation to use for computing
+                the connection scoring pre-filter. Leave as ``"detect"`` to
+                select the fastest available implementation at runtime.
+                *Mostly useful for testing*.
 
         .. versionchanged:: 0.6.4
            Added the ``training_info`` argument.
@@ -4966,7 +4972,7 @@ cdef class OrfFinder:
         cdef int              phase
         cdef Sequence         seq
         cdef TrainingInfo     tinf
-        cdef ConnectionScorer scorer = ConnectionScorer()
+        cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
         cdef Genes            genes  = Genes.__new__(Genes)
         cdef Nodes            nodes  = Nodes.__new__(Nodes)
 
@@ -5058,7 +5064,7 @@ cdef class OrfFinder:
         cdef int              slen
         cdef TrainingInfo     tinf
         cdef Nodes            nodes  = Nodes()
-        cdef ConnectionScorer scorer = ConnectionScorer()
+        cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
 
         # Check arguments
         if self.meta:
