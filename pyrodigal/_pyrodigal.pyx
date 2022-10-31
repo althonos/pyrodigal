@@ -180,6 +180,9 @@ cdef class Mask:
         to be indexed by the mask ``start`` and ``end`` coordinates
         easily.
 
+    .. versionchanged:: 2.0.0
+        Change end coordinate to be exclusive.
+
     """
     # --- Magic methods ------------------------------------------------------
 
@@ -415,6 +418,9 @@ cdef class Sequence:
         masks (`~pyrodigal.Masks`): A list of masked regions within the
             sequence. It will be empty if the sequence was created with
             ``mask=False``.
+
+    .. versionchanged:: 2.0.0
+        Removed the ``from_string`` and ``from_bytes`` constructors.
 
     """
 
@@ -4704,11 +4710,14 @@ cdef class OrfFinder:
                 select the fastest available implementation at runtime.
                 *Mostly useful for testing*.
 
-        .. versionchanged:: 0.6.4
-           Added the ``training_info`` argument.
+        .. versionadded:: 0.6.4
+            The ``training_info`` argument.
 
-        .. versionchanged:: 0.7.0
-           Added ``min_edge``, ``min_edge_gene`` and ``max_overlap``.
+        .. versionadded:: 0.7.0
+            The ``min_edge``, ``min_edge_gene`` and ``max_overlap`` arguments.
+
+        .. versionadded:: 2.0.0
+            The ``backend`` argument.
 
         """
         if meta and training_info is not None:
@@ -4748,6 +4757,8 @@ cdef class OrfFinder:
             template.append(f"min_edge_gene={self.min_edge_gene!r}")
         if self.max_overlap != MAX_SAM_OVLP:
             template.append(f"max_overlap={self.max_overlap!r}")
+        if self.backend != "detect":
+            template.append(f"backend={self.backend!r}")
         ty = type(self)
         return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
@@ -4860,7 +4871,6 @@ cdef class OrfFinder:
         # NOTE: In the original Prodigal code, the gene data would be
         #       recorded here, but since we build the gene data string
         #       on request we don't have to pre-build them here.
-        # return 0 on success
         return 0
 
     cdef int _find_genes_meta(
