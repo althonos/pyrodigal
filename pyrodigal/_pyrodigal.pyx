@@ -18,13 +18,13 @@ Example:
     training first), for instance to build a map of codon frequencies
     for each gene::
 
-        >>> from collections import Counter
+        >>> import collections
         >>> import pyrodigal
         >>> p = pyrodigal.OrfFinder(meta=True)
         >>> for gene in p.find_genes(record.seq.encode()):
         ...     gene_seq = gene.sequence()
-        ...     codon_counter = Counter()
-        ...     for i in range(len(gene_seq), 3):
+        ...     codon_counter = collections.Counter()
+        ...     for i in range(0, len(gene_seq), 3):
         ...         codon_counter[gene_seq[i:i+3]] += 1
         ...     codon_frequencies = {
         ...         codon:count/(len(gene_seq)//3)

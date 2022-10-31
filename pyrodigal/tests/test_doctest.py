@@ -5,6 +5,7 @@
 import configparser
 import doctest
 import importlib
+import gzip
 import os
 import pkgutil
 import re
@@ -14,12 +15,9 @@ import types
 import warnings
 from unittest import mock
 
-try:
-    import Bio.SeqIO
-except ImportError:
-    Bio = None
-
 import pyrodigal
+
+from .fasta import parse
 
 
 def _load_tests_from_module(tests, module, globs, setUp=None, tearDown=None):
@@ -40,26 +38,22 @@ def _load_tests_from_module(tests, module, globs, setUp=None, tearDown=None):
 def load_tests(loader, tests, ignore):
     """`load_test` function used by unittest to find the doctests."""
     _current_cwd = os.getcwd()
-    # demonstrate how to use Biopython substitution matrices without
-    # actually requiring Biopython
+    # demonstrate how to load sequences with Biopython without requiring Biopython
     Bio = mock.Mock()
-    Bio.Align = mock.Mock()
-    Bio.Align.substitution_matrices = mock.Mock()
-    Bio.Align.substitution_matrices.load = mock.Mock()
-    Bio.Align.substitution_matrices.load.return_value = jones = mock.Mock()
-    jones.alphabet = "ARNDCQEGHILKMFPSTWYV"
-    jones.__len__ = mock.Mock(return_value=len(jones.alphabet))
-    jones.__iter__ = mock.Mock(
-        return_value=iter([[0] * len(jones.alphabet)] * len(jones.alphabet))
-    )
+    Bio.SeqIO = mock.Mock()
+    Bio.SeqIO.read = lambda file, format: next(parse(file))
 
     def setUp(self):
         warnings.simplefilter("ignore")
         os.chdir(os.path.realpath(os.path.join(__file__, os.path.pardir, "data")))
+        sys.modules["Bio"] = Bio
+        sys.modules["Bio.SeqIO"] = Bio.SeqIO
 
     def tearDown(self):
         os.chdir(_current_cwd)
         warnings.simplefilter(warnings.defaultaction)
+        sys.modules.pop("Bio")
+        sys.modules.pop("Bio.SeqIO")
 
     # doctests are not compatible with `green`, so we may want to bail out
     # early if `green` is running the tests
@@ -79,7 +73,7 @@ def load_tests(loader, tests, ignore):
                 continue
             # import the submodule and add it to the tests
             module = importlib.import_module(".".join([pkg.__name__, subpkgname]))
-            globs = dict(pyrodigal=pyrodigal, Bio=Bio, **module.__dict__)
+            globs = dict(pyrodigal=pyrodigal, gzip=gzip, Bio=Bio, **module.__dict__)
             tests.addTests(
                 doctest.DocTestSuite(
                     module,
