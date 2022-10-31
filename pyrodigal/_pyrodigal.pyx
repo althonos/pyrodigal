@@ -4740,6 +4740,7 @@ cdef class OrfFinder:
         self.min_gene = min_gene
         self.min_edge_gene = min_edge_gene
         self.max_overlap = max_overlap
+        self.backend = backend
 
     def __repr__(self):
         cdef list template = []
