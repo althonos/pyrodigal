@@ -264,6 +264,14 @@ cdef class Masks:
     collection allows storing the coordinates of the masked regions
     in a more compact way than a plain bitmap masking each position.
 
+    Note:
+        Pyrodigal also improves the logic used for region masking: in
+        Prodigal, every time a gene is found, all the masks from the sequence
+        are tested to see if the gene intersects with any of them. However,
+        since gene extraction happens sequentially, sorting the masks once
+        allows to bypass the full scan, saving some time for sequences with
+        a lot of unknown regions.
+
     """
 
     # --- Magic methods ------------------------------------------------------
@@ -544,6 +552,11 @@ cdef class Sequence:
         PyMem_Free(self.digits)
 
     def __len__(self):
+        """__len__(self)\n--
+
+        Return the number of nucleotides in the sequence.
+        
+        """
         return self.slen
 
     cpdef size_t __sizeof__(self):
