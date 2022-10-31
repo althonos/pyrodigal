@@ -6,7 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.4...HEAD
+
+
+## [v2.0.0-rc.4] - 2022-10-31
+[v2.0.0-rc.4]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.3...v2.0.0-rc.4
+
+### Changed
+- Make `Mask` record coordinates in start-inclusive end-exclusive mode to follow Python conventions.
+
+### Removed
+- `from_bytes` and `from_string` constructors of `Sequence` objects.
 
 
 ## [v2.0.0-rc.3] - 2022-10-27

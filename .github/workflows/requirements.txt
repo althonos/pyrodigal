@@ -2,5 +2,5 @@ coverage ~=4.0
 codecov ~=2.0
 cython ~=0.29.16
 wheel
-auditwheel
+auditwheel <5.2
 setuptools >=46.4.0
