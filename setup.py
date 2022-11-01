@@ -186,7 +186,7 @@ class build_ext(_build_ext):
             self._avx2_flags(),
             program="""
                 #include <immintrin.h>
-                int main() {{
+                int main(int argc, char *argv[]) {{
                     __m256i a = _mm256_set1_epi16(-1);
                             a = _mm256_abs_epi16(a);
                     short   x = _mm256_extract_epi16(a, 1);
@@ -206,7 +206,7 @@ class build_ext(_build_ext):
             self._sse2_flags(),
             program="""
                 #include <emmintrin.h>
-                int main() {{
+                int main(int argc, char *argv[]) {{
                     __m128i a = _mm_set1_epi16(-1);
                             a = _mm_and_si128(a, a);
                     short   x = _mm_extract_epi16(a, 1);
@@ -224,7 +224,7 @@ class build_ext(_build_ext):
             self._neon_flags(),
             program="""
                 #include <arm_neon.h>
-                int main() {{
+                int main(int argc, char *argv[]) {{
                     int16x8_t a = vdupq_n_s16(-1);
                               a = vabsq_s16(a);
                     short     x = vgetq_lane_s16(a, 1);
@@ -242,7 +242,7 @@ class build_ext(_build_ext):
             self._mmx_flags(),
             program="""
                 #include <mmintrin.h>
-                int main() {{
+                int main(int argc, char *argv[]) {{
                     __m64 a = _mm_set1_pi16(1);
                     short x = (short) _m_to_int(a);
                     return (x == 1) ? 0 : 1;
@@ -420,7 +420,7 @@ class build_clib(_build_clib):
         with open(testfile, "w") as f:
             f.write("""
                 #include <{}>
-                int main() {{
+                int main(int argc, char *argv[]) {{
                     {}{};
                     return 0;
                 }}

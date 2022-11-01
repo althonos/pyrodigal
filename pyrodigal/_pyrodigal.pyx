@@ -4020,7 +4020,7 @@ cdef class TrainingInfo:
         elif stage == 2:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil:
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil except *:
         """Compute the dicodon frequency in genes and in the background.
 
         Stores the log-likelihood of each 6-mer relative to the background.
