@@ -3961,7 +3961,7 @@ cdef class TrainingInfo:
 
     # --- C interface --------------------------------------------------------
 
-    cdef void _on_modification(self) except * nogil:
+    cdef void _on_modification(self) nogil except *:
         """Raise an error when attempting to modify a shared `TrainingInfo`.
         """
         if not self.owned:
@@ -4093,7 +4093,7 @@ cdef class TrainingInfo:
             elif self.tinf.gene_dc[i] < -5.0:
                 self.tinf.gene_dc[i] = -5.0
 
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) except * nogil:
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) nogil except *:
         cdef int start
         cdef int j
         cdef int i     = 0
@@ -4126,7 +4126,7 @@ cdef class TrainingInfo:
                     self.tinf.ups_comp[i][_complement[seq.digits[pos+j]] & 0b11] += 1
                 i += 1
 
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil:
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil except *:
         cdef int phase
         cdef int rbs[3]
         cdef int type[3]
@@ -4338,7 +4338,7 @@ cdef class TrainingInfo:
                   if self.tinf.ups_comp[i][j] < -4.0:
                       self.tinf.ups_comp[i][j] = -4.0
 
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil:
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil except *:
         cdef int i
         cdef int j
         cdef int k
