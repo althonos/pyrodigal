@@ -15,34 +15,37 @@ jobs:
         include:
         - python-version: 3.5
           pyo3-python: /opt/python/cp35-cp35m/bin/python
-          image-tag: 2020-12-11-f1e0e80
+          image: "pypywheels/manylinux2010-pypy_x86_64:2020-12-11-f1e0e80"
         - python-version: 3.6
           pyo3-python: /opt/python/cp36-cp36m/bin/python
-          image-tag: 2021-05-18-1e72e6c
+          image: "pypywheels/manylinux2010-pypy_x86_64:2021-05-18-1e72e6c"
         - python-version: 3.7
           pyo3-python: /opt/python/cp37-cp37m/bin/python
-          image-tag: latest
+          image: "pypywheels/manylinux2010-pypy_x86_64:latest"
         - python-version: 3.8
           pyo3-python: /opt/python/cp38-cp38/bin/python
-          image-tag: latest
+          image: "pypywheels/manylinux2010-pypy_x86_64:latest"
         - python-version: 3.9
           pyo3-python: /opt/python/cp39-cp39/bin/python
-          image-tag: latest
+          image: "pypywheels/manylinux2010-pypy_x86_64:latest"
         - python-version: '3.10'
           pyo3-python: /opt/python/cp310-cp310/bin/python
-          image-tag: latest
+          image: "pypywheels/manylinux2010-pypy_x86_64:latest"
+        - python-version: '3.11'
+          pyo3-python: /opt/python/cp311-cp311/bin/python
+          image: "quay.io/pypa/manylinux2014_x86_64:latest"
         - python-version: pypy-3.6
           pyo3-python: /opt/pypy/pypy3.6-7.3.3/bin/python
-          image-tag: 2021-05-18-1e72e6c
+          image: "pypywheels/manylinux2010-pypy_x86_64:2021-05-18-1e72e6c"
         - python-version: pypy-3.7
           pyo3-python: /opt/pypy/pypy3.7-7.3.4/bin/python
-          image-tag: latest
+          image: "pypywheels/manylinux2010-pypy_x86_64:latest"
         - python-version: pypy-3.8
-          pyo3-python: /opt/pypy/pypy3.7-7.3.4/bin/python
-          image-tag: latest
+          pyo3-python: /opt/python/pp38-pypy38_pp73/bin/python
+          image: "quay.io/pypa/manylinux2014_x86_64:latest"
         - python-version: pypy-3.9
-          pyo3-python: /opt/pypy/pypy3.7-7.3.4/bin/python
-          image-tag: latest
+          pyo3-python: /opt/python/pp39-pypy39_pp73/bin/python
+          image: "quay.io/pypa/manylinux2014_x86_64:latest"
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -51,7 +54,7 @@ jobs:
     - name: Build manylinux wheels
       uses: addnab/docker-run-action@v2
       with:
-        image: pypywheels/manylinux2010-pypy_x86_64:${{ matrix.image-tag }}
+        image: ${{ matrix.image }}
         options: -v ${{ github.workspace }}:/io -e TERM=$TERM
         shell: bash
         run: |
@@ -78,6 +81,7 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
+        - '3.11'
     steps:
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -115,6 +119,9 @@ jobs:
           image-tag: latest
         - python-version: '3.10'
           pyo3-python: /opt/python/cp310-cp310/bin/python
+          image-tag: latest
+        - python-version: '3.11'
+          pyo3-python: /opt/python/cp311-cp311/bin/python
           image-tag: latest
     steps:
     - name: Checkout code
@@ -162,6 +169,9 @@ jobs:
         - python-version: '3.10'
           pyo3-python: /opt/python/cp310-cp310/bin/python
           image-tag: latest
+        - python-version: '3.11'
+          pyo3-python: /opt/python/cp311-cp311/bin/python
+          image-tag: latest
     steps:
     - name: Download built wheels
       uses: actions/download-artifact@v2
@@ -193,6 +203,7 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
+        - '3.11'
         - pypy-3.7
         - pypy-3.8
         - pypy-3.9
@@ -231,6 +242,7 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
+        - '3.11'
         - pypy-3.7
         - pypy-3.8
         - pypy-3.9
@@ -261,6 +273,7 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
+        - '3.11'
         - pypy-3.7
         - pypy-3.8
         - pypy-3.9
@@ -298,6 +311,7 @@ jobs:
         - 3.8
         - 3.9
         - '3.10'
+        - '3.11'
         - pypy-3.7
         - pypy-3.8
         - pypy-3.9
