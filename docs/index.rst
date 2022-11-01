@@ -81,7 +81,61 @@ internals, which has the following advantages:
   you save some more memory when running several *meta*-mode analyses
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
-  save from a third to half the runtime depending on the sequence.
+  save from a third to half the runtime depending on the sequence. The 
+  `Benchmarks <https://pyrodigal.readthedocs.io/en/stable/benchmarks.html>`_ 
+  page of the documentation contains comprehensive comparisons. See the 
+  `JOSS paper <https://doi.org/10.21105/joss.04296>`_ for details about how 
+  this is achieved.
+- **same results**: Pyrodigal is tested to make sure it produces 
+  exactly the same results as Prodigal ``v2.6.3+31b300a``. This was verified 
+  extensively by `Julian Hahnfeld <https://github.com/jhahnfeld>`_ and can be 
+  checked with his `comparison repository <https://github.com/jhahnfeld/prodigal-pyrodigal-comparison>`_.
+
+
+Features
+--------
+
+The library now features everything from the original Prodigal CLI:
+
+- **run mode selection**: Choose between *single* mode, using a training
+  sequence to count nucleotide hexamers, or *metagenomic* mode, using
+  pre-trained data from different organisms (``prodigal -p``).
+- **region masking**: Prevent genes from being predicted across regions
+  containing unknown nucleotides  (``prodigal -m``).
+- **closed ends**: Genes will be identified as running over edges if they
+  are larger than a certain size, but this can be disabled (``prodigal -c``).
+- **training configuration**: During the training process, a custom
+  translation table can be given (``prodigal -g``), and the Shine-Dalgarno motif
+  search can be forcefully bypassed (``prodigal -n``)
+- **output files**: Output files can be written in a format mostly
+  compatible with the Prodigal binary, including the protein translations
+  in FASTA format (``prodigal -a``), the gene sequences in FASTA format
+  (``prodigal -d``), or the potential gene scores in tabular format
+  (``prodigal -s``).
+- **training data persistence**: Getting training data from a sequence and
+  using it for other sequences is supported; in addition, a training data
+  file can be saved and loaded transparently (``prodigal -t``).
+
+In addition, the **new** features are available:
+
+- **custom gene size threshold**: While Prodigal uses a minimum gene size
+  of 90 nucleotides (60 if on edge), Pyrodigal allows to customize this
+  threshold, allowing for smaller ORFs to be identified if needed.
+
+Several changes were done regarding **memory management**:
+
+- **digitized sequences**: Sequences are stored as raw bytes instead of compressed 
+  bitmaps. This means that the sequence itself takes 3/8th more space, but since 
+  the memory used for storing the sequence is often negligible compared to the 
+  memory used to store dynamic programming nodes, this is an acceptable 
+  trade-off for better performance when extracting said nodes.
+- **node buffer growth**: Node arrays are dynamically allocated and grow 
+  exponentially instead of being pre-allocated with a large size. On small 
+  sequences, this leads to Pyrodigal using about 30% less memory.
+- **lightweight genes**: Genes are stored in a more compact data structure than in 
+  Prodigal (which reserves a buffer to store string data), saving around 1KiB 
+  per gene.
+
 
 Setup
 -----
@@ -89,6 +143,15 @@ Setup
 Run ``pip install pyrodigal`` in a shell to download the latest release and all
 its dependencies from PyPi, or have a look at the
 :doc:`Installation page <install>` to find other ways to install ``pyrodigal``.
+
+
+Citation
+--------
+
+Pyrodigal is scientific software, with a
+`published paper <https://doi.org/10.21105/joss.04296>`_
+in the `Journal of Open-Source Software <https://joss.theoj.org/>`_. Check the 
+:doc:`Publications page <publications>` to see how to cite Pyrodigal properly.
 
 
 Library

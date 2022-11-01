@@ -39,9 +39,12 @@ internals, which has the following advantages:
   you save some more memory when running several *meta*-mode analyses
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
-  save from a third to half the runtime depending on the sequence. See the
-  [JOSS paper](https://doi.org/10.21105/joss.04296) for details about
-  optimizations implemented in Pyrodigal.
+  save from a third to half the runtime depending on the sequence. The [Benchmarks](https://pyrodigal.readthedocs.io/en/stable/benchmarks.html) page of the documentation contains comprehensive comparisons. See the [JOSS paper](https://doi.org/10.21105/joss.04296) 
+  for details about how this is achieved.
+- **same results**: Pyrodigal is tested to make sure it produces 
+  exactly the same results as Prodigal `v2.6.3+31b300a`. *This was verified 
+  extensively by [Julian Hahnfeld](https://github.com/jhahnfeld) and can be 
+  checked with his [comparison repository](https://github.com/jhahnfeld/prodigal-pyrodigal-comparison).*
 
 ### 📋 Features
 
