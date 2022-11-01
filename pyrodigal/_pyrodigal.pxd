@@ -13,12 +13,14 @@ from pyrodigal.prodigal.training cimport _training
 
 # --- Module-level constants -------------------------------------------------
 
-cdef        int    MIN_SINGLE_GENOME
-cdef        int    IDEAL_SINGLE_GENOME
+cdef        size_t MIN_MASKS_ALLOC
 cdef        size_t MIN_GENES_ALLOC
 cdef        size_t MIN_NODES_ALLOC
-cdef public set    _TRANSLATION_TABLES
 
+cdef public int    _MIN_SINGLE_GENOME
+cdef public int    _IDEAL_SINGLE_GENOME
+cdef public set    _TRANSLATION_TABLES
+cdef public str    _PRODIGAL_VERSION 
 
 # --- Sequence mask ----------------------------------------------------------
 

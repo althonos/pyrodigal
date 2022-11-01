@@ -3,6 +3,18 @@
 
 """Bindings to Prodigal, an ORF finder for genomes and metagenomes.
 
+Attributes:
+    PRODIGAL_VERSION (`str`): The version of Prodigal currently wrapped
+        in Pyrodigal.
+    IDEAL_SINGLE_GENOME (`int`): The minimum length recommended for a 
+        training sequence to be used in `OrfFinder.train`.
+    MIN_SINGLE_GENOME (`int`): The minimum length required for a 
+        training sequence to be used in `OrfFinder.train`.
+    TRANSLATION_TABLES (`set` of `int`): A set containing all the
+        translation tables supported by Prodigal.
+    METAGENOMIC_BINS (`tuple` of `~pyrodigal.MetagenomicBin`): A tuple
+        containing all the built-in metagenomic models.
+
 Example:
     Pyrodigal can work on any DNA sequence stored in either a text or a
     byte array. To load a sequence from one of the common sequence formats,
@@ -134,15 +146,19 @@ include "_version.py"
 
 # --- Module-level constants -------------------------------------------------
 
-cdef int    IDEAL_SINGLE_GENOME = 100000
-cdef int    MIN_SINGLE_GENOME   = 20000
-cdef int    WINDOW              = 120
-cdef size_t MIN_MASKS_ALLOC     = 8
-cdef size_t MIN_GENES_ALLOC     = 8
-cdef size_t MIN_NODES_ALLOC     = 8 * MIN_GENES_ALLOC
+cdef size_t MIN_MASKS_ALLOC      = 8
+cdef size_t MIN_GENES_ALLOC      = 8
+cdef size_t MIN_NODES_ALLOC      = 8 * MIN_GENES_ALLOC
+cdef int    _IDEAL_SINGLE_GENOME = 100000
+cdef int    _MIN_SINGLE_GENOME   = 20000
+cdef int    _WINDOW              = 120
 cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
+cdef str    _PRODIGAL_VERSION    = "v2.6.3+31b300a"
 
-TRANSLATION_TABLES = frozenset(_TRANSLATION_TABLES)
+IDEAL_SINGLE_GENOME = 100000
+MIN_SINGLE_GENOME   = 20000
+TRANSLATION_TABLES  = frozenset(_TRANSLATION_TABLES)
+PRODIGAL_VERSION    = _PRODIGAL_VERSION
 
 cdef list _RBS_MOTIF = [
     None, "GGA/GAG/AGG", "3Base/5BMM", "4Base/6BMM", "AGxAG", "AGxAG",
@@ -669,10 +685,10 @@ cdef class Sequence:
 
         for i in range(self.slen):
             tot[i] = fwd[i] + bwd[i] - _is_gc(self.digits, self.slen, i, 1)
-            if i >= WINDOW/2:
-                tot[i] -= fwd[i-WINDOW/2]
-            if i + WINDOW/2 < self.slen:
-                tot[i] -= bwd[i+WINDOW/2]
+            if i >= _WINDOW/2:
+                tot[i] -= fwd[i-_WINDOW/2]
+            if i + _WINDOW/2 < self.slen:
+                tot[i] -= bwd[i+_WINDOW/2]
         free(fwd)
         free(bwd)
 
@@ -979,7 +995,7 @@ cdef class Sequence:
 
     # --- Python interface ---------------------------------------------------
 
-    cpdef object max_gc_frame_plot(self, int window_size=WINDOW):
+    cpdef object max_gc_frame_plot(self, int window_size=_WINDOW):
         """max_gc_frame_plot(self, window_size=120)\n--
 
         Create a maximum GC frame plot for the sequence.
@@ -4814,7 +4830,7 @@ cdef class OrfFinder:
         scorer._index(nodes)
         # scan all the ORFs looking for a potential GC bias in a particular
         # codon position, in order to acquire a good initial set of genes
-        gc_frame = sequence._max_gc_frame_plot(WINDOW)
+        gc_frame = sequence._max_gc_frame_plot(_WINDOW)
         if not gc_frame:
             raise MemoryError()
         node.record_gc_bias(gc_frame, nodes.nodes, nodes.length, tinf.tinf)
@@ -5098,13 +5114,13 @@ cdef class OrfFinder:
             seq = Sequence(sequence, mask=self.mask)
 
         # check sequence length
-        if seq.slen < MIN_SINGLE_GENOME:
+        if seq.slen < _MIN_SINGLE_GENOME:
             raise ValueError(
-                f"sequence must be at least {MIN_SINGLE_GENOME} characters ({seq.slen} found)"
+                f"sequence must be at least {_MIN_SINGLE_GENOME} characters ({seq.slen} found)"
             )
-        elif seq.slen < IDEAL_SINGLE_GENOME:
+        elif seq.slen < _IDEAL_SINGLE_GENOME:
             warnings.warn(
-                f"sequence should be at least {IDEAL_SINGLE_GENOME} characters ({seq.slen} found)"
+                f"sequence should be at least {_IDEAL_SINGLE_GENOME} characters ({seq.slen} found)"
             )
 
         # build training info

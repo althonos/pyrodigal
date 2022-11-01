@@ -17,8 +17,11 @@ from ._pyrodigal import (
     Sequence,
     TrainingInfo,
     MetagenomicBin,
-    TRANSLATION_TABLES,
+    MIN_SINGLE_GENOME,
+    IDEAL_SINGLE_GENOME,
     METAGENOMIC_BINS,
+    PRODIGAL_VERSION,
+    TRANSLATION_TABLES,
 )
 
 __doc__ = _pyrodigal.__doc__
@@ -33,7 +36,10 @@ __all__ = [
     "Sequence",
     "TrainingInfo",
     "MetagenomicBin",
+    "IDEAL_SINGLE_GENOME",
     "METAGENOMIC_BINS",
+    "MIN_SINGLE_GENOME",
+    "PRODIGAL_VERSION",
     "TRANSLATION_TABLES",
 ]
 
