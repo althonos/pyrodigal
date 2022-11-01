@@ -6,60 +6,38 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.0...HEAD
 
 
-## [v2.0.0-rc.4] - 2022-10-31
-[v2.0.0-rc.4]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.3...v2.0.0-rc.4
+## [v2.0.0] - 2022-11-01
+[v2.0.0]: https://github.com/althonos/pyrodigal/compare/v1.1.2...v2.0.0
+
+### Added
+- MMX implementation of the SIMD prefilter.
+- Proper GFF headers and metadata section to GFF output.
+- `Sequence.gc_frame_plot` method to compute the max GC frame profile from Python.
+- `metagenomic_bin` property to `TrainingInfo` to support recovering the object corresponding to a pre-trained model.
+- `meta` attribute to `Genes` to store whether genes were predicted in single or in meta mode.
+- `pyrodigal.PRODIGAL_VERSION` constant storing the wrapped Prodigal version.
+- `pyrodigal.MIN_SINGLE_GENOME` and `pyrodigal.IDEAL_SINGLE_GENOME` constants storing the minimum and recommended sequence sizes for training.
 
 ### Changed
+- Make all write methods of `Genes` objects require a ``sequence_id`` argument instead of using the internal sequence number.
+- Rewrite SIMD prefilter using a generic template with C macros.
 - Make `Mask` record coordinates in start-inclusive end-exclusive mode to follow Python conventions.
+- Make connection scoring tests only score some randomly selected node pairs for faster runs.
+- Rewrite tests to use `importlib.resources` for managing test data.
 
 ### Removed
 - `from_bytes` and `from_string` constructors of `Sequence` objects.
 
-
-## [v2.0.0-rc.3] - 2022-10-27
-[v2.0.0-rc.3]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.2...v2.0.0-rc.3
-
-### Added
-- `Sequence.gc_frame_plot` method to compute the max GC frame profile from Python.
-
-### Changed
-- Rewrite tests to use `importlib.resources` for managing test data.
-- Make connection scoring tests only score some randomly selected node pairs for faster runs.
-
 ### Fixed
-- Duplicate extraction of start codons located on contig edges inside `Nodes._extract`.
-
-
-## [v2.0.0-rc.2] - 2022-10-26
-[v2.0.0-rc.2]: https://github.com/althonos/pyrodigal/compare/v2.0.0-rc.1...v2.0.0-rc.2
-
-### Added
-- `metagenomic_bin` property to `TrainingInfo` to support recovering the object corresponding to a pre-trained model.
-- `meta` attribute to `Genes` to store whether genes were predicted in single or in meta mode.
-
-### Fixed
+- Duplicate extraction of start codons located on contig edges inside `Nodes._extract` ([#21](https://github.com/althonos/pyrodigal/issues/21)).
 - Pickling and unpickling of `TrainingInfo` objects corresponding to pre-trained models.
 - Implementation of `calc_most_gc_frame` being inconsistent with the Prodigal implementation.
-- Implementation of the maximum search in `score_connection_forward_start` not following the (weird?) behaviour from Prodigal.
-
-
-## [v2.0.0-rc.1] - 2022-10-22
-[v2.0.0-rc.1]: https://github.com/althonos/pyrodigal/compare/v1.1.2...v2.0.0-rc.1
-
-### Added
-- MMX implementation of the SIMD prefilter.
-- Propert GFF headers and metadata section to GFF output.
-
-### Fixed
-- Out of bound access to sequence data in `Sequence._shine_dalgarno_mm` and `Sequence._shine_dalgarno_exact`.
+- Implementation of the maximum search in `score_connection_forward_start` not following the (weird?) behaviour from Prodigal ([#21](https://github.com/althonos/pyrodigal/issues/21)).
 - Gene identifier being used instead of the sequence identifier in the GFF output ([#18](https://github.com/althonos/pyrodigal/issues/18)).
-
-### Changed
-- Rewrite SIMD prefilter using a generic template with C macros.
-- Make all write methods of `Genes` objects require a ``sequence_id`` argument instead of using the internal sequence number.
+- Out of bound access to sequence data in `Sequence._shine_dalgarno_mm` and `Sequence._shine_dalgarno_exact`.
 
 
 ## [v1.1.2] - 2022-08-31
