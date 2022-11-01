@@ -1,12 +1,12 @@
-Genes
+Masks
 =====
 
 .. currentmodule:: pyrodigal
 
 
-.. autoclass:: pyrodigal.Genes
+.. autoclass:: pyrodigal.Masks
    :special-members: __init__
    :members:
 
-.. autoclass:: pyrodigal.Gene
+.. autoclass:: pyrodigal.Mask
    :members:

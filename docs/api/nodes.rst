@@ -9,5 +9,4 @@ Nodes
    :members:
 
 .. autoclass:: pyrodigal.Node
-   :special-members: __init__
    :members:

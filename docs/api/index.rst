@@ -9,10 +9,10 @@ API Reference
    genes <genes>
    nodes <nodes>
    sequence <sequence>
+   masks <masks>
 
 
 .. currentmodule:: pyrodigal
-
 
 .. only:: html
 
@@ -60,3 +60,12 @@ API Reference
        :nosignatures:
 
        pyrodigal.Sequence
+
+    Masks
+    -----
+
+    .. autosummary::
+       :nosignatures:
+
+       pyrodigal.Masks
+       pyrodigal.Mask

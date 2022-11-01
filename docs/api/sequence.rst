@@ -5,5 +5,4 @@ Sequence
 
 
 .. autoclass:: pyrodigal.Sequence
-   :special-members: __len__
-   :members: from_bytes, from_string
+   :special-members: __len__, __init__
