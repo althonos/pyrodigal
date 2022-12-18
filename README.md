@@ -3,7 +3,7 @@
 *Cython bindings and Python interface to [Prodigal](https://github.com/hyattpd/Prodigal/), an ORF
 finder for genomes and metagenomes. **Now with SIMD!***
 
-[![Actions](https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/main?logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/pyrodigal/actions)
+[![Actions](https://img.shields.io/github/actions/workflow/status/althonos/pyrodigal/test.yml?branch=main&logo=github&style=flat-square&maxAge=300)](https://github.com/althonos/pyrodigal/actions)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=3600&logo=codecov)](https://codecov.io/gh/althonos/pyrodigal/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
 [![PyPI](https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=3600&logo=PyPI)](https://pypi.org/project/pyrodigal)

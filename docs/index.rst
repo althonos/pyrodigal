@@ -9,7 +9,7 @@ Pyrodigal |Stars|
 
 |Actions| |Coverage| |PyPI| |Bioconda| |AUR| |Wheel| |Versions| |Implementations| |License| |Source| |Mirror| |Issues| |Docs| |Changelog| |Downloads| |Paper|
 
-.. |Actions| image:: https://img.shields.io/github/workflow/status/althonos/pyrodigal/Test/main?logo=github&style=flat-square&maxAge=300
+.. |Actions| image:: https://img.shields.io/github/actions/workflow/status/althonos/pyrodigal/test.yml?branch=main&logo=github&style=flat-square&maxAge=300
    :target: https://github.com/althonos/pyrodigal/actions
 
 .. |GitLabCI| image:: https://img.shields.io/gitlab/pipeline/larralde/pyrodigal/main?gitlab_url=https%3A%2F%2Fgit.embl.de&logo=gitlab&style=flat-square&maxAge=600
