@@ -21,7 +21,7 @@ JOSS
 
 Pyrodigal has been published in the `Journal of Open-Source Science <https://joss.theoj.org>`_.
 JOSS is a community-run journal and relies upon volunteer effort. If you'd like
-to support us please consider doing either one (or both) of the the following:
+to support JOSS please consider doing either one (or both) of the the following:
 
 - Volunteering to review for JOSS sometime in the future. You can add your name to the reviewer list here: https://joss.theoj.org/reviewer-signup.html.
 - Making a small donation to support running costs here: https://numfocus.org/donate-to-joss.
