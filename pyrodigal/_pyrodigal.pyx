@@ -1147,7 +1147,7 @@ cdef class ConnectionScorer:
 
         """
         IF TARGET_CPU == "x86":
-            if backend =="detect":
+            if backend == "detect":
                 self.backend = simd_backend.NONE
                 IF MMX_BUILD_SUPPORT:
                     if _MMX_RUNTIME_SUPPORT:
@@ -1186,7 +1186,7 @@ cdef class ConnectionScorer:
             else:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
         ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
-            if backend =="detect":
+            if backend == "detect":
                 self.backend = simd_backend.NONE
                 IF NEON_BUILD_SUPPORT:
                     if _NEON_RUNTIME_SUPPORT:
