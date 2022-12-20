@@ -6,10 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.3...HEAD
+
+
+## [v2.0.3] - 2022-12-20
+[v2.0.3]: https://github.com/althonos/pyrodigal/compare/v2.0.2...v2.0.3
+
+### Fixed
+- `OrfFinder(mask=True)` ignoring the minimum mask size when masking regions ([#26](https://github.com/althonos/pyrodigal/issues/26)).
+
+### Changed
+- Use `cibuildhweel` for building wheel distributions.
+
+### Added
+- Wheels for MacOS Aarch64 platforms.
+
 
 ## [v2.0.2] - 2022-11-01
-[v2.0.0]: https://github.com/althonos/pyrodigal/compare/v2.0.1...v2.0.2
+[v2.0.2]: https://github.com/althonos/pyrodigal/compare/v2.0.1...v2.0.2
 
 ### Fixed
 - Syntax issue in Cython files failing build on Bioconda runner.
