@@ -488,7 +488,7 @@ cdef class Sequence:
                     mask_begin = i
             else:
                 if mask_begin != -1:
-                    if i > mask_size + mask_begin:
+                    if i >= mask_size + mask_begin:
                         masks._add_mask(mask_begin, i)
                     mask_begin = -1
         return 0

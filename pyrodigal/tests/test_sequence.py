@@ -27,12 +27,16 @@ class TestSequence(unittest.TestCase):
         self.assertEqual(len(seq.masks), 0)
 
     def test_region_masking(self):
-        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True, mask_size=4)
+        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True, mask_size=0)
         self.assertEqual(len(seq.masks), 2)
         self.assertEqual(seq.masks[0].begin, 4)
         self.assertEqual(seq.masks[0].end, 14)
         self.assertEqual(seq.masks[1].begin, 18)
         self.assertEqual(seq.masks[1].end, 26)
+        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True, mask_size=10)
+        self.assertEqual(len(seq.masks), 1)
+        self.assertEqual(seq.masks[0].begin, 4)
+        self.assertEqual(seq.masks[0].end, 14)
 
     def test_shine_dalgarno_exact(self):
         tinf = METAGENOMIC_BINS[0].training_info
