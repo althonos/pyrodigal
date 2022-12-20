@@ -23,49 +23,54 @@ try:
 except ImportError as err:
     cythonize = err
 
-# --- Constants -----------------------------------------------------------------
-
-MACHINE = platform.machine()
-if re.match("^mips", MACHINE):
-    TARGET_CPU = "mips"
-elif re.match("^(aarch64|arm64)$", MACHINE):
-    TARGET_CPU = "aarch64"
-elif re.match("^arm", MACHINE):
-    TARGET_CPU = "arm"
-elif re.match("(x86_64)|(AMD64|amd64)|(^i.86$)", MACHINE):
-    TARGET_CPU = "x86"
-elif re.match("^(powerpc|ppc)", MACHINE):
-    TARGET_CPU = "ppc"
-else:
-    TARGET_CPU = None
-
-SYSTEM  = platform.system()
-if SYSTEM == "Linux" or SYSTEM == "Java":
-    TARGET_SYSTEM = "linux_or_android"
-elif SYSTEM.endswith("FreeBSD"):
-    TARGET_SYSTEM = "freebsd"
-elif SYSTEM == "Darwin":
-    TARGET_SYSTEM = "macos"
-elif SYSTEM.startswith(("Windows", "MSYS", "MINGW", "CYGWIN")):
-    TARGET_SYSTEM = "windows"
-else:
-    TARGET_SYSTEM = None
 
 # --- Utils ------------------------------------------------------------------
 
 def _eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
 
-def _patch_osx_compiler(compiler):
+def _patch_osx_compiler(compiler, machine):
     # On newer OSX, Python has been compiled as a universal binary, so
     # it will attempt to pass universal binary flags when building the
-    # extension. This will not work because the code makes use of SSE2.
+    # extension. This will not work because the code makes use of CPU
+    # specific SIMD extensions.
     for tool in ("compiler", "compiler_so", "linker_so"):
         flags = getattr(compiler, tool)
-        i = next((i for i in range(1, len(flags)) if flags[i-1] == "-arch" and flags[i] != platform.machine()), None)
+        i = next((i for i in range(1, len(flags)) if flags[i-1] == "-arch" and flags[i] != machine), None)
         if i is not None:
             flags.pop(i)
             flags.pop(i-1)
+
+def _detect_target_machine(platform):
+    if platform == "win32":
+        return "x86"
+    return platform.rsplit("-", 1)[-1]
+
+def _detect_target_cpu(platform):
+    machine = _detect_target_machine(platform)
+    if re.match("^mips", machine):
+        return "mips"
+    elif re.match("^(aarch64|arm64)$", machine):
+        return "aarch64"
+    elif re.match("^arm", machine):
+        return "arm"
+    elif re.match("(x86_64)|(x86)|(AMD64|amd64)|(^i.86$)", machine):
+        return "x86"
+    elif re.match("^(powerpc|ppc)", machine):
+        return "ppc"
+    return None
+
+def _detect_target_system(platform):
+    if platform.startswith("win"):
+        return "windows"
+    elif platform.startswith("macosx"):
+        return "macos"
+    elif platform.startswith("linux"):
+        return "linux_or_android"
+    elif platform.startswith("freebsd"):
+        return "freebsd"
+    return None
+
 
 # --- Commands ------------------------------------------------------------------
 
@@ -114,9 +119,16 @@ class build_ext(_build_ext):
         self.disable_sse2 = False
         self.disable_neon = False
         self.disable_mmx  = False
+        self.target_machine = None
+        self.target_system = None
+        self.target_cpu = None
 
     def finalize_options(self):
         _build_ext.finalize_options(self)
+        # detect platform options
+        self.target_machine = _detect_target_machine(self.plat_name)
+        self.target_system = _detect_target_system(self.plat_name)
+        self.target_cpu = _detect_target_cpu(self.plat_name)
         # record SIMD-specific options
         self._simd_supported = dict(AVX2=False, SSE2=False, NEON=False, MMX=False)
         self._simd_defines = dict(AVX2=[], SSE2=[], NEON=[], MMX=[])
@@ -136,6 +148,10 @@ class build_ext(_build_ext):
         self._clib_cmd.include_dirs = self.include_dirs
         self._clib_cmd.compiler = self.compiler
         self._clib_cmd.parallel = self.parallel
+        self._clib_cmd.plat_name = self.plat_name
+        self._clib_cmd.target_machine = self.target_machine
+        self._clib_cmd.target_system = self.target_system
+        self._clib_cmd.target_cpu = self.target_cpu
 
     # --- Autotools-like helpers ---
 
@@ -159,7 +175,7 @@ class build_ext(_build_ext):
         except CompileError:
             _eprint("no")
             return False
-        except subprocess.CalledProcessError:
+        except (subprocess.SubprocessError, OSError):
             _eprint("yes, but cannot run code")
             return True  # assume we are cross-compiling, and still build
         else:
@@ -216,7 +232,7 @@ class build_ext(_build_ext):
         )
 
     def _neon_flags(self):
-        return ["-mfpu=neon"] if TARGET_CPU == "arm" else []
+        return ["-mfpu=neon"] if self.target_cpu == "arm" else []
 
     def _check_neon(self):
         return self._check_simd_generic(
@@ -277,12 +293,12 @@ class build_ext(_build_ext):
                         )
                     )
                 ext.extra_objects.extend(objects)
-                if simd == "NEON":
+                if simd == "NEON" or simd == "AVX2":
                     ext.extra_link_args.extend(self._simd_flags[simd])
 
     def build_extension(self, ext):
         # show the compiler being used
-        _eprint("building", ext.name, "with", self.compiler.compiler_type, "compiler")
+        _eprint("building", ext.name, "for", self.plat_name, "with", self.compiler.compiler_type, "compiler")
         # add debug symbols if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
@@ -294,8 +310,8 @@ class build_ext(_build_ext):
         else:
             ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
         # remove universal binary CFLAGS from the compiler if any
-        if SYSTEM == "Darwin":
-            _patch_osx_compiler(self.compiler)
+        if self.target_system == "macos":
+            _patch_osx_compiler(self.compiler, self.target_machine)
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
@@ -314,6 +330,10 @@ class build_ext(_build_ext):
         if isinstance(cythonize, ImportError):
             raise RuntimeError("Cython is required to run `build_ext` command") from cythonize
 
+        # compile the C library if not done already
+        if not self.distribution.have_run.get("build_clib", False):
+            self._clib_cmd.run()
+
         # use debug directives with Cython if building in debug mode
         cython_args = {
             "include_path": ["include"],
@@ -326,8 +346,8 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MAJOR": sys.version_info.major,
                 "SYS_VERSION_INFO_MINOR": sys.version_info.minor,
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
-                "TARGET_CPU": TARGET_CPU,
-                "TARGET_SYSTEM": TARGET_SYSTEM,
+                "TARGET_CPU": self.target_cpu,
+                "TARGET_SYSTEM": self.target_system,
                 "AVX2_BUILD_SUPPORT": False,
                 "NEON_BUILD_SUPPORT": False,
                 "SSE2_BUILD_SUPPORT": False,
@@ -350,12 +370,8 @@ class build_ext(_build_ext):
             cython_args["compiler_directives"]["boundscheck"] = False
             cython_args["compiler_directives"]["wraparound"] = False
 
-        # compile the C library
-        if not self.distribution.have_run.get("build_clib", False):
-            self._clib_cmd.run()
-
         # check if we can build platform-specific code
-        if TARGET_CPU == "x86":
+        if self.target_cpu == "x86":
             if not self._simd_disabled["AVX2"] and self._check_avx2():
                 cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
                 self._simd_supported["AVX2"] = True
@@ -371,7 +387,7 @@ class build_ext(_build_ext):
                 self._simd_supported["MMX"] = True
                 self._simd_flags["MMX"].extend(self._mmx_flags())
                 self._simd_defines["MMX"].append(("__MMX__", 1))
-        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+        elif self.target_cpu == "arm" or self.target_cpu == "aarch64":
             if not self._simd_disabled["NEON"] and self._check_neon():
                 cython_args["compile_time_env"]["NEON_BUILD_SUPPORT"] = True
                 self._simd_supported["NEON"] = True
@@ -401,11 +417,18 @@ class build_clib(_build_clib):
     def initialize_options(self):
         _build_clib.initialize_options(self)
         self.parallel = None
+        self.target_machine = None
+        self.target_system = None
+        self.target_cpu = None
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
         if self.parallel is not None:
             self.parallel = int(self.parallel)
+        # detect platform options
+        self.target_machine = _detect_target_machine(self.plat_name)
+        self.target_system = _detect_target_system(self.plat_name)
+        self.target_cpu = _detect_target_cpu(self.plat_name)
 
     # --- Autotools-like helpers ---
 
@@ -499,9 +522,19 @@ class build_clib(_build_clib):
             (self.training_file, self.training_temp)
         )
 
+        # detect if a custom file needs to be included for `cpu_features`
+        impl_path = os.path.join(
+            "vendor", 
+            "cpu_features", 
+            "src", 
+            "impl_{}_{}.c".format(self.target_cpu, self.target_system)
+        )
+        if os.path.exists(impl_path):
+            self.get_library("cpu_features").sources.append(impl_path)
+
         # check for functions required for libcpu_features on OSX
-        if SYSTEM == "Darwin":
-            _patch_osx_compiler(self.compiler)
+        if self.target_system == "macos":
+            _patch_osx_compiler(self.compiler, self.target_machine)
             if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
                 self.compiler.define_macro("HAVE_SYSCTLBYNAME", 1)
 
@@ -615,7 +648,7 @@ setuptools.setup(
             sources=list(filter(os.path.exists, [
                 os.path.join("vendor", "cpu_features", "src", "{}.c".format(base))
                 for base in [
-                    "impl_{}_{}".format(TARGET_CPU, TARGET_SYSTEM),
+                    #"impl_{}_{}".format(TARGET_CPU, TARGET_SYSTEM), # FIXME
                     "filesystem",
                     "stack_line_reader",
                     "string_view",
