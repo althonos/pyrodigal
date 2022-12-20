@@ -4,8 +4,8 @@ from pyrodigal.prodigal.training cimport _training
 
 cdef extern from "sequence.h" nogil:
 
-    size_t MAX_MASKS = 5000
-    size_t MASK_SIZE = 50
+    const size_t MAX_MASKS
+    const size_t MASK_SIZE
 
     struct _mask:
         int begin

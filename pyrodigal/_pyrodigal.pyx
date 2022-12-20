@@ -88,7 +88,7 @@ from libc.string cimport memcpy, memchr, memset, strstr
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
 from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask, compare_nodes, stopcmp_nodes
-from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq
+from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq, MASK_SIZE
 from pyrodigal.prodigal.training cimport _training
 from pyrodigal._unicode cimport *
 from pyrodigal._sequence cimport (
@@ -479,6 +479,7 @@ cdef class Sequence:
         const uint8_t* digits,
         const size_t   length,
               Masks    masks,
+        const size_t   mask_size,
     ) nogil except 1:
         cdef int     mask_begin = -1
         for i in range(length):
@@ -487,7 +488,8 @@ cdef class Sequence:
                     mask_begin = i
             else:
                 if mask_begin != -1:
-                    masks._add_mask(mask_begin, i)
+                    if i > mask_size + mask_begin:
+                        masks._add_mask(mask_begin, i)
                     mask_begin = -1
         return 0
 
@@ -499,8 +501,8 @@ cdef class Sequence:
         self.digits = NULL
         self.masks = Masks.__new__(Masks)
 
-    def __init__(self, object sequence, bint mask = False):
-        """__init__(self, sequence, mask=False)\n--
+    def __init__(self, object sequence, bint mask = False, size_t mask_size = MASK_SIZE):
+        """__init__(self, sequence, mask=False, mask_size=50)\n--
 
         Create a new `Sequence` object from a nucleotide sequence.
 
@@ -510,6 +512,8 @@ cdef class Sequence:
                 ASCII-encoded strings.
             mask (`bool`): Enable region-masking for spans of unknown
                 characters, preventing genes from being built across them.
+            mask_size (`int`): The minimum number of contiguous unknown 
+                nucleotides required to build a mask.
 
         """
         cdef ssize_t                  i
@@ -548,7 +552,8 @@ cdef class Sequence:
             Sequence._mask(
                 self.digits,
                 self.slen,
-                self.masks
+                self.masks,
+                mask_size,
             )
 
     def __dealloc__(self):
@@ -2081,6 +2086,7 @@ cdef class Nodes:
                 else:
                     mask[i%3] += 1
             # check that the current phase mask does not intersect the candidate gene
+
             if Mask._intersects(mask[i%3], sequence.slen-last[i%3]-1, sequence.slen-i-1):
                 continue
             # check if the current phase encountered a start

@@ -77,7 +77,8 @@ cdef class Sequence:
     cdef int _mask(
         const uint8_t* digits,
         const size_t   length,
-              Masks    masks
+              Masks    masks,
+        const size_t   mask_size,
     ) nogil except 1
 
     cdef int _allocate(self, int slen) except 1

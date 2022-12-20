@@ -27,7 +27,7 @@ class TestSequence(unittest.TestCase):
         self.assertEqual(len(seq.masks), 0)
 
     def test_region_masking(self):
-        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True)
+        seq = Sequence("ATGCNNNNNNNNNNATGCNNNNNNNNTGC", mask=True, mask_size=4)
         self.assertEqual(len(seq.masks), 2)
         self.assertEqual(seq.masks[0].begin, 4)
         self.assertEqual(seq.masks[0].end, 14)
