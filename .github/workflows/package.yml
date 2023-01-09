@@ -299,7 +299,7 @@ jobs:
     - name: Download built wheels
       uses: actions/download-artifact@v2
       with:
-          name: dist
+          name: wheels
           path: dist
     - name: Extract package version
       run: echo PKGVER=$(python setup.py --version) >> $GITHUB_ENV
