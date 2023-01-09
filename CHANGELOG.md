@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.4...HEAD
+
+
+## [v2.0.4] - 2023-01-09
+[v2.0.4]: https://github.com/althonos/pyrodigal/compare/v2.0.3...v2.0.4
+
+### Fixed
+- GC% computation and RBS scoring for reverse strand nodes close to the contig edge ([#27](https://github.com/althonos/pyrodigal/issues/27)).
 
 
 ## [v2.0.3] - 2022-12-20
