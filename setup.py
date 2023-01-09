@@ -63,7 +63,7 @@ def _detect_target_cpu(platform):
 def _detect_target_system(platform):
     if platform.startswith("win"):
         return "windows"
-    elif platform.startswith("macosx"):
+    elif platform.startswith("macos"):
         return "macos"
     elif platform.startswith("linux"):
         return "linux_or_android"
