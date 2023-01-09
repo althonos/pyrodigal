@@ -1,6 +1,7 @@
 #ifndef _PYRODIGAL_SEQUENCE_H
 #define _PYRODIGAL_SEQUENCE_H
 #include <stdint.h>
+#include <stdbool.h>
 
 enum nucleotide {
     A = 0b000,
@@ -14,22 +15,27 @@ const uint8_t _complement [N+1] = {   T,   C,   G,   A,   N,   N,   N };
 const char    _letters    [N+1] = { 'A', 'G', 'C', 'T', 'N', 'N', 'N' };
 
 static inline int _is_a(const uint8_t* digits, const int slen, const int i, const int strand) {
+    if (i >= slen) return false;
     return (strand == 1) ? digits[i] == A : digits[slen - 1 - i] == T;
 }
 
 static inline int _is_g(const uint8_t* digits, const int slen, const int i, const int strand) {
+    if (i >= slen) return false;
     return (strand == 1) ? digits[i] == G : digits[slen - 1 - i] == C;
 }
 
 static inline int _is_c(const uint8_t* digits, const int slen, const int i, const int strand) {
+    if (i >= slen) return false;
     return (strand == 1) ? digits[i] == C : digits[slen - 1 - i] == G;
 }
 
 static inline int _is_t(const uint8_t* digits, const int slen, const int i, const int strand) {
+    if (i >= slen) return false;
     return (strand == 1) ? digits[i] == T : digits[slen - 1 - i] == A;
 }
 
 static inline int _is_gc(const uint8_t* digits, const int slen, const int i, const int strand) {
+    if (i >= slen) return false;
     // NB(@althonos): In the original Prodigal implementation, any unknown
     //                character gets encoded as a C, so it gets counted
     //                when computing the most GC frame. We reproduce this

@@ -1816,19 +1816,12 @@ cdef class Nodes:
                       + _is_gc(seq.digits, seq.slen, j-2, 1)
                     )
                 else:
-                    if self.nodes[i].edge:
-                        # NOTE: This fixes a bug in the original code where
-                        #       is_gc(...) is called for an index larger than
-                        #       the sequence length
-                        for j in range(last[phase] + 3, seq.slen):
-                            gc[phase] += _is_gc(seq.digits, seq.slen, j, 1)
-                    else:
-                        for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                            gc[phase] += (
-                                _is_gc(seq.digits, seq.slen, j,   1)
-                              + _is_gc(seq.digits, seq.slen, j+1, 1)
-                              + _is_gc(seq.digits, seq.slen, j+2, 1)
-                            )
+                    for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
+                        gc[phase] += (
+                              _is_gc(seq.digits, seq.slen, j,   1)
+                            + _is_gc(seq.digits, seq.slen, j+1, 1)
+                            + _is_gc(seq.digits, seq.slen, j+2, 1)
+                        )
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
