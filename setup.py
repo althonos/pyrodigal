@@ -546,7 +546,7 @@ class build_clib(_build_clib):
 
     def build_library(self, library):
         # show the compiler being used
-        _eprint("building", library.name, "with", self.compiler.compiler_type, "compiler")
+        _eprint("building", library.name, "for", self.plat_name, "with", self.compiler.compiler_type, "compiler")
 
         # add debug flags if we are building in debug mode
         if self.debug:
@@ -647,12 +647,7 @@ setuptools.setup(
             "cpu_features",
             sources=list(filter(os.path.exists, [
                 os.path.join("vendor", "cpu_features", "src", "{}.c".format(base))
-                for base in [
-                    #"impl_{}_{}".format(TARGET_CPU, TARGET_SYSTEM), # FIXME
-                    "filesystem",
-                    "stack_line_reader",
-                    "string_view",
-                ]
+                for base in ["filesystem", "stack_line_reader", "string_view"]
             ])),
             include_dirs=[os.path.join("vendor", "cpu_features", "include")],
             define_macros=[("STACK_LINE_READER_BUFFER_SIZE", 1024)]
