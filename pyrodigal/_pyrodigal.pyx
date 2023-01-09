@@ -826,12 +826,6 @@ cdef class Sequence:
         # compute distance to SD site
         limit = min(6, start - 4 - pos)
 
-        # check boundaries
-        if pos < 0:
-            raise IndexError(f"Invalid read at index {pos} of sequence of length {self.slen} using limit {limit}")
-        elif pos + limit >= self.slen:
-            raise IndexError(f"Invalid read at index {pos+limit} of sequence of length {self.slen} using limit {limit}")
-
         # Compare the 6-base region to AGGAGG
         for i in range(limit):
             if i%3 == 0:
@@ -931,12 +925,6 @@ cdef class Sequence:
 
         # compute distance to SD site
         limit = min(6, start - 4 - pos)
-
-        # check boundaries
-        if pos < 0:
-            raise IndexError(f"Invalid read at index {pos} of sequence of length {self.slen} using limit {limit}")
-        elif pos + limit >= self.slen:
-            raise IndexError(f"Invalid read at index {pos+limit} of sequence of length {self.slen} using limit {limit}")
 
         # Compare the 6-base region to AGGAGG
         for i in range(limit):
@@ -1067,11 +1055,6 @@ cdef class Sequence:
             raise ValueError(f"`pos` must be positive")
         if start < 0:
             raise ValueError(f"`start` must be positive")
-
-        if strand == 1 and pos > start - 5:
-            raise ValueError(f"`pos` is too close to `start` (must be at most `start` - 5)")
-        elif strand == -1 and pos < start + 6:
-            raise ValueError(f"`pos` is too close to `start` (must be at most `start` + 6)")
 
         cdef int phase
         with nogil:
@@ -2276,7 +2259,7 @@ cdef class Nodes:
 
             if self.nodes[i].strand == 1:
                 for j in range(self.nodes[i].ndx - 20, self.nodes[i].ndx - 5):
-                    if j < 0 or j >= slen:
+                    if j < 0:
                         continue
                     cur_sc[0] = seq._shine_dalgarno_exact(j, self.nodes[i].ndx, tinf, strand=1)
                     cur_sc[1] = seq._shine_dalgarno_mm(j, self.nodes[i].ndx, tinf, strand=1)
@@ -2286,7 +2269,7 @@ cdef class Nodes:
                         self.nodes[i].rbs[1] = cur_sc[1]
             else:
                 for j in range(slen - self.nodes[i].ndx - 21, slen - self.nodes[i].ndx - 6):
-                    if j < 0 or j >= slen:
+                    if j >= slen:
                         continue
                     cur_sc[0] = seq._shine_dalgarno_exact(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
                     cur_sc[1] = seq._shine_dalgarno_mm(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
