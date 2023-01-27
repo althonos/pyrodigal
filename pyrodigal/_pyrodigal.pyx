@@ -153,7 +153,7 @@ cdef int    _IDEAL_SINGLE_GENOME = 100000
 cdef int    _MIN_SINGLE_GENOME   = 20000
 cdef int    _WINDOW              = 120
 cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
-cdef str    _PRODIGAL_VERSION    = "v2.6.3+31b300a"
+cdef str    _PRODIGAL_VERSION    = "v2.6.3+c1e2d36"
 
 IDEAL_SINGLE_GENOME = 100000
 MIN_SINGLE_GENOME   = 20000
