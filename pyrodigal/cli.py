@@ -100,21 +100,21 @@ def argument_parser():
         version="{} v{}".format(__name__, __version__),
     )
     parser.add_argument(
-        "--min_gene",
+        "--min-gene",
         help="The minimum gene length.",
         required=False,
         type=int,
         default=90,
     )
     parser.add_argument(
-        "--min_edge_gene",
+        "--min-edge-gene",
         help="The minimum edge gene length.",
         required=False,
         type=int,
         default=60,
     )
     parser.add_argument(
-        "--max_overlap",
+        "--max-overlap",
         help="The maximum number of nucleotides that can overlap between two genes on the same strand. This must be lower or equal to the minimum gene length.",
         required=False,
         type=int,
