@@ -99,6 +99,27 @@ def argument_parser():
         action="version",
         version="{} v{}".format(__name__, __version__),
     )
+    parser.add_argument(
+        "--min-gene",
+        help="The minimum gene length.",
+        required=False,
+        type=int,
+        default=90,
+    )
+    parser.add_argument(
+        "--min-edge-gene",
+        help="The minimum edge gene length.",
+        required=False,
+        type=int,
+        default=60,
+    )
+    parser.add_argument(
+        "--max-overlap",
+        help="The maximum number of nucleotides that can overlap between two genes on the same strand. This must be lower or equal to the minimum gene length.",
+        required=False,
+        type=int,
+        default=60,
+    )
     return parser
 
 
@@ -140,6 +161,9 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 closed=args.c,
                 mask=args.m,
                 training_info=training_info,
+                min_gene=args.min_gene,
+                min_edge_gene=args.min_edge_gene,
+                max_overlap=args.max_overlap,
             )
 
             # pre-train if in training mode
