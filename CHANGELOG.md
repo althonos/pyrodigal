@@ -6,7 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.1.0...HEAD
+
+
+## [v2.1.0] - 2023-02-20
+[v2.1.0]: https://github.com/althonos/pyrodigal/compare/v2.0.4...v2.1.0
+
+### Changed
+- Update Prodigal to `v2.6.3+c1e2d36` to fix a bug with Shine-Dalgarno detection on reverse contig edge ([hyattpd/Prodigal#100](https://github.com/hyattpd/Prodigal/pull/100)).
+
+### Added
+- CLI flags to set the minimum gene size ([#32](https://github.com/althonos/pyrodigal/pull/32), by [@cjprybol](https://github.com/cjprybol)).
+
+### Fixed
+- ArchLinux User Repository package generation in CI.
 
 
 ## [v2.0.4] - 2023-01-09
