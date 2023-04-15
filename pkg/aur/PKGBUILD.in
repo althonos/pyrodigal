@@ -21,7 +21,7 @@ build() {
 }
 
 check() {
-    local pyver=$(python -c 'import sys; print("{}.{}".format(*sys.version_info[:2]))')
+    local pyver=$(python -c 'import sys; print(*sys.version_info[:2], sep="")')
     local impl=$(python -c 'import platform; print(platform.python_implementation().lower())')
     local machine=$(python -c 'import platform; print(platform.machine())')
     cd "${srcdir}/${_name}-${pkgver}/build/lib.linux-${machine}-${impl}-${pyver}"
