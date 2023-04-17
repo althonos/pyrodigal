@@ -7,6 +7,7 @@ import argparse
 import contextlib
 import sys
 import os
+import multiprocessing.pool
 
 from . import __name__, __author__, __version__
 from ._pyrodigal import TRANSLATION_TABLES, OrfFinder, TrainingInfo
@@ -90,6 +91,15 @@ def argument_parser():
         help="Write a training file (if none exists); otherwise, read and use the specified training file.",
     )
     parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        required=False,
+        default=1,
+        metavar="jobs",
+        help="The number of threads to use if input contains multiple sequences."
+    )
+    parser.add_argument(
         "-h", "--help", action="help", help="Show this help message and exit."
     )
     parser.add_argument(
@@ -156,7 +166,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 training_info = None
 
             # initialize the ORF finder
-            pyrodigal = OrfFinder(
+            orf_finder = OrfFinder(
                 meta=args.p == "meta",
                 closed=args.c,
                 mask=args.m,
@@ -170,7 +180,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
             if args.p == "single":
                 # use the same interleaving logic as Prodigal
                 sequences = list(parse(args.i))
-                training_info = pyrodigal.train(
+                training_info = orf_finder.train(
                     *(seq.seq for seq in sequences),
                     force_nonsd=args.n,
                     translation_table=args.g
@@ -182,22 +192,32 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
             else:
                 sequences = parse(args.i)
 
-            # find genes
-            for i, seq in enumerate(sequences):
-                # find genes with Pyrodigal
-                preds = pyrodigal.find_genes(seq.seq)
+            # get the number of jobs
+            if args.jobs == 0:
+                args.jobs = os.cpu_count() or 1
+            if args.jobs > 1:
+                pool = ctx.enter_context(multiprocessing.pool.ThreadPool(args.jobs))
+                parallel_map = pool.map
+            else:
+                parallel_map = map
+
+            # find genes in parallel
+            def process(sequence):
+                return (sequence.id, orf_finder.find_genes(sequence.seq))
+
+            for seq_id, preds in parallel_map(process, sequences):
                 # write output in GFF format
                 if args.f == "gff":
-                    preds.write_gff(out_file, seq.id)
+                    preds.write_gff(out_file, seq_id)
                 # if asked, write nucleotide sequences of genes
                 if nuc_file is not None:
-                    preds.write_genes(nuc_file, seq.id)
+                    preds.write_genes(nuc_file, seq_id)
                 # if asked, write amino acide sequences of proteins
                 if prot_file is not None:
-                    preds.write_translations(prot_file, seq.id)
+                    preds.write_translations(prot_file, seq_id)
                 # if asked, write scores
                 if scores_file is not None:
-                    preds.write_scores(scores_file, seq.id)
+                    preds.write_scores(scores_file, seq_id)
 
         except Exception as err:
             print("Error: {}".format(err))
