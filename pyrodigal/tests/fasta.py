@@ -1,4 +1,15 @@
+import bz2
 import collections
+import io
+import os
+
+try:
+    from isal import igzip as gzip
+except ImportError:
+    import gzip
+
+_GZIP_MAGIC = b'\x1f\x8b'
+_BZ2_MAGIC = b'BZh'
 
 
 class Record(collections.namedtuple("Record", ["id", "seq", "description"])):
@@ -7,13 +18,24 @@ class Record(collections.namedtuple("Record", ["id", "seq", "description"])):
 
 def parse(path):
 
-    if isinstance(path, str):
-        file = open(path)
-    else:
+
+    try:
+        path = os.fsencode(path)
+        file = open(path, "rb")
+        b = file.peek()
+        if b.startswith(_GZIP_MAGIC):
+            file = gzip.open(file, mode="rt")
+        elif b.startswith(_BZ2_MAGIC):
+            file = bz2.open(file, mode="rt")
+        else:
+            file = io.TextIOWrapper(file)
+    except TypeError:
         file = path
 
     with file:
 
+
+        # parse file
         id_ = None
         seq = []
         for line in file:
