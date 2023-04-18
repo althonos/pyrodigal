@@ -549,12 +549,13 @@ cdef class Sequence:
                 )
 
         if mask:
-            Sequence._mask(
-                self.digits,
-                self.slen,
-                self.masks,
-                mask_size,
-            )
+            with nogil:
+                Sequence._mask(
+                    self.digits,
+                    self.slen,
+                    self.masks,
+                    mask_size,
+                )
 
     def __dealloc__(self):
         PyMem_Free(self.digits)
