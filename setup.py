@@ -522,22 +522,6 @@ class build_clib(_build_clib):
             (self.training_file, self.training_temp)
         )
 
-        # detect if a custom file needs to be included for `cpu_features`
-        impl_path = os.path.join(
-            "vendor", 
-            "cpu_features", 
-            "src", 
-            "impl_{}_{}.c".format(self.target_cpu, self.target_system)
-        )
-        if os.path.exists(impl_path):
-            self.get_library("cpu_features").sources.append(impl_path)
-
-        # check for functions required for libcpu_features on OSX
-        if self.target_system == "macos":
-            _patch_osx_compiler(self.compiler, self.target_machine)
-            if self._check_function("sysctlbyname", "sys/sysctl.h", args="(NULL, NULL, 0, NULL, 0)"):
-                self.compiler.define_macro("HAVE_SYSCTLBYNAME", 1)
-
         # build each library only if the sources are outdated
         self.mkpath(self.build_clib)
         for library in libraries:
@@ -643,15 +627,6 @@ setuptools.setup(
             ],
             include_dirs=[os.path.join("vendor", "Prodigal")]
         ),
-        Library(
-            "cpu_features",
-            sources=list(filter(os.path.exists, [
-                os.path.join("vendor", "cpu_features", "src", "{}.c".format(base))
-                for base in ["filesystem", "stack_line_reader", "string_view"]
-            ])),
-            include_dirs=[os.path.join("vendor", "cpu_features", "include")],
-            define_macros=[("STACK_LINE_READER_BUFFER_SIZE", 1024)]
-        ),
     ],
     ext_modules=[
         Extension(
@@ -669,11 +644,9 @@ setuptools.setup(
             include_dirs=[
                 "pyrodigal",
                 os.path.join("vendor", "Prodigal"),
-                os.path.join("vendor", "cpu_features", "include"),
             ],
             libraries=[
                 "prodigal",
-                "cpu_features",
             ],
         ),
     ],

@@ -229,8 +229,7 @@ in the [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) format.
 
 This library is provided under the [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/).
 The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd) and is distributed under the
-terms of the GPLv3 as well. See `vendor/Prodigal/LICENSE` for more information. The `cpu_features` library was written by [Guillaume Chatelet](https://github.com/gchatelet) and is
-licensed under the terms of the [Apache License 2.0](https://choosealicense.com/licenses/apache-2.0/). See `vendor/cpu_features/LICENSE` for more information.
+terms of the GPLv3 as well. See `vendor/Prodigal/LICENSE` for more information.
 
 *This project is in no way not affiliated, sponsored, or otherwise endorsed
 by the [original Prodigal authors](https://github.com/hyattpd). It was developed
