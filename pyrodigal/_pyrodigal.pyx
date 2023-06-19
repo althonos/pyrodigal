@@ -3468,7 +3468,7 @@ cdef class Genes:
             `int`: The number of bytes written to the file.
 
         .. versionchanged:: 2.0.0
-            Replaced optional``prefix`` argument with ``sequence_id``.
+            Replaced optional ``prefix`` argument with ``sequence_id``.
 
         """
         cdef Gene    gene
