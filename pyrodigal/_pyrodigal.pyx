@@ -146,6 +146,17 @@ import archspec.cpu
 
 include "_version.py"
 
+# --- Patch for PyPy 3.9 -----------------------------------------------------
+
+IF SYS_IMPLEMENTATION_NAME == "pypy" and SYS_VERSION_INFO_MAJOR == 3 and SYS_VERSION_INFO_MINOR == 9:
+    cdef extern from *:
+        """
+        int64_t PyInterpreterState_GetID(PyInterpreterState *interp) {
+            return 0;
+        }
+        """
+
+
 # --- Module-level constants -------------------------------------------------
 
 cdef size_t MIN_MASKS_ALLOC      = 8
