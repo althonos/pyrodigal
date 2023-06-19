@@ -9,7 +9,7 @@ from .. import OrfFinder
 from . import data
 
 
-@unittest.skipUnless(data.resources, "importlib.resources not available")
+@unittest.skipUnless(data.files, "importlib.resources not available")
 class TestGene(unittest.TestCase):
     @classmethod
     def find_genes(cls, seq):

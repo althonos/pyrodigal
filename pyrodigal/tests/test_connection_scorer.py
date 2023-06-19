@@ -55,7 +55,7 @@ class _TestConnectionScorerBase:
         self.assertAlmostEqual(n1.sscore, n2.sscore)
         self.assertAlmostEqual(n1.tscore, n2.tscore)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_score_connections_final(self):
         record = data.load_record("MIIJ01000039.fna.gz")
         nodes_expected = scored_nodes(record, final=True, backend=None)
@@ -63,7 +63,7 @@ class _TestConnectionScorerBase:
         for n1, n2 in zip(nodes_expected, nodes_actual):
             self.assertNodeEqual(n1, n2)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_score_connections_train(self):
         record = data.load_record("GCF_001457455.1_NCTC11397_genomic.fna.gz")
         nodes_expected = scored_nodes(record, final=False, backend=None)

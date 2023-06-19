@@ -12,7 +12,7 @@ from .. import OrfFinder, METAGENOMIC_BINS
 from . import data
 
 
-@unittest.skipUnless(data.resources, "importlib.resources not available")
+@unittest.skipUnless(data.files, "importlib.resources not available")
 class TestGenes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

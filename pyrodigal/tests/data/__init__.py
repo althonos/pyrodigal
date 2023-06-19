@@ -4,17 +4,17 @@ import io
 
 try:
     try:
-        from importlib import resources
+        from importlib.resources import files
     except ImportError:
-        import importlib_resources as resources
+        from importlib_resources import files
 except ImportError:
-    resources = None
+    files = None
 
 from ..fasta import parse
 
 @contextlib.contextmanager
 def load(name, mode="rt"):
-     with resources.open_binary(__name__, name) as src:
+     with files(__name__).joinpath(name).open("rb") as src:
         if name.endswith(".gz"):
             src = gzip.open(src, mode=mode)
         elif mode != "rb":

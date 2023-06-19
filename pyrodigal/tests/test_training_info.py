@@ -50,7 +50,7 @@ class TestTrainingInfo(unittest.TestCase):
             if os.path.exists(filename):
                 os.remove(filename)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_pickle(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -84,7 +84,7 @@ class TestTrainingInfo(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             t1.uses_sd = False
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")
     def test_train_closed(self):

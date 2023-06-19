@@ -99,7 +99,7 @@ class _OrfFinderTestCase(object):
 
 
 class _TestMode(_OrfFinderTestCase):
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_KK037166(self):
         record = data.load_record("KK037166.fna.gz")
         proteins = data.load_records("KK037166.{}.faa.gz".format(self.mode))
@@ -109,7 +109,7 @@ class _TestMode(_OrfFinderTestCase):
         self.assertGenesEqual(preds, genes)
         self.assertPredictionsEqual(preds, proteins)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_SRR492066(self):
         record = data.load_record("SRR492066.fna.gz")
         proteins = data.load_records("SRR492066.{}.faa.gz".format(self.mode))
@@ -119,7 +119,7 @@ class _TestMode(_OrfFinderTestCase):
         self.assertGenesEqual(preds, genes)
         self.assertPredictionsEqual(preds, proteins)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_MIIJ01000039(self):
         record = data.load_record("MIIJ01000039.fna.gz")
         proteins = data.load_records("MIIJ01000039.{}.faa.gz".format(self.mode))
@@ -189,7 +189,7 @@ class TestOrfFinder(_OrfFinderTestCase, unittest.TestCase):
 
 
 class TestMeta(_OrfFinderTestCase, unittest.TestCase):
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train(self):
         record = data.load_record("SRR492066.fna.gz")
         p = OrfFinder(meta=True)
@@ -233,7 +233,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_masked_MIIJ01000039(self):
         record = data.load_record("MIIJ01000039.fna.gz")
         proteins = data.load_records("MIIJ01000039.{}.faa.gz".format("meta+mask"))
@@ -245,7 +245,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         self.assertGenesEqual(preds, genes)
         self.assertPredictionsEqual(preds, proteins)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_large_minsize(self):
         record = data.load_record("KK037166.fna.gz")
         genes = data.load_records("KK037166.{}.fna.gz".format("meta+mask"))
@@ -255,7 +255,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         preds = orf_finder.find_genes(record.seq)
         self.assertEqual(len(preds), len(large_genes))
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_small_minsize(self):
         record = data.load_record("KK037166.fna.gz")
         genes = data.load_records("KK037166.{}.fna.gz".format("meta+mask"))
@@ -300,7 +300,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
 
 
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train_info(self):
         record = data.load_record("SRR492066.fna.gz")
         p = OrfFinder(meta=False)
@@ -319,13 +319,13 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         self.assertEqual(info.type_weights[2], -2.136731395763296)
         self.assertTrue(info.uses_sd)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train_not_called(self):
         record = data.load_record("SRR492066.fna.gz")
         p = OrfFinder(meta=False)
         self.assertRaises(RuntimeError, p.find_genes, str(record.seq))
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_training_info_deallocation(self):
         record = data.load_record("SRR492066.fna.gz")
         proteins = data.load_records("SRR492066.{}.faa.gz".format("single"))
@@ -337,7 +337,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         del p  # normally should not deallocate training info since it's RC
         self.assertEqual(genes[0].translate(), str(proteins[0].seq))
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_short_sequences(self):
         record = data.load_record("SRR492066.fna.gz")
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
@@ -350,7 +350,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
             self.assertEqual(len(genes), 0)
             self.assertRaises(StopIteration, next, iter(genes))
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_empty_sequence(self):
         record = data.load_record("SRR492066.fna.gz")
         p = OrfFinder(meta=False)
@@ -361,7 +361,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_pickle(self):
         record = data.load_record("SRR492066.fna.gz")
         # train separately
@@ -379,7 +379,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
         for gene1, gene2 in zip(g1, g2):
             self.assertGeneEqual(gene1, gene2)
 
-    @unittest.skipUnless(data.resources, "importlib.resources not available")
+    @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_training_info_pickle(self):
         record = data.load_record("SRR492066.fna.gz")
         # train separately
