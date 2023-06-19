@@ -6,7 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.2.0...HEAD
+
+
+## [v2.2.0] - 2023-06-19
+[v2.2.0]: https://github.com/althonos/pyrodigal/compare/v2.1.0...v2.2.0
+
+### Changed
+- Release GIL while masking sequence regions in `Sequence.__init__`.
+- Use [`archspec`](https://pypi.org/project/archspec) instead of `cpu_features` for runtime feature detection.
+
+### Added
+- CLI flag to run ORF detection in parallel when input contains several contigs.
+
+### Removed
+- Support for Python 3.5.
 
 
 ## [v2.1.0] - 2023-02-20
