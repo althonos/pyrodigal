@@ -50,21 +50,9 @@ jobs:
           python-impl: PyPy
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Cache Python requirements
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}
-        restore-keys: ${{ runner.os }}-pip-${{ matrix.python-version }}
-    - name: Cache built C files
-      uses: actions/cache@v2
-      with:
-        path: build
-        key: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
-        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -122,21 +110,9 @@ jobs:
           python-impl: PyPy
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Cache Python requirements
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}
-        restore-keys: ${{ runner.os }}-pip-${{ matrix.python-version }}
-    - name: Cache built C files
-      uses: actions/cache@v2
-      with:
-        path: build
-        key: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
-        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -193,15 +169,9 @@ jobs:
           python-impl: PyPy
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Cache built C files
-      uses: actions/cache@v2
-      with:
-        path: build
-        key: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
-        restore-keys: ${{ runner.os }}-build-${{ matrix.python-version }}-${{ secrets.CACHE_VERSION }}
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -234,7 +204,7 @@ jobs:
   #         python-impl: CPython
   #   steps:
   #   - name: Checkout code
-  #     uses: actions/checkout@v2
+  #     uses: actions/checkout@v3
   #     with:
   #       submodules: true
   #   - name: Cache Python requirements

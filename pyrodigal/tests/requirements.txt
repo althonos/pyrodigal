@@ -1,1 +1,2 @@
+archspec ~=0.2.1
 importlib-resources ; python_version < '3.7'
