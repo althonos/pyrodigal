@@ -148,7 +148,7 @@ include "_version.py"
 
 # --- Patch for PyPy 3.9 -----------------------------------------------------
 
-IF SYS_IMPLEMENTATION_NAME == "pypy" and SYS_VERSION_INFO_MAJOR == 3 and SYS_VERSION_INFO_MINOR == 9:
+IF not HAS_PYINTERPRETERSTATE_GETID:
     cdef extern from *:
         """
         int64_t PyInterpreterState_GetID(PyInterpreterState *interp) {
