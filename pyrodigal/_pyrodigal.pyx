@@ -142,6 +142,8 @@ import textwrap
 import threading
 import warnings
 
+import archspec.cpu
+
 include "_version.py"
 
 # --- Module-level constants -------------------------------------------------
@@ -1070,6 +1072,7 @@ cdef class Sequence:
 # --- Connection Scorer ------------------------------------------------------
 
 _TARGET_CPU           = TARGET_CPU
+_HOST_CPU             = archspec.cpu.host()
 _AVX2_RUNTIME_SUPPORT = False
 _NEON_RUNTIME_SUPPORT = False
 _SSE2_RUNTIME_SUPPORT = False
@@ -1080,19 +1083,15 @@ _SSE2_BUILD_SUPPORT   = False
 _MMX_BUILD_SUPPORT    = False
 
 IF TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
-    from pyrodigal.cpu_features.x86 cimport GetX86Info, X86Info
-    cdef X86Info cpu_info = GetX86Info()
     _MMX_BUILD_SUPPORT    = MMX_BUILD_SUPPORT
     _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
     _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
-    _MMX_RUNTIME_SUPPORT  = cpu_info.features.mmx  != 0
-    _SSE2_RUNTIME_SUPPORT = cpu_info.features.sse2 != 0
-    _AVX2_RUNTIME_SUPPORT = cpu_info.features.avx2 != 0
+    _MMX_RUNTIME_SUPPORT  = "mmx" in _HOST_CPU.features
+    _SSE2_RUNTIME_SUPPORT = "sse2" in _HOST_CPU.features
+    _AVX2_RUNTIME_SUPPORT = "avx2" in _HOST_CPU.features
 ELIF TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
-    from pyrodigal.cpu_features.arm cimport GetArmInfo, ArmInfo
-    cdef ArmInfo cpu_info = GetArmInfo()
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
-    _NEON_RUNTIME_SUPPORT = cpu_info.features.neon != 0
+    _NEON_RUNTIME_SUPPORT = "neon" in _HOST_CPU.features
 ELIF TARGET_CPU == "aarch64":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT = NEON_BUILD_SUPPORT
