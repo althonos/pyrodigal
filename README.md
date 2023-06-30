@@ -114,8 +114,8 @@ with multiprocessing.pool.ThreadPool() as pool:
 ## 🔧 Installing
 
 Pyrodigal can be installed directly from [PyPI](https://pypi.org/project/pyrodigal/),
-which hosts some pre-built wheels for the x86-64 architecture (Linux/OSX/Windows)
-and the Aarch64 architecture (Linux only), as well as the code required to compile
+which hosts some pre-built wheels for the x86-64 architecture (Linux/MacOS/Windows)
+and the Aarch64 architecture (Linux/MacOS), as well as the code required to compile
 from source with Cython:
 ```console
 $ pip install pyrodigal
@@ -126,6 +126,8 @@ package:
 ```console
 $ conda install -c bioconda pyrodigal
 ```
+
+
 
 ## 💡 Example
 
