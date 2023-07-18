@@ -349,6 +349,8 @@ class build_ext(_build_ext):
                 ext.define_macros.append(("CYTHON_TRACE_NOGIL", 1))
         else:
             ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
+            if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
+                ext.extra_compile_args.append("-Wno-unused-variable")
         # remove universal binary CFLAGS from the compiler if any
         if self.target_system == "macos":
             _patch_osx_compiler(self.compiler, self.target_machine)
