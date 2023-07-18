@@ -70,7 +70,7 @@ cdef class Sequence:
         const size_t   length,
               double*  gc,
               uint8_t* digits,
-    ) except 1 nogil
+    ) except 1
     @staticmethod
     cdef int _mask(
         const uint8_t* digits,

@@ -79,6 +79,16 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from cpython.memoryview cimport PyMemoryView_FromMemory
 from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
+from cpython.unicode cimport (
+    PyUnicode_New,
+    PyUnicode_READ,
+    PyUnicode_WRITE,
+    PyUnicode_KIND,
+    PyUnicode_DATA,
+    PyUnicode_1BYTE_KIND,
+    PyUnicode_GET_LENGTH,
+)
+
 from libc.math cimport sqrt, log, pow, fmax, fmin
 from libc.stdint cimport int8_t, uint8_t, uintptr_t
 from libc.stdio cimport printf
@@ -90,7 +100,6 @@ from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initiali
 from pyrodigal.prodigal.node cimport _motif, _node, MIN_EDGE_GENE, MIN_GENE, MAX_SAM_OVLP, cross_mask, compare_nodes, stopcmp_nodes
 from pyrodigal.prodigal.sequence cimport _mask, node_type, rcom_seq, MASK_SIZE
 from pyrodigal.prodigal.training cimport _training
-from pyrodigal._unicode cimport *
 from pyrodigal._sequence cimport (
     nucleotide,
     _is_a,
@@ -465,7 +474,7 @@ cdef class Sequence:
         const size_t   length,
               double*  gc,
               uint8_t* digits,
-    ) except 1 nogil:
+    ) except 1:
         cdef size_t  i
         cdef Py_UCS4 letter
         cdef int     gc_count   = 0
@@ -543,10 +552,6 @@ cdef class Sequence:
             memcpy(self.digits, (<Sequence> sequence).digits, self.slen * sizeof(uint8_t))
         else:
             if isinstance(sequence, str):
-                # make sure the unicode string is in canonical form,
-                # --> won't be needed anymore in Python 3.12
-                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 12:
-                    PyUnicode_READY(sequence)
                 kind = PyUnicode_KIND(sequence)
                 data = PyUnicode_DATA(sequence)
                 self._allocate(PyUnicode_GET_LENGTH(sequence))
@@ -555,14 +560,13 @@ cdef class Sequence:
                 kind = PyUnicode_1BYTE_KIND
                 data = &view[0]
                 self._allocate(view.shape[0])
-            with nogil:
-                Sequence._build(
-                    kind,
-                    data,
-                    self.slen,
-                    &self.gc,
-                    self.digits,
-                )
+            Sequence._build(
+                kind,
+                data,
+                self.slen,
+                &self.gc,
+                self.digits,
+            )
 
         if mask:
             with nogil:
@@ -606,13 +610,12 @@ cdef class Sequence:
             kind = PyUnicode_KIND(dna)
             data = PyUnicode_DATA(dna)
 
-        with nogil:
-            for i in range(self.slen):
-                nuc = _letters[self.digits[i]]
-                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-                    (<char*> data)[i] = nuc
-                ELSE:
-                    PyUnicode_WRITE(kind, data, i, nuc)
+        for i in range(self.slen):
+            nuc = _letters[self.digits[i]]
+            IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                (<char*> data)[i] = nuc
+            ELSE:
+                PyUnicode_WRITE(kind, data, i, nuc)
 
         IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             return dna.decode("ascii")
@@ -2965,16 +2968,15 @@ cdef class Gene:
             kind = PyUnicode_KIND(dna)
             data = PyUnicode_DATA(dna)
 
-        with nogil:
-            for i, j in enumerate(range(begin, end)):
-                if strand == 1:
-                    nuc = _letters[digits[j]]
-                else:
-                    nuc = _letters[_complement[digits[slen - 1 - j]]]
-                IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-                    (<char*> data)[i] = nuc
-                ELSE:
-                    PyUnicode_WRITE(kind, data, i, nuc)
+        for i, j in enumerate(range(begin, end)):
+            if strand == 1:
+                nuc = _letters[digits[j]]
+            else:
+                nuc = _letters[_complement[digits[slen - 1 - j]]]
+            IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                (<char*> data)[i] = nuc
+            ELSE:
+                PyUnicode_WRITE(kind, data, i, nuc)
 
         if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             return dna.decode("ascii")
@@ -3051,16 +3053,15 @@ cdef class Gene:
             begin = slen - gene.end
             end = slen - gene.begin
 
-        with nogil:
-            for i, j in enumerate(range(begin, end, 3)):
-                aa = self.owner.sequence._amino(
-                    j,
-                    tt,
-                    strand=strand,
-                    is_init=i==0 and not edge,
-                    unknown_residue=unknown_residue
-                )
-                PyUnicode_WRITE(kind, data, i, aa)
+        for i, j in enumerate(range(begin, end, 3)):
+            aa = self.owner.sequence._amino(
+                j,
+                tt,
+                strand=strand,
+                is_init=i==0 and not edge,
+                unknown_residue=unknown_residue
+            )
+            PyUnicode_WRITE(kind, data, i, aa)
 
         # return the string containing the protein sequence
         return protein
