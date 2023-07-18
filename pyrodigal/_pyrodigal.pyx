@@ -127,12 +127,15 @@ IF AVX2_BUILD_SUPPORT:
 IF NEON_BUILD_SUPPORT:
     from pyrodigal.impl.neon cimport skippable_neon
 
-IF SYS_IMPLEMENTATION_NAME == "pypy":
-    cdef int MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
-    cdef int MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
-ELSE:
-    cdef int MVIEW_READ  = PyBUF_READ
-    cdef int MVIEW_WRITE = PyBUF_WRITE
+cdef int MVIEW_READ
+cdef int MVIEW_WRITE
+
+if SYS_IMPLEMENTATION_NAME == "pypy":
+    MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
+    MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
+else:
+    MVIEW_READ  = PyBUF_READ
+    MVIEW_WRITE = PyBUF_WRITE
 
 # ----------------------------------------------------------------------------
 
@@ -339,7 +342,7 @@ cdef class Masks:
     cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_mask) + sizeof(self)
 
-    cpdef list __getstate__(self):
+    def __getstate__(self):
         """__getstate__(self)\n--
         """
         cdef size_t i
@@ -348,7 +351,7 @@ cdef class Masks:
             for i in range(self.length)
         ]
 
-    cpdef object __setstate__(self, list state):
+    def __setstate__(self, list state):
         """__setstate__(self, state)\n--
         """
         cdef size_t i
@@ -385,7 +388,7 @@ cdef class Masks:
         self,
         const int  begin,
         const int  end,
-    ) nogil except NULL:
+    ) except NULL nogil:
         """Add a single node to the vector, and return a pointer to that node.
         """
 
@@ -462,7 +465,7 @@ cdef class Sequence:
         const size_t   length,
               double*  gc,
               uint8_t* digits,
-    ) nogil except 1:
+    ) except 1 nogil:
         cdef size_t  i
         cdef Py_UCS4 letter
         cdef int     gc_count   = 0
@@ -493,7 +496,7 @@ cdef class Sequence:
         const size_t   length,
               Masks    masks,
         const size_t   mask_size,
-    ) nogil except 1:
+    ) except 1 nogil:
         cdef int     mask_begin = -1
         for i in range(length):
             if digits[i] == nucleotide.N:
@@ -616,7 +619,7 @@ cdef class Sequence:
         ELSE:
             return dna
 
-    cpdef dict __getstate__(self):
+    def __getstate__(self):
         """__getstate__(self)\n--
         """
         assert self.digits != NULL
@@ -632,7 +635,7 @@ cdef class Sequence:
             "digits": digits
         }
 
-    cpdef object __setstate__(self, dict state):
+    def __setstate__(self, dict state):
         """__setstate__(self, state)\n--
         """
         # get a view on the digits
@@ -673,7 +676,7 @@ cdef class Sequence:
             memset(self.digits, 0, slen * sizeof(uint8_t))
         return 0
 
-    cdef int* _max_gc_frame_plot(self, int window_size) nogil except NULL:
+    cdef int* _max_gc_frame_plot(self, int window_size) except NULL nogil:
         cdef int  i
         cdef int  j
         cdef int  win
@@ -820,7 +823,7 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -920,7 +923,7 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -1093,17 +1096,17 @@ _NEON_BUILD_SUPPORT   = False
 _SSE2_BUILD_SUPPORT   = False
 _MMX_BUILD_SUPPORT    = False
 
-IF TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
+if TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
     _MMX_BUILD_SUPPORT    = MMX_BUILD_SUPPORT
     _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
     _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
     _MMX_RUNTIME_SUPPORT  = "mmx" in _HOST_CPU.features
     _SSE2_RUNTIME_SUPPORT = "sse2" in _HOST_CPU.features
     _AVX2_RUNTIME_SUPPORT = "avx2" in _HOST_CPU.features
-ELIF TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
+elif TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT = "neon" in _HOST_CPU.features
-ELIF TARGET_CPU == "aarch64":
+elif TARGET_CPU == "aarch64":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT = NEON_BUILD_SUPPORT
 
@@ -1140,7 +1143,7 @@ cdef class ConnectionScorer:
                 values are: ``"generic"``, ``"sse"``, ``"avx"``, ``neon``.
 
         """
-        IF TARGET_CPU == "x86":
+        if TARGET_CPU == "x86":
             if backend == "detect":
                 self.backend = simd_backend.NONE
                 IF MMX_BUILD_SUPPORT:
@@ -1179,7 +1182,7 @@ cdef class ConnectionScorer:
                 self.backend = simd_backend.NONE
             else:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
-        ELIF TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             if backend == "detect":
                 self.backend = simd_backend.NONE
                 IF NEON_BUILD_SUPPORT:
@@ -1198,7 +1201,7 @@ cdef class ConnectionScorer:
                 self.backend = simd_backend.NONE
             else:
                 raise ValueError(f"Unsupported backend on this architecture: {backend}")
-        ELSE:
+        else:
             if backend == "detect":
                 self.backend = simd_backend.NONE
             if backend == "generic":
@@ -1219,7 +1222,7 @@ cdef class ConnectionScorer:
 
     # --- C interface --------------------------------------------------------
 
-    cdef int _index(self, Nodes nodes) nogil except -1:
+    cdef int _index(self, Nodes nodes) except -1 nogil:
         cdef size_t i
         # nothing to be done if we are using the Prodigal code
         if self.backend == simd_backend.NONE:
@@ -1633,7 +1636,7 @@ cdef class Nodes:
     cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_node) + sizeof(self)
 
-    cpdef list __getstate__(self):
+    def __getstate__(self):
         """__getstate__(self)\n--
         """
         cdef size_t i
@@ -1681,7 +1684,7 @@ cdef class Nodes:
             for i in range(self.length)
         ]
 
-    cpdef object __setstate__(self, list state):
+    def __setstate__(self, list state):
         """__setstate__(self, state)\n--
         """
         cdef size_t i
@@ -1749,7 +1752,7 @@ cdef class Nodes:
         const int  strand,
         const int  stop_val,
         const bint edge,
-    ) nogil except NULL:
+    ) except NULL nogil:
         """Add a single node to the vector, and return a pointer to that node.
         """
         # reallocate if needed
@@ -1766,7 +1769,7 @@ cdef class Nodes:
         node.edge = edge
         return node
 
-    cdef int _calc_orf_gc(self, Sequence seq) nogil except -1:
+    cdef int _calc_orf_gc(self, Sequence seq) except -1 nogil:
         cdef int i
         cdef int j
         cdef int last[3]
@@ -1823,7 +1826,7 @@ cdef class Nodes:
         # return 0 on success
         return 0
 
-    cdef int _clear(self) nogil except 1:
+    cdef int _clear(self) except 1 nogil:
         """Remove all nodes from the vector.
         """
         cdef size_t old_length
@@ -1926,7 +1929,7 @@ cdef class Nodes:
         bint closed,
         int min_gene,
         int min_edge_gene,
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int    i
         cdef int    j
         cdef bint   skip
@@ -2137,7 +2140,7 @@ cdef class Nodes:
         self,
         Sequence seq,
         const _training* tinf
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef double  score[3]
         cdef double  lfac
         cdef double  no_stop
@@ -2257,7 +2260,7 @@ cdef class Nodes:
         self,
         Sequence seq,
         const _training* tinf
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int i
         cdef int j
         cdef int cur_sc[2]
@@ -2349,7 +2352,7 @@ cdef class Nodes:
         const _training* tinf,
         const bint closed,
         const bint is_meta,
-    ) nogil except -1:
+    ) except -1 nogil:
 
         cdef size_t i
         cdef size_t j
@@ -2501,13 +2504,13 @@ cdef class Nodes:
         # Return 0 on success
         return 0
 
-    cdef int _sort(self) nogil except 1:
+    cdef int _sort(self) except 1 nogil:
         """Sort all nodes in the vector by their index and strand.
         """
         qsort(self.nodes, self.length, sizeof(_node), compare_nodes)
         return 0
 
-    cdef int _reset_scores(self) nogil except 1:
+    cdef int _reset_scores(self) except 1 nogil:
         node.reset_node_scores(self.nodes, self.length)
         return 0
 
@@ -2973,9 +2976,9 @@ cdef class Gene:
                 ELSE:
                     PyUnicode_WRITE(kind, data, i, nuc)
 
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             return dna.decode("ascii")
-        ELSE:
+        else:
             return dna
 
     cpdef str translate(
@@ -3113,7 +3116,7 @@ cdef class Genes:
     cpdef size_t __sizeof__(self):
         return self.capacity * sizeof(_gene) + sizeof(self)
 
-    cpdef dict __getstate__(self):
+    def __getstate__(self):
         cdef size_t         i
         cdef dict           state
         cdef MetagenomicBin mb    = self.training_info.metagenomic_bin
@@ -3140,7 +3143,7 @@ cdef class Genes:
 
         return state
 
-    cpdef object __setstate__(self, dict state):
+    def __setstate__(self, dict state):
         cdef size_t i
         cdef dict   gene
         cdef list   genes = state["genes"]
@@ -3195,7 +3198,7 @@ cdef class Genes:
         const int end,
         const int start_ndx,
         const int stop_ndx,
-    ) nogil except NULL:
+    ) except NULL nogil:
         """Add a single gene to the vector, and return a pointer to that gene.
         """
         # reallocate if needed
@@ -3211,14 +3214,14 @@ cdef class Genes:
         gene.stop_ndx = stop_ndx
         return gene
 
-    cdef int _clear(self) nogil except 1:
+    cdef int _clear(self) except 1 nogil:
         """Remove all genes from the vector.
         """
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.genes, 0, old_length * sizeof(_gene))
 
-    cdef int _extract(self, Nodes nodes, int ipath) nogil except -1:
+    cdef int _extract(self, Nodes nodes, int ipath) except -1 nogil:
         """Extract genes from the dynamic programming nodes.
         """
         cdef int  path      = ipath
@@ -3765,7 +3768,7 @@ cdef class TrainingInfo:
     cpdef size_t __sizeof__(self):
         return sizeof(_training) + sizeof(self)
 
-    cpdef dict __getstate__(self):
+    def __getstate__(self):
         """__getstate__(self)\n--
         """
         assert self.tinf != NULL
@@ -3800,7 +3803,7 @@ cdef class TrainingInfo:
             ]
         }
 
-    cpdef object __setstate__(self, dict state):
+    def __setstate__(self, dict state):
         """__setstate__(self, state)\n--
         """
         cdef int i
@@ -3954,7 +3957,7 @@ cdef class TrainingInfo:
 
     # --- C interface --------------------------------------------------------
 
-    cdef void _on_modification(self) nogil except *:
+    cdef void _on_modification(self) except * nogil:
         """Raise an error when attempting to modify a shared `TrainingInfo`.
         """
         if not self.owned:
@@ -4013,7 +4016,7 @@ cdef class TrainingInfo:
         elif stage == 2:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil except *:
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil:
         """Compute the dicodon frequency in genes and in the background.
 
         Stores the log-likelihood of each 6-mer relative to the background.
@@ -4086,7 +4089,7 @@ cdef class TrainingInfo:
             elif self.tinf.gene_dc[i] < -5.0:
                 self.tinf.gene_dc[i] = -5.0
 
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) nogil except *:
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) except * nogil:
         cdef int start
         cdef int j
         cdef int i     = 0
@@ -4119,7 +4122,7 @@ cdef class TrainingInfo:
                     self.tinf.ups_comp[i][_complement[seq.digits[pos+j]] & 0b11] += 1
                 i += 1
 
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil except *:
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil:
         cdef int phase
         cdef int rbs[3]
         cdef int type[3]
@@ -4331,7 +4334,7 @@ cdef class TrainingInfo:
                   if self.tinf.ups_comp[i][j] < -4.0:
                       self.tinf.ups_comp[i][j] = -4.0
 
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil except *:
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -4772,7 +4775,7 @@ cdef class OrfFinder:
         ty = type(self)
         return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
-    cpdef dict __getstate__(self):
+    def __getstate__(self):
         """__getstate__(self)\n--
         """
         return {
@@ -4786,7 +4789,7 @@ cdef class OrfFinder:
             "training_info": self.training_info
         }
 
-    cpdef object __setstate__(self, dict state):
+    def __setstate__(self, dict state):
         """__setstate__(self, state)\n--
         """
         self.lock = threading.Lock()
@@ -4808,7 +4811,7 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int* gc_frame
         cdef int  ipath
         # find all the potential starts and stops
@@ -4854,7 +4857,7 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int ipath
         # find all the potential starts and stops, and sort them
         nodes._extract(
@@ -4889,7 +4892,7 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) nogil except -1:
+    ) except -1 nogil:
         cdef int          i
         cdef double       low
         cdef double       high

@@ -7,7 +7,7 @@ from pyrodigal.prodigal.training cimport _training
 
 cdef extern from "gene.h" nogil:
 
-    const size_t MAX_GENES = 30000
+    const size_t MAX_GENES
 
     struct _gene:
         int begin

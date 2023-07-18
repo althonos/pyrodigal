@@ -4,9 +4,9 @@ from pyrodigal.prodigal.training cimport _training
 
 cdef extern from "dprog.h" nogil:
 
-    const int MAX_SAM_OVLP  = 60
-    const int MAX_OPP_OVLP  = 200
-    const int MAX_NODE_DIST = 500
+    const int MAX_SAM_OVLP
+    const int MAX_OPP_OVLP
+    const int MAX_NODE_DIST
 
     int dprog(_node*, int, _training*, int)
     void score_connection(_node*, int, int, _training*, int)

@@ -46,12 +46,10 @@ cdef class Masks:
         self,
         const int  begin,
         const int  end,
-    ) nogil except NULL
+    ) except NULL nogil
     cdef int _clear(self) nogil
 
     cpdef size_t __sizeof__(self)
-    cpdef list __getstate__(self)
-    cpdef object __setstate__(self, list state)
 
     cpdef Masks copy(self)
     cpdef void clear(self)
@@ -72,17 +70,17 @@ cdef class Sequence:
         const size_t   length,
               double*  gc,
               uint8_t* digits,
-    ) nogil except 1
+    ) except 1 nogil
     @staticmethod
     cdef int _mask(
         const uint8_t* digits,
         const size_t   length,
               Masks    masks,
         const size_t   mask_size,
-    ) nogil except 1
+    ) except 1 nogil
 
     cdef int _allocate(self, int slen) except 1
-    cdef int* _max_gc_frame_plot(self, int window_size) nogil except NULL
+    cdef int* _max_gc_frame_plot(self, int window_size) except NULL nogil
     cdef char _amino(
         self,
         int i,
@@ -97,19 +95,17 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) nogil except -1
+    ) except -1 nogil
     cdef int _shine_dalgarno_mm(
         self,
         const int pos,
         const int start,
         const _training* tinf,
         const int strand
-    ) nogil except -1
+    ) except -1 nogil
     
 
     cpdef size_t __sizeof__(self)
-    cpdef dict __getstate__(self)
-    cpdef object __setstate__(self, dict state)
 
     cpdef object max_gc_frame_plot(self, int window_size=*)
     cpdef int shine_dalgarno(
@@ -144,7 +140,7 @@ cdef class ConnectionScorer:
 
     cpdef size_t __sizeof__(self)
 
-    cdef int _index(self, Nodes nodes) nogil except -1
+    cdef int _index(self, Nodes nodes) except -1 nogil
     cdef int _compute_skippable(
         self,
         const int min,
@@ -191,8 +187,6 @@ cdef class Nodes:
     cdef readonly size_t length
 
     cpdef size_t __sizeof__(self)
-    cpdef list __getstate__(self)
-    cpdef object __setstate__(self, list state)
 
     cdef int _allocate(self, size_t capacity) except 1
     cdef inline _node* _add_node(
@@ -202,9 +196,9 @@ cdef class Nodes:
         const int  strand,
         const int  stop_val,
         const bint edge,
-    ) nogil except NULL
-    cdef int _calc_orf_gc(self, Sequence seq) nogil except -1
-    cdef int _clear(self) nogil except 1
+    ) except NULL nogil
+    cdef int _calc_orf_gc(self, Sequence seq) except -1 nogil
+    cdef int _clear(self) except 1 nogil
     cdef int _dynamic_programming(
         self,
         const _training* tinf,
@@ -218,32 +212,32 @@ cdef class Nodes:
         const bint closed,
         const int min_gene,
         const int min_edge_gene
-    ) nogil except -1
+    ) except -1 nogil
     cdef int _raw_coding_score(
         self,
         Sequence seq,
         const _training* tinf
-    ) nogil except -1
+    ) except -1 nogil
     cdef int _rbs_score(
         self,
         Sequence seq,
         const _training* tinf
-    ) nogil except -1
+    ) except -1 nogil
     cdef void _record_overlapping_starts(
         self,
         const _training* tinf,
         const int flag,
         const int max_sam_overlap,
     ) nogil
-    cdef int _reset_scores(self) nogil except 1
+    cdef int _reset_scores(self) except 1 nogil
     cdef int _score(
         self,
         Sequence seq,
         const _training* tinf,
         const bint closed,
         const bint is_meta
-    ) nogil except -1
-    cdef int _sort(self) nogil except 1
+    ) except -1 nogil
+    cdef int _sort(self) except 1 nogil
 
     cpdef Nodes copy(self)
 
@@ -284,8 +278,6 @@ cdef class Genes:
     cdef readonly TrainingInfo training_info
 
     cpdef size_t __sizeof__(self)
-    cpdef dict __getstate__(self)
-    cpdef object __setstate__(self, dict state)
 
     cdef int _allocate(self, size_t capacity) except 1
     cdef inline _gene* _add_gene(
@@ -294,15 +286,15 @@ cdef class Genes:
         const int end,
         const int start_ndx,
         const int stop_ndx,
-    ) nogil except NULL
-    cdef int _extract(self, Nodes nodes, int ipath) nogil except -1
+    ) except NULL nogil
+    cdef int _extract(self, Nodes nodes, int ipath) except -1 nogil
     cdef void _tweak_final_starts(
         self,
         Nodes nodes,
         const _training* tinf,
         const int max_sam_overlap,
     ) nogil
-    cdef int _clear(self) nogil except 1
+    cdef int _clear(self) except 1 nogil
 
     cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=*) except -1
     cpdef ssize_t write_genes(self, object file, str sequence_id, object width=*) except -1
@@ -318,18 +310,16 @@ cdef class TrainingInfo:
     cdef _training* tinf
 
     cpdef size_t __sizeof__(self)
-    cpdef dict __getstate__(self)
-    cpdef object __setstate__(self, dict state)
 
-    cdef void _on_modification(self) nogil except *
+    cdef void _on_modification(self) except * nogil
 
     @staticmethod
     cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) nogil except *
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) nogil except *
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) nogil except *
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) nogil except *
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) except * nogil
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil
 
     cpdef object dump(self, object fp)
 
@@ -357,9 +347,6 @@ cdef class OrfFinder:
     cdef readonly int          min_edge_gene
     cdef readonly TrainingInfo training_info
 
-    cpdef dict __getstate__(self)
-    cpdef object __setstate__(self, dict state)
-
     cdef int _train(
         self,
         Sequence sequence,
@@ -367,7 +354,7 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
-    ) nogil except -1
+    ) except -1 nogil
     cdef int _find_genes_single(
         self,
         Sequence sequence,
@@ -375,13 +362,13 @@ cdef class OrfFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) nogil except -1
+    ) except -1 nogil
     cdef int _find_genes_meta(
         self,
         Sequence sequence,
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) nogil except -1
+    ) except -1 nogil
 
     cpdef Genes find_genes(self, object sequence)

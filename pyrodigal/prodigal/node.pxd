@@ -5,15 +5,15 @@ from pyrodigal.prodigal.training cimport _training
 
 cdef extern from "node.h" nogil:
 
-    const size_t STT_NOD = 100000
-    const size_t MIN_GENE = 90
-    const size_t MIN_EDGE_GENE = 60
-    const size_t MAX_SAM_OVLP = 60
-    const size_t ST_WINDOW = 60
-    const size_t OPER_DIST = 60
-    const double EDGE_BONUS = 0.74
-    const double EDGE_UPS = -1.0
-    const double META_PEN = 7.5
+    const size_t STT_NOD
+    const size_t MIN_GENE
+    const size_t MIN_EDGE_GENE
+    const size_t MAX_SAM_OVLP
+    const size_t ST_WINDOW
+    const size_t OPER_DIST
+    const double EDGE_BONUS
+    const double EDGE_UPS
+    const double META_PEN
 
     struct _motif:
         int ndx
