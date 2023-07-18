@@ -95,14 +95,14 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) except -1 nogil
+    ) noexcept nogil
     cdef int _shine_dalgarno_mm(
         self,
         const int pos,
         const int start,
         const _training* tinf,
         const int strand
-    ) except -1 nogil
+    ) noexcept nogil
     
 
     cpdef size_t __sizeof__(self)

@@ -826,7 +826,7 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) except -1 nogil:
+    ) noexcept nogil:
         cdef int i
         cdef int j
         cdef int k
@@ -926,7 +926,7 @@ cdef class Sequence:
         const int start,
         const _training* tinf,
         const int strand
-    ) except -1 nogil:
+    ) noexcept nogil:
         cdef int i
         cdef int j
         cdef int k
