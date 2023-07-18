@@ -1,5 +1,5 @@
 coverage ~=4.0 ; implementation_name == 'cpython'
-cython ~=0.29.16
+cython ~=3.0
 wheel
 auditwheel <5.2
 setuptools >=46.4.0
