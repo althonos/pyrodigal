@@ -145,7 +145,7 @@ cdef class ConnectionScorer:
         self,
         const int min,
         const int i
-    ) nogil
+    ) noexcept nogil
     cdef void _score_connections(
         self,
         Nodes nodes,
@@ -153,7 +153,7 @@ cdef class ConnectionScorer:
         const int i,
         const _training* tinf,
         const bint final
-    ) nogil
+    ) noexcept nogil
 
 
 # --- Nodes ------------------------------------------------------------------
@@ -228,7 +228,7 @@ cdef class Nodes:
         const _training* tinf,
         const int flag,
         const int max_sam_overlap,
-    ) nogil
+    ) noexcept nogil
     cdef int _reset_scores(self) except 1 nogil
     cdef int _score(
         self,
@@ -293,7 +293,7 @@ cdef class Genes:
         Nodes nodes,
         const _training* tinf,
         const int max_sam_overlap,
-    ) nogil
+    ) noexcept nogil
     cdef int _clear(self) except 1 nogil
 
     cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=*) except -1

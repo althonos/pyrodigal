@@ -1270,7 +1270,7 @@ cdef class ConnectionScorer:
         self,
         int min,
         int i
-    ) nogil:
+    ) noexcept nogil:
         if AVX2_BUILD_SUPPORT:
             if self.backend == simd_backend.AVX2:
                 skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
@@ -1299,7 +1299,7 @@ cdef class ConnectionScorer:
         const int i,
         const _training* tinf,
         const bint final
-    ) nogil:
+    ) noexcept nogil:
         cdef int j
         # NOTE: For comparison / testing purposes, it's still possible to
         #       score connections exactly the way it's done in the original
@@ -2305,7 +2305,7 @@ cdef class Nodes:
         const _training* tinf,
         const int flag,
         const int max_sam_overlap
-    ) nogil:
+    ) noexcept nogil:
         cdef int    i
         cdef int    j
         cdef double sc
@@ -3268,8 +3268,7 @@ cdef class Genes:
         Nodes nodes,
         const _training* tinf,
         const int max_sam_overlap,
-    ) nogil:
-
+    ) noexcept nogil:
         cdef int    i
         cdef int    j
         cdef int    ndx
