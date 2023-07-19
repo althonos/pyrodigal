@@ -127,13 +127,13 @@ from pyrodigal._connection cimport (
 )
 from pyrodigal.impl.generic cimport skippable_generic
 
-IF MMX_BUILD_SUPPORT:
+if MMX_BUILD_SUPPORT:
     from pyrodigal.impl.mmx cimport skippable_mmx
-IF SSE2_BUILD_SUPPORT:
+if SSE2_BUILD_SUPPORT:
     from pyrodigal.impl.sse cimport skippable_sse
-IF AVX2_BUILD_SUPPORT:
+if AVX2_BUILD_SUPPORT:
     from pyrodigal.impl.avx cimport skippable_avx
-IF NEON_BUILD_SUPPORT:
+if NEON_BUILD_SUPPORT:
     from pyrodigal.impl.neon cimport skippable_neon
 
 cdef int MVIEW_READ
@@ -591,35 +591,42 @@ cdef class Sequence:
     cpdef size_t __sizeof__(self):
         return self.slen * sizeof(uint8_t) + sizeof(self)
 
-    def __str__(self):
-        cdef int     i
-        cdef Py_UCS4 nuc
+    if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
 
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-            cdef bytes dna
-            cdef void* data
+        def __str__(self):
+            cdef int     i
+            cdef Py_UCS4 nuc
+            cdef bytes   dna
+            cdef void*   data
+
             # create an empty byte buffer that we can write to
             dna = PyBytes_FromStringAndSize(NULL, self.slen)
             data = <void*> PyBytes_AsString(dna)
-        ELSE:
+
+            for i in range(self.slen):
+                nuc = _letters[self.digits[i]]
+                (<char*> data)[i] = nuc
+
+            return dna.decode("ascii")
+
+    else:
+
+        def __str__(self):
+            cdef int     i
+            cdef Py_UCS4 nuc
             cdef unicode dna
             cdef int     kind
             cdef void*   data
+
             # create an empty string that we can write to
             dna  = PyUnicode_New(self.slen, 0x7F)
             kind = PyUnicode_KIND(dna)
             data = PyUnicode_DATA(dna)
 
-        for i in range(self.slen):
-            nuc = _letters[self.digits[i]]
-            IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-                (<char*> data)[i] = nuc
-            ELSE:
+            for i in range(self.slen):
+                nuc = _letters[self.digits[i]]
                 PyUnicode_WRITE(kind, data, i, nuc)
 
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-            return dna.decode("ascii")
-        ELSE:
             return dna
 
     def __getstate__(self):
@@ -1149,35 +1156,32 @@ cdef class ConnectionScorer:
         if TARGET_CPU == "x86":
             if backend == "detect":
                 self.backend = simd_backend.NONE
-                IF MMX_BUILD_SUPPORT:
-                    if _MMX_RUNTIME_SUPPORT:
-                        self.backend = simd_backend.MMX
-                IF SSE2_BUILD_SUPPORT:
-                    if _SSE2_RUNTIME_SUPPORT:
-                        self.backend = simd_backend.SSE2
-                IF AVX2_BUILD_SUPPORT:
-                    if _AVX2_RUNTIME_SUPPORT:
-                        self.backend = simd_backend.AVX2
+                if MMX_BUILD_SUPPORT and _MMX_RUNTIME_SUPPORT:
+                    self.backend = simd_backend.MMX
+                if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
+                    self.backend = simd_backend.SSE2
+                if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
+                    self.backend = simd_backend.AVX2
             elif backend == "mmx":
-                IF not MMX_BUILD_SUPPORT:
+                if not MMX_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without MMX support")
-                ELSE:
-                    if not _MMX_RUNTIME_SUPPORT:
-                        raise RuntimeError("Cannot run MMX instructions on this machine")
+                elif not _MMX_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run MMX instructions on this machine")
+                else:
                     self.backend = simd_backend.MMX
             elif backend == "sse":
-                IF not SSE2_BUILD_SUPPORT:
+                if not SSE2_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without SSE2 support")
-                ELSE:
-                    if not _SSE2_RUNTIME_SUPPORT:
-                        raise RuntimeError("Cannot run SSE2 instructions on this machine")
+                elif not _SSE2_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run SSE2 instructions on this machine")
+                else:
                     self.backend = simd_backend.SSE2
             elif backend == "avx":
-                IF not AVX2_BUILD_SUPPORT:
+                if not AVX2_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without AVX2 support")
-                ELSE:
-                    if not _AVX2_RUNTIME_SUPPORT:
-                        raise RuntimeError("Cannot run AVX2 instructions on this machine")
+                elif not _AVX2_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run AVX2 instructions on this machine")
+                else:
                     self.backend = simd_backend.AVX2
             elif backend == "generic":
                 self.backend = simd_backend.GENERIC
@@ -1188,15 +1192,14 @@ cdef class ConnectionScorer:
         elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             if backend == "detect":
                 self.backend = simd_backend.NONE
-                IF NEON_BUILD_SUPPORT:
-                    if _NEON_RUNTIME_SUPPORT:
-                        self.backend = simd_backend.NEON
+                if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
+                    self.backend = simd_backend.NEON
             elif backend == "neon":
-                IF not NEON_BUILD_SUPPORT:
+                if not NEON_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without NEON support")
-                ELSE:
-                    if not _NEON_RUNTIME_SUPPORT:
-                        raise RuntimeError("Cannot run NEON instructions on this machine")
+                elif not _NEON_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run NEON instructions on this machine")
+                else:
                     self.backend = simd_backend.NEON
             elif backend == "generic":
                 self.backend = simd_backend.GENERIC
@@ -1268,19 +1271,19 @@ cdef class ConnectionScorer:
         int min,
         int i
     ) nogil:
-        IF AVX2_BUILD_SUPPORT:
+        if AVX2_BUILD_SUPPORT:
             if self.backend == simd_backend.AVX2:
                 skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
                 return 0
-        IF SSE2_BUILD_SUPPORT:
+        if SSE2_BUILD_SUPPORT:
             if self.backend == simd_backend.SSE2:
                 skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
                 return 0
-        IF MMX_BUILD_SUPPORT:
+        if MMX_BUILD_SUPPORT:
             if self.backend == simd_backend.MMX:
                 skippable_mmx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
                 return 0
-        IF NEON_BUILD_SUPPORT:
+        if NEON_BUILD_SUPPORT:
             if self.backend == simd_backend.NEON:
                 skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
                 return 0
@@ -2955,7 +2958,6 @@ cdef class Gene:
         #                can build an ASCII string and decode afterwards.
         IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             cdef bytes dna
-            cdef void* data
             # create an empty byte buffer that we can write to
             dna = PyBytes_FromStringAndSize(NULL, length)
             data = <void*> PyBytes_AsString(dna)
