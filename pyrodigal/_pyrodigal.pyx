@@ -2934,6 +2934,9 @@ cdef class Gene:
         cdef size_t   end
         cdef size_t   length
         cdef Py_UCS4  nuc
+        cdef void*    data
+        cdef int      kind
+        cdef object   dna
         cdef _gene*   gene   = self.gene
         cdef int      slen   = self.owner.sequence.slen
         cdef int      strand = self.owner.nodes.nodes[gene.start_ndx].strand
@@ -2956,29 +2959,30 @@ cdef class Gene:
         #                doesn't seem to affect `Gene.translate`, so
         #                I'm not sure what's going on, but in that case we
         #                can build an ASCII string and decode afterwards.
-        IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-            cdef bytes dna
+        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             # create an empty byte buffer that we can write to
             dna = PyBytes_FromStringAndSize(NULL, length)
             data = <void*> PyBytes_AsString(dna)
-        ELSE:
-            cdef unicode  dna
-            cdef int      kind
-            cdef void*    data
+        else:
             # create an empty string that we can write to
             dna  = PyUnicode_New(length, 0x7F)
             kind = PyUnicode_KIND(dna)
             data = PyUnicode_DATA(dna)
 
-        for i, j in enumerate(range(begin, end)):
-            if strand == 1:
+        if strand == 1:
+            for i, j in enumerate(range(begin, end)):
                 nuc = _letters[digits[j]]
-            else:
+                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                    (<char*> data)[i] = nuc
+                else:
+                    PyUnicode_WRITE(kind, data, i, nuc)
+        else:
+            for i, j in enumerate(range(begin, end)):
                 nuc = _letters[_complement[digits[slen - 1 - j]]]
-            IF SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
-                (<char*> data)[i] = nuc
-            ELSE:
-                PyUnicode_WRITE(kind, data, i, nuc)
+                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                    (<char*> data)[i] = nuc
+                else:
+                    PyUnicode_WRITE(kind, data, i, nuc)
 
         if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
             return dna.decode("ascii")
