@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.3.0...HEAD
+
+
+## [v2.3.0] - 2023-07-20
+[v2.3.0]: https://github.com/althonos/pyrodigal/compare/v2.2.0...v2.3.0
+
+### Changed
+- Bump Cython to `v3.0.0`.
 
 
 ## [v2.2.0] - 2023-06-19
