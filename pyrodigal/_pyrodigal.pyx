@@ -160,13 +160,14 @@ include "_version.py"
 
 # --- Patch for PyPy 3.9 -----------------------------------------------------
 
-IF not HAS_PYINTERPRETERSTATE_GETID:
-    cdef extern from *:
-        """
-        int64_t PyInterpreterState_GetID(PyInterpreterState *interp) {
-            return 0;
-        }
-        """
+cdef extern from *:
+    """
+    #ifndef HAS_PYINTERPRETERSTATE_GETID
+    int64_t PyInterpreterState_GetID(PyInterpreterState *interp) {
+        return 0;
+    }
+    #endif
+    """
 
 
 # --- Module-level constants -------------------------------------------------
