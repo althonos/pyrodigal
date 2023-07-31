@@ -16,7 +16,7 @@ finder for genomes and metagenomes. **Now with SIMD!***
 [![GitHub issues](https://img.shields.io/github/issues/althonos/pyrodigal.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyrodigal/issues)
 [![Docs](https://img.shields.io/readthedocs/pyrodigal/latest?style=flat-square&maxAge=600)](https://pyrodigal.readthedocs.io)
 [![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md)
-[![Downloads](https://img.shields.io/badge/dynamic/json?style=flat-square&color=303f9f&maxAge=86400&label=downloads&query=%24.total_downloads&url=https%3A%2F%2Fapi.pepy.tech%2Fapi%2Fprojects%2Fpyrodigal)](https://pepy.tech/project/pyrodigal)
+[![Downloads](https://img.shields.io/pypi/dm/pyrodigal?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/pyrodigal)
 [![Paper](https://img.shields.io/badge/paper-JOSS-9400ff?style=flat-square&maxAge=86400)](https://doi.org/10.21105/joss.04296)
 
 
