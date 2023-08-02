@@ -36,5 +36,6 @@ Pyrodigal is being used in the following research works:
 - `Santos-Júnior C.D., Pan, S., Zhao, X., Coelho, L.P.  Macrel: antimicrobial peptide screening in genomes and metagenomes. PeerJ 8:e10555. doi:10.7717/peerj.10555 <https://doi.org/10.7717/peerj.10555>`_.
 - `Sirén K., Millard, A., Petersen, B., Gilbert, M. T. P., Clokie, M. RJ., Sicheritz-Pontén, T. Rapid discovery of novel prophages using biological feature engineering and machine learning. bioRxiv 2020.08.09.243022; doi:10.1101/2020.08.09.243022 <https://doi.org/10.1101/2020.08.09.243022>`_.
 - `Turkington, C. J. R., Nezam Abadi, N., Edwards, R. A., Grasis, J. A.  hafeZ: Active prophage identification through read mapping. bioRxiv 2021.07.21.453177; doi:10.1101/2021.07.21.453177  <https://doi.org/10.1101/2021.07.21.453177>`_.
+- `Reynolds, R., Hyun, S., Tully, B., Bien, J., Levine, N. M. Identification of microbial metabolic functional guilds from large genomic datasets. Front Microbiol. 2023 Jun 30;14:1197329. doi:10.3389/fmicb.2023.1197329. <https://doi.org/10.3389/fmicb.2023.1197329>`_.
 
 Feel free to get in touch to add yours to the list!
