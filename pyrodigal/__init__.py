@@ -17,6 +17,7 @@ from ._pyrodigal import (
     Sequence,
     TrainingInfo,
     MetagenomicBin,
+    MetagenomicBins,
     MIN_SINGLE_GENOME,
     IDEAL_SINGLE_GENOME,
     METAGENOMIC_BINS,

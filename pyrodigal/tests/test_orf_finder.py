@@ -6,7 +6,7 @@ import textwrap
 import unittest
 import warnings
 
-from .. import OrfFinder
+from .. import OrfFinder, MetagenomicBins, METAGENOMIC_BINS
 from . import data
 
 
@@ -298,6 +298,30 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
             self.assertEqual(genes[1].begin, 426)
             self.assertEqual(genes[1].end, 590)
 
+    @unittest.skipUnless(data.files, "importlib.resources not available")
+    def test_custom_metagenomic_bins(self):
+        record = data.load_record("SRR492066.fna.gz")
+        
+        orf_finder = OrfFinder(meta=True)
+        preds = orf_finder.find_genes(record.seq)
+        self.assertIsNot(preds.metagenomic_bin, None)
+        self.assertEqual(preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description)
+
+        metagenomic_bins = MetagenomicBins(( METAGENOMIC_BINS[0], METAGENOMIC_BINS[4] ))
+        orf_finder = OrfFinder(meta=True, metagenomic_bins=metagenomic_bins)
+        preds = orf_finder.find_genes(record.seq)
+        self.assertIsNot(preds.metagenomic_bin, None)
+        self.assertEqual(preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description)
+
+    @unittest.skipUnless(data.files, "importlib.resources not available")
+    def test_empty_metagenomic_bins(self):
+        record = data.load_record("SRR492066.fna.gz")
+        metagenomic_bins = MetagenomicBins()
+        orf_finder = OrfFinder(meta=True, metagenomic_bins=metagenomic_bins)
+        preds = orf_finder.find_genes(record.seq)
+        self.assertEqual(len(preds), 0)
+        self.assertIs(preds.metagenomic_bin, None)
+        self.assertIs(preds.training_info, None)
 
 class TestSingle(_OrfFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")

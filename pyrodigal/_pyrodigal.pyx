@@ -4876,14 +4876,14 @@ cdef class OrfFinder:
 
     # --- C interface --------------------------------------------------------
 
-    cdef int _train(
+    cdef void _train(
         self,
         Sequence sequence,
         Nodes nodes,
         ConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
-    ) except -1 nogil:
+    ) except * nogil:
         cdef int* gc_frame
         cdef int  ipath
         # find all the potential starts and stops
@@ -4919,17 +4919,15 @@ cdef class OrfFinder:
             node.determine_sd_usage(tinf.tinf)
         if not tinf.tinf.uses_sd:
             tinf._train_starts_nonsd(nodes, sequence)
-        # return 0 on success
-        return 0
 
-    cdef int _find_genes_single(
+    cdef void _find_genes_single(
         self,
         Sequence sequence,
         TrainingInfo tinf,
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) except -1 nogil:
+    ) except * nogil:
         cdef int ipath
         # find all the potential starts and stops, and sort them
         nodes._extract(
@@ -4956,22 +4954,21 @@ cdef class OrfFinder:
         # NOTE: In the original Prodigal code, the gene data would be
         #       recorded here, but since we build the gene data string
         #       on request we don't have to pre-build them here.
-        return 0
 
-    cdef int _find_genes_meta(
+    cdef ssize_t _find_genes_meta(
         self,
         Sequence sequence,
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) except -1 nogil:
+    ) except * nogil:
         cdef int          i
         cdef double       low
         cdef double       high
         cdef int          ipath
         cdef _training*   tinf
         cdef int          tt        = -1
-        cdef int          max_phase = 0
+        cdef ssize_t      max_phase = -1
         cdef double       max_score = -100.0
 
         # compute the min/max acceptable gc for the sequence to only
@@ -5021,22 +5018,22 @@ cdef class OrfFinder:
                 #       on request we don't have to pre-build them here.
 
         # recover the nodes corresponding to the best run
-        tinf = self.metagenomic_bins.bins[max_phase].tinf
-        nodes._clear()
-        nodes._extract(
-            sequence,
-            tinf.trans_table,
-            closed=self.closed,
-            min_gene=self.min_gene,
-            min_edge_gene=self.min_edge_gene
-        )
-        nodes._sort()
-        # rescore nodes
-        scorer._index(nodes)
-        nodes._reset_scores()
-        nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
-
-        # return the max phase on success
+        if max_phase >= 0:
+            tinf = self.metagenomic_bins.bins[max_phase].tinf
+            nodes._clear()
+            nodes._extract(
+                sequence,
+                tinf.trans_table,
+                closed=self.closed,
+                min_gene=self.min_gene,
+                min_edge_gene=self.min_edge_gene
+            )
+            nodes._sort()
+            # rescore nodes
+            scorer._index(nodes)
+            nodes._reset_scores()
+            nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
+        # return the max phase, which may be -1 if all bins were skipped
         return max_phase
 
     # --- Python interface ---------------------------------------------------
@@ -5087,8 +5084,11 @@ cdef class OrfFinder:
         if self.meta:
             with nogil:
                 phase = self._find_genes_meta(seq, scorer, nodes, genes)
-            genes.metagenomic_bin = self.metagenomic_bins[phase]
-            tinf = self.metagenomic_bins[phase].training_info
+            if phase >= 0:
+                genes.metagenomic_bin = self.metagenomic_bins[phase]
+                tinf = self.metagenomic_bins[phase].training_info
+            else:
+                genes.metagenomic_bin = tinf = None
         else:
             tinf = self.training_info
             with nogil:
