@@ -4630,11 +4630,11 @@ cdef class MetagenomicBins:
 
     def __cinit__(self):
         self.length = self.capacity = 0
-        self._bins = NULL
+        self.bins = NULL
         self._objects = None
 
     def __dealloc__(self):
-        PyMem_Free(self._bins)
+        PyMem_Free(self.bins)
 
     def __len__(self):
         return self.length
@@ -4650,8 +4650,8 @@ cdef class MetagenomicBins:
         cdef MetagenomicBins output = MetagenomicBins.__new__(MetagenomicBins)
         output.length = output.capacity = length
         output._objects = PyTuple_New(NUM_META)
-        output._bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*) * length)
-        if output._bins == NULL:
+        output.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*) * length)
+        if output.bins == NULL:
             raise MemoryError()
 
         cdef size_t         i
@@ -4671,7 +4671,7 @@ cdef class MetagenomicBins:
             # Setup pointers
             meta.training_info = tinf
             meta.bin.tinf = tinf.tinf
-            output._bins[i] = meta.bin
+            output.bins[i] = meta.bin
             # Record the object into the new list
             PyTuple_SET_ITEM(output._objects, i, meta)
             Py_INCREF(meta)
@@ -4725,6 +4725,7 @@ cdef class OrfFinder:
         TrainingInfo training_info=None,
         *,
         bint meta=False,
+        MetagenomicBins metagenomic_bins=None,
         bint closed=False,
         bint mask=False,
         int min_gene=MIN_GENE,
@@ -4732,7 +4733,7 @@ cdef class OrfFinder:
         int max_overlap=MAX_SAM_OVLP,
         str backend="detect",
     ):
-        """__init__(self, training_info=None, *, meta=False, closed=False, mask=False, min_gene=90, min_edge_gene=60, max_overlap=60, backend="detect")\n--
+        """__init__(self, training_info=None, *, meta=False, metagenomic_bins=None, closed=False, mask=False, min_gene=90, min_edge_gene=60, max_overlap=60, backend="detect")\n--
 
         Instantiate and configure a new ORF finder.
 
@@ -4793,6 +4794,10 @@ cdef class OrfFinder:
         self.min_edge_gene = min_edge_gene
         self.max_overlap = max_overlap
         self.backend = backend
+        if metagenomic_bins is None:
+            self.metagenomic_bins = METAGENOMIC_BINS 
+        else:
+            self.metagenomic_bins = metagenomic_bins
 
     def __repr__(self):
         cdef list template = []
@@ -4948,12 +4953,12 @@ cdef class OrfFinder:
         high = fmax(0.35, 0.86596*sequence.gc + 0.1131991)
 
         # check which of the metagenomic bins gets the best results
-        for i in range(NUM_META):
+        for i in range(self.metagenomic_bins.length):
             # check which of the metagenomic bins gets the best results
-            if _METAGENOMIC_BINS[i].tinf.gc < low or _METAGENOMIC_BINS[i].tinf.gc > high:
+            if self.metagenomic_bins.bins[i].tinf.gc < low or self.metagenomic_bins.bins[i].tinf.gc > high:
                 continue
             # record the training information for the current bin
-            tinf = _METAGENOMIC_BINS[i].tinf
+            tinf = self.metagenomic_bins.bins[i].tinf
             # recreate the node list if the translation table changed
             if tinf.trans_table != tt:
                 tt = tinf.trans_table
@@ -4989,7 +4994,7 @@ cdef class OrfFinder:
                 #       on request we don't have to pre-build them here.
 
         # recover the nodes corresponding to the best run
-        tinf = _METAGENOMIC_BINS[max_phase].tinf
+        tinf = self.metagenomic_bins.bins[max_phase].tinf
         nodes._clear()
         nodes._extract(
             sequence,
@@ -5055,7 +5060,7 @@ cdef class OrfFinder:
         if self.meta:
             with nogil:
                 phase = self._find_genes_meta(seq, scorer, nodes, genes)
-            tinf = METAGENOMIC_BINS[phase].training_info
+            tinf = self.metagenomic_bins[phase].training_info
         else:
             tinf = self.training_info
             with nogil:

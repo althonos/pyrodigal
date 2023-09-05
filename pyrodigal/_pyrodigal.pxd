@@ -326,7 +326,7 @@ cdef class TrainingInfo:
 
 cdef class MetagenomicBins:
     cdef readonly tuple              _objects
-    cdef          _metagenomic_bin** _bins
+    cdef          _metagenomic_bin** bins
     cdef          size_t capacity
     cdef          size_t length
 
@@ -344,16 +344,17 @@ cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 # --- OrfFinder --------------------------------------------------------------
 
 cdef class OrfFinder:
-    cdef readonly size_t       _num_seq
-    cdef readonly str          backend
-    cdef readonly bint         closed
-    cdef readonly object       lock
-    cdef readonly bint         mask
-    cdef readonly int          max_overlap
-    cdef readonly bint         meta
-    cdef readonly int          min_gene
-    cdef readonly int          min_edge_gene
-    cdef readonly TrainingInfo training_info
+    cdef readonly size_t          _num_seq
+    cdef readonly str             backend
+    cdef readonly bint            closed
+    cdef readonly object          lock
+    cdef readonly bint            mask
+    cdef readonly int             max_overlap
+    cdef readonly bint            meta
+    cdef readonly MetagenomicBins metagenomic_bins
+    cdef readonly int             min_gene
+    cdef readonly int             min_edge_gene
+    cdef readonly TrainingInfo    training_info
 
     cdef int _train(
         self,
