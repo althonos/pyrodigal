@@ -6,7 +6,7 @@ import os
 try:
     from isal import igzip as gzip
 except ImportError:
-    import gzip
+    import gzip  # type: ignore
 
 _GZIP_MAGIC = b'\x1f\x8b'
 _BZ2_MAGIC = b'BZh'
@@ -17,8 +17,6 @@ class Record(collections.namedtuple("Record", ["id", "seq", "description"])):
 
 
 def parse(path):
-
-
     try:
         path = os.fsencode(path)
         file = open(path, "rb")
@@ -33,8 +31,6 @@ def parse(path):
         file = path
 
     with file:
-
-
         # parse file
         id_ = None
         seq = []

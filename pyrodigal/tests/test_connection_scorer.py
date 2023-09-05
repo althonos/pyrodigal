@@ -5,6 +5,7 @@ import os
 import sys
 import unittest
 import random
+import typing
 
 from .. import TrainingInfo, Nodes, Sequence, _pyrodigal
 from .._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
@@ -40,7 +41,7 @@ def scored_nodes(record, final=True, backend=None):
 
 
 class _TestConnectionScorerBase:
-    backend = None
+    backend = None  # type: typing.Optional[str]
 
     def assertNodeEqual(self, n1, n2):
         self.assertEqual(n1.index, n2.index)

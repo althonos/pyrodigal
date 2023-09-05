@@ -4635,9 +4635,11 @@ cdef class MetagenomicBins:
 
         self._objects = tuple(iterable)
         self.length = len(self._objects)
-        self.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*)*self.length)
-        for i, meta in enumerate(self._objects):
-            self.bins[i] = meta.bin
+
+        if self.length > 0:
+            self.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*)*self.length)
+            for i, meta in enumerate(self._objects):
+                self.bins[i] = meta.bin
 
     def __dealloc__(self):
         PyMem_Free(self.bins)
@@ -4645,8 +4647,11 @@ cdef class MetagenomicBins:
     def __len__(self):
         return self.length
 
-    def __getitem__(self, ssize_t i):
+    def __getitem__(self, object index):
         assert self._objects is not None
+        if isinstance(index, slice):
+            return type(self)(self._objects[index])
+        cdef ssize_t i = index
         if i < 0:
             i += self.length
         if i < 0 or i >= <ssize_t> self.length:

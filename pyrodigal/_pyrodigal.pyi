@@ -27,6 +27,9 @@ _MMX_BUILD_SUPPORT: bool
 
 TRANSLATION_TABLES: FrozenSet[int]
 METAGENOMIC_BINS: MetagenomicBins
+MIN_SINGLE_GENOME: int
+IDEAL_SINGLE_GENOME: int
+PRODIGAL_VERSION: str
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -295,7 +298,13 @@ class MetagenomicBin:
 class MetagenomicBins(typing.Sequence[MetagenomicBin]):
     def __init__(self, iterable: Iterable[MetagenomicBin]) -> None: ...
     def __len__(self) -> int: ...
-    def __getitem__(self) -> MetagenomicBin: ...
+
+    @typing.overload
+    def __getitem__(self, index: int) -> MetagenomicBin: ...
+    @typing.overload
+    def __getitem__(self, index: slice) -> MetagenomicBins: ...
+    @typing.overload
+    def __getitem__(self, index: Union[int, slice]) -> Union[MetagenomicBin, MetagenomicBins]: ...
 
 
 # --- Pyrodigal --------------------------------------------------------------
