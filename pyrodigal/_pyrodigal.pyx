@@ -343,7 +343,7 @@ cdef class Masks:
         if index < 0:
             index += <ssize_t> self.length
         if index >= <ssize_t> self.length or index < 0:
-            raise IndexError("list index out of range")
+            raise IndexError("masks index out of range")
         mask = Mask.__new__(Mask)
         mask.owner = self
         mask.mask = &self.masks[index]
@@ -1634,7 +1634,7 @@ cdef class Nodes:
         if index < 0:
             index += <ssize_t> self.length
         if index >= <ssize_t> self.length or index < 0:
-            raise IndexError("list index out of range")
+            raise IndexError("nodes index out of range")
         node = Node.__new__(Node)
         node.owner = self
         node.node = &self.nodes[index]
@@ -3121,7 +3121,7 @@ cdef class Genes:
         if index < 0:
             index += <ssize_t> self.length
         if index >= <ssize_t> self.length or index < 0:
-            raise IndexError("list index out of range")
+            raise IndexError("genes index out of range")
         gene = Gene.__new__(Gene)
         gene.owner = self
         gene.gene = &self.genes[index]
@@ -4623,9 +4623,21 @@ cdef class MetagenomicBins:
     """
 
     def __cinit__(self):
-        self.length = self.capacity = 0
+        self.length = 0
         self.bins = NULL
         self._objects = None
+
+    def __init__(self, object iterable = ()):
+        assert self.bins == NULL
+
+        cdef size_t         i
+        cdef MetagenomicBin meta
+
+        self._objects = tuple(iterable)
+        self.length = len(self._objects)
+        self.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*)*self.length)
+        for i, meta in enumerate(self._objects):
+            self.bins[i] = meta.bin
 
     def __dealloc__(self):
         PyMem_Free(self.bins)
@@ -4635,6 +4647,10 @@ cdef class MetagenomicBins:
 
     def __getitem__(self, ssize_t i):
         assert self._objects is not None
+        if i < 0:
+            i += self.length
+        if i < 0 or i >= <ssize_t> self.length:
+            raise IndexError("metagenomic bins index out of range")
         return self._objects[i]
 
     @staticmethod
@@ -4642,7 +4658,7 @@ cdef class MetagenomicBins:
         assert bins != NULL
 
         cdef MetagenomicBins output = MetagenomicBins.__new__(MetagenomicBins)
-        output.length = output.capacity = length
+        output.length = length
         output._objects = PyTuple_New(NUM_META)
         output.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*) * length)
         if output.bins == NULL:

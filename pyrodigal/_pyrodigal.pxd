@@ -327,7 +327,6 @@ cdef class TrainingInfo:
 cdef class MetagenomicBins:
     cdef readonly tuple              _objects
     cdef          _metagenomic_bin** bins
-    cdef          size_t capacity
     cdef          size_t length
 
     @staticmethod
