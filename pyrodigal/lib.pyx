@@ -3745,7 +3745,21 @@ cdef class TrainingInfo:
     def __cinit__(self):
         self.tinf = NULL
 
-    def __init__(self, double gc, double start_weight=4.35, int translation_table=11):
+    def __init__(
+        self,
+        double gc,
+        *,
+        int translation_table=11,
+        double start_weight=4.35,
+        object bias=None,
+        object type_weights=None,
+        bint uses_sd=True,
+        object rbs_weights=None,
+        object upstream_compositions=None,
+        object motif_weights=None,
+        double missing_motif_weight=0.0,
+        object coding_statistics=None,
+    ):
         if self.tinf != NULL:
             raise RuntimeError("TrainingInfo.__init__ called more than once")
         # reallocate the training info memory, if needed
@@ -3755,9 +3769,23 @@ cdef class TrainingInfo:
         # clear memory
         memset(self.tinf, 0, sizeof(_training))
         # set the variables
-        self.tinf.gc = gc
-        self.tinf.st_wt = start_weight
-        self.tinf.trans_table = translation_table
+        self.gc = gc
+        self.translation_table = translation_table
+        self.start_weight = start_weight
+        if bias is not None:
+            self.bias = bias
+        if type_weights is not None:
+            self.type_weights = type_weights
+        self.uses_sd = uses_sd
+        if rbs_weights is not None:
+            self.rbs_weights = rbs_weights
+        if upstream_compositions is not None:
+            self.upstream_compositions = upstream_compositions
+        if motif_weights is not None:
+            self.motif_weights = motif_weights
+        self.missing_motif_weight = missing_motif_weight
+        if coding_statistics is not None:
+            self.coding_statistics = coding_statistics
 
     def __dealloc__(self):
         PyMem_Free(self.tinf)
@@ -3780,34 +3808,18 @@ cdef class TrainingInfo:
         """__getstate__(self)\n--
         """
         assert self.tinf != NULL
-        cdef int i
-        cdef int j
-        cdef int k
         return {
-            "gc": self.tinf.gc,
-            "translation_table": self.tinf.trans_table,
-            "start_weight": self.tinf.st_wt,
+            "gc": self.gc,
+            "translation_table": self.translation_table,
+            "start_weight": self.start_weight,
             "bias": self.bias,
             "type_weights": self.type_weights,
             "uses_sd": self.uses_sd,
-            "rbs_wt": [
-                self.tinf.rbs_wt[i] for i in range(28)
-            ],
-            "ups_comp": [
-                [self.tinf.ups_comp[i][j] for j in range(4)]
-                for i in range(32)
-            ],
-            "mot_wt": [
-                [
-                    [self.tinf.mot_wt[i][j][k] for k in range(4096)]
-                    for j in range(4)
-                ]
-                for i in range(4)
-            ],
-            "no_mot": self.tinf.no_mot,
-            "gene_dc": [
-                self.tinf.gene_dc[i] for i in range(4096)
-            ]
+            "rbs_weights": self.rbs_weights,
+            "upstream_compositions": self.upstream_compositions,
+            "motif_weights": self.motif_weights,
+            "missing_motif_weight": self.missing_motif_weight,
+            "coding_statistics": self.coding_statistics,
         }
 
     def __setstate__(self, dict state):
@@ -3820,23 +3832,23 @@ cdef class TrainingInfo:
         if self.tinf == NULL:
             self.__init__(state["gc"])
         # copy data
-        self.tinf.gc = state["gc"]
-        self.tinf.trans_table = state["translation_table"]
-        self.tinf.st_wt = state["start_weight"]
-        self.tinf.bias = state["bias"]
-        self.tinf.type_wt = state["type_weights"]
-        self.tinf.uses_sd = state["uses_sd"]
-        self.tinf.no_mot = state["no_mot"]
-        self.tinf.rbs_wt = state["rbs_wt"]
-        self.tinf.ups_comp = state["ups_comp"]
-        self.tinf.mot_wt = state["mot_wt"]
-        self.tinf.gene_dc = state["gene_dc"]
+        self.gc = state["gc"]
+        self.translation_table = state["translation_table"]
+        self.start_weight = state["start_weight"]
+        self.bias = state["bias"]
+        self.type_weights = state["type_weights"]
+        self.uses_sd = state["uses_sd"]
+        self.rbs_weights = state["rbs_weights"]
+        self.upstream_compositions = state["upstream_compositions"]
+        self.motif_weights = state["motif_weights"]
+        self.missing_motif_weight = state["missing_motif_weight"]
+        self.coding_statistics = state["coding_statistics"]
 
     # --- Properties -------------------------------------------------------
 
     @property
     def translation_table(self):
-        """`int`: The translation table used during training.
+        """`int`: The translation table used in the training sequence.
         """
         assert self.tinf != NULL
         return self.tinf.trans_table
@@ -3846,7 +3858,7 @@ cdef class TrainingInfo:
         assert self.tinf != NULL
         if table not in _TRANSLATION_TABLES:
             raise ValueError(f"{table} is not a valid translation table index")
-        self.raw.trans_table = table
+        self.tinf.trans_table = table
 
     @property
     def gc(self):
@@ -3925,14 +3937,23 @@ cdef class TrainingInfo:
 
     @property
     def upstream_compositions(self):
+        """`list` of `float: The base composition weights for upstream regions.
+        """
         assert self.tinf != NULL
         return [
             tuple(self.tinf.ups_comp[i][j] for j in range(4))
             for i in range(32)
         ]
 
+    @upstream_compositions.setter
+    def upstream_compositions(self, object upstream_compositions):
+        assert self.tinf != NULL
+        self.tinf.ups_comp = upstream_compositions
+
     @property
     def motif_weights(self):
+        """`list` of `float: The weights for upstream motifs.
+        """
         assert self.tinf != NULL
         return [
             [
@@ -3941,6 +3962,34 @@ cdef class TrainingInfo:
             ]
             for i in range(4)
         ]
+
+    @motif_weights.setter
+    def motif_weights(self, object motif_weights):
+        assert self.tinf != NULL
+        self.tinf.mot_wt = motif_weights
+
+    @property
+    def missing_motif_weight(self):
+        """`float: The weight for the case of no motif.
+        """
+        assert self.tinf != NULL
+        return self.tinf.no_mot
+
+    @missing_motif_weight.setter
+    def missing_motif_weight(self, double missing_motif_weight):
+        self.tinf.no_mot = missing_motif_weight
+
+    @property
+    def coding_statistics(self):
+        """`float: The coding statistics for the genome.
+        """"
+        assert self.tinf != NULL
+        return list(self.tinf.gene_dc)
+
+    @coding_statistics.setter
+    def coding_statistics(self, object coding_statistics):
+        assert self.tinf != NULL
+        self.tinf.gene_dc = coding_statistics
 
     # --- C interface --------------------------------------------------------
 
@@ -5198,7 +5247,7 @@ cdef class OrfFinder:
             )
 
         # build training info
-        tinf = TrainingInfo(seq.gc, start_weight, translation_table)
+        tinf = TrainingInfo(seq.gc, start_weight=start_weight, translation_table=translation_table)
         with nogil:
             self._train(
                 seq,
