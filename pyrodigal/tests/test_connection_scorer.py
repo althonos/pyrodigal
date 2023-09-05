@@ -7,8 +7,8 @@ import unittest
 import random
 import typing
 
-from .. import TrainingInfo, Nodes, Sequence, _pyrodigal
-from .._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
+from .. import TrainingInfo, Nodes, Sequence, METAGENOMIC_BINS, lib
+from ..lib import ConnectionScorer
 from . import data
 
 
@@ -77,25 +77,25 @@ class TestConnectionScorerGeneric(_TestConnectionScorerBase, unittest.TestCase):
     backend = "generic"
 
 
-@unittest.skipUnless(_pyrodigal._MMX_BUILD_SUPPORT, "extension compiled without MMX support")
-@unittest.skipUnless(_pyrodigal._MMX_RUNTIME_SUPPORT, "requires machine with MMX support")
+@unittest.skipUnless(lib._MMX_BUILD_SUPPORT, "extension compiled without MMX support")
+@unittest.skipUnless(lib._MMX_RUNTIME_SUPPORT, "requires machine with MMX support")
 class TestConnectionScorerMMX(_TestConnectionScorerBase, unittest.TestCase):
     backend = "mmx"
 
 
-@unittest.skipUnless(_pyrodigal._SSE2_BUILD_SUPPORT, "extension compiled without SSE2 support")
-@unittest.skipUnless(_pyrodigal._SSE2_RUNTIME_SUPPORT, "requires machine with SSE2 support")
+@unittest.skipUnless(lib._SSE2_BUILD_SUPPORT, "extension compiled without SSE2 support")
+@unittest.skipUnless(lib._SSE2_RUNTIME_SUPPORT, "requires machine with SSE2 support")
 class TestConnectionScorerSSE(_TestConnectionScorerBase, unittest.TestCase):
     backend = "sse"
 
 
-@unittest.skipUnless(_pyrodigal._AVX2_BUILD_SUPPORT, "extension compiled without AVX2 support")
-@unittest.skipUnless(_pyrodigal._AVX2_RUNTIME_SUPPORT, "requires machine with AVX2 support")
+@unittest.skipUnless(lib._AVX2_BUILD_SUPPORT, "extension compiled without AVX2 support")
+@unittest.skipUnless(lib._AVX2_RUNTIME_SUPPORT, "requires machine with AVX2 support")
 class TestConnectionScorerAVX(_TestConnectionScorerBase, unittest.TestCase):
     backend = "avx"
 
 
-@unittest.skipUnless(_pyrodigal._NEON_BUILD_SUPPORT, "extension compiled without NEON support")
-@unittest.skipUnless(_pyrodigal._NEON_RUNTIME_SUPPORT, "requires machine with NEON support")
+@unittest.skipUnless(lib._NEON_BUILD_SUPPORT, "extension compiled without NEON support")
+@unittest.skipUnless(lib._NEON_RUNTIME_SUPPORT, "requires machine with NEON support")
 class TestConnectionScorerNEON(_TestConnectionScorerBase, unittest.TestCase):
     backend = "neon"

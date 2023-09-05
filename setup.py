@@ -648,7 +648,7 @@ class clean(_clean):
                     log.info("removing {!r}".format(file))
                     os.remove(file)
             _clean.run(self)
-            
+
 
 # --- Setup ---------------------------------------------------------------------
 
@@ -673,9 +673,9 @@ setuptools.setup(
     ],
     ext_modules=[
         Extension(
-            "pyrodigal._pyrodigal",
+            "pyrodigal.lib",
             sources=[
-                "pyrodigal/_pyrodigal.pyx",
+                "pyrodigal/lib.pyx",
                 "pyrodigal/impl/generic.c"
             ],
             platform_sources={

@@ -9,8 +9,7 @@ import pickle
 import platform
 import warnings
 
-from .. import OrfFinder, TrainingInfo
-from .._pyrodigal import METAGENOMIC_BINS
+from .. import OrfFinder, TrainingInfo, METAGENOMIC_BINS
 from . import data
 
 

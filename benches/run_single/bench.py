@@ -12,8 +12,8 @@ import tqdm
 
 sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
-from pyrodigal import _pyrodigal, OrfFinder
-from pyrodigal._pyrodigal import METAGENOMIC_BINS, ConnectionScorer
+from pyrodigal import lib, OrfFinder
+from pyrodigal.lib import METAGENOMIC_BINS, ConnectionScorer
 from pyrodigal.tests.fasta import parse
 
 
@@ -24,13 +24,13 @@ parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
 
 BACKENDS = ["generic", None]
-if _pyrodigal._AVX2_RUNTIME_SUPPORT:
+if lib._AVX2_RUNTIME_SUPPORT:
     BACKENDS.append("avx")
-if _pyrodigal._MMX_RUNTIME_SUPPORT:
+if lib._MMX_RUNTIME_SUPPORT:
     BACKENDS.append("mmx")
-if _pyrodigal._SSE2_RUNTIME_SUPPORT:
+if lib._SSE2_RUNTIME_SUPPORT:
     BACKENDS.append("sse")
-if _pyrodigal._NEON_RUNTIME_SUPPORT:
+if lib._NEON_RUNTIME_SUPPORT:
     BACKENDS.append("neon")
 
 

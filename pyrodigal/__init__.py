@@ -5,8 +5,8 @@ from collections.abc import (
 
 from ._version import __version__
 
-from . import _pyrodigal
-from ._pyrodigal import (
+from . import lib
+from .lib import (
     Gene,
     Genes,
     Mask,
@@ -25,7 +25,7 @@ from ._pyrodigal import (
     TRANSLATION_TABLES,
 )
 
-__doc__ = _pyrodigal.__doc__
+__doc__ = lib.__doc__
 __all__ = [
     "Gene",
     "Genes",

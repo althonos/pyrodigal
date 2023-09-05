@@ -1,8 +1,7 @@
 import unittest
 import pickle
 
-from .. import Sequence
-from .._pyrodigal import METAGENOMIC_BINS
+from .. import Sequence, METAGENOMIC_BINS
 
 
 class TestSequence(unittest.TestCase):

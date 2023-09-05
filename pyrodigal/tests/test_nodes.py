@@ -5,8 +5,7 @@ import sys
 import pickle
 import unittest
 
-from .. import Nodes, Sequence
-from .._pyrodigal import METAGENOMIC_BINS
+from .. import Nodes, Sequence, METAGENOMIC_BINS
 from . import data
 from .fasta import parse
 

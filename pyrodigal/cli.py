@@ -10,7 +10,7 @@ import os
 import multiprocessing.pool
 
 from . import __name__, __author__, __version__
-from ._pyrodigal import TRANSLATION_TABLES, OrfFinder, TrainingInfo
+from .lib import TRANSLATION_TABLES, OrfFinder, TrainingInfo
 from .tests.fasta import parse
 
 
