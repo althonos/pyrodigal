@@ -3737,14 +3737,12 @@ cdef class TrainingInfo:
     # --- Magic methods ----------------------------------------------------
 
     def __cinit__(self):
-        self.meta_index = -1
         self.tinf = NULL
 
     def __init__(self, double gc, double start_weight=4.35, int translation_table=11):
         if self.tinf != NULL:
             raise RuntimeError("TrainingInfo.__init__ called more than once")
         # reallocate the training info memory, if needed
-        self.meta_index = -1
         self.tinf = <_training*> PyMem_Malloc(sizeof(_training))
         if self.tinf == NULL:
             raise MemoryError("Failed to allocate training info")
@@ -3780,7 +3778,6 @@ cdef class TrainingInfo:
         cdef int j
         cdef int k
         return {
-            "meta_index": self.meta_index,
             "gc": self.tinf.gc,
             "translation_table": self.tinf.trans_table,
             "start_weight": self.tinf.st_wt,
@@ -3817,7 +3814,6 @@ cdef class TrainingInfo:
         if self.tinf == NULL:
             self.__init__(state["gc"])
         # copy data
-        self.meta_index = state["meta_index"]
         self.tinf.gc = state["gc"]
         self.tinf.trans_table = state["translation_table"]
         self.tinf.st_wt = state["start_weight"]
@@ -3831,17 +3827,6 @@ cdef class TrainingInfo:
         self.tinf.gene_dc = state["gene_dc"]
 
     # --- Properties -------------------------------------------------------
-
-    @property
-    def metagenomic_bin(self):
-        """`MetagenomicBin` or `None`: The metagenomic bin of this model.
-
-        .. versionadded:: 2.0.0
-
-        """
-        if self.meta_index == -1:
-            return None
-        return METAGENOMIC_BINS[self.meta_index]
 
     @property
     def translation_table(self):
@@ -4661,7 +4646,6 @@ cdef class MetagenomicBins:
             # Copy the training info into a new `TrainingInfo` object
             tinf = TrainingInfo(bins[i].tinf.gc)
             memcpy(tinf.tinf, bins[i].tinf, sizeof(_training))
-            tinf.meta_index = i # FIXME?
             # Copy the metagenomic bin into a new `MetagenomicBin` object
             meta = MetagenomicBin.__new__(MetagenomicBin)
             meta.bin = <_metagenomic_bin*> PyMem_Malloc(sizeof(_metagenomic_bin))
