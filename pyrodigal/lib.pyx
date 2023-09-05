@@ -3725,7 +3725,7 @@ cdef class TrainingInfo:
         cdef ssize_t      n
         cdef object       mem
         cdef char[:]      contents
-        cdef TrainingInfo tinf     = cls(50.0)
+        cdef TrainingInfo tinf     = cls(0.50)
 
         if hasattr(fp, "readinto"):
             mem = PyMemoryView_FromMemory(<char*> tinf.tinf, sizeof(_training), MVIEW_WRITE)
@@ -3813,13 +3813,13 @@ cdef class TrainingInfo:
             "translation_table": self.translation_table,
             "start_weight": self.start_weight,
             "bias": self.bias.tolist(),
-            "type_weights": self.type_weights,
+            "type_weights": self.type_weights.tolist(),
             "uses_sd": self.uses_sd,
-            "rbs_weights": self.rbs_weights,
-            "upstream_compositions": self.upstream_compositions,
-            "motif_weights": self.motif_weights,
+            "rbs_weights": self.rbs_weights.tolist(),
+            "upstream_compositions": self.upstream_compositions.tolist(),
+            "motif_weights": self.motif_weights.tolist(),
             "missing_motif_weight": self.missing_motif_weight,
-            "coding_statistics": self.coding_statistics,
+            "coding_statistics": self.coding_statistics.tolist(),
         }
 
     def __setstate__(self, dict state):
