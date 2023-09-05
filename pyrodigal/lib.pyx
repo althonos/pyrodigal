@@ -3982,7 +3982,7 @@ cdef class TrainingInfo:
     @property
     def coding_statistics(self):
         """`float: The coding statistics for the genome.
-        """"
+        """
         assert self.tinf != NULL
         return list(self.tinf.gene_dc)
 
@@ -4585,6 +4585,31 @@ cdef class TrainingInfo:
 
 
     # --- Python interface ---------------------------------------------------
+
+    cpdef dict to_dict(self):
+        """to_dict(self)\n--
+
+        Convert this training info to a dictionary.
+
+        This method can be useful to save and load a `TrainingInfo` to 
+        JSON format for language and platform-agnostic exchange of the 
+        training info. The keys of the dictionary are the same as the 
+        Python constructor.
+
+        Example:
+            Save the training info to a JSON string using the `json` module::
+                
+                >>> data = METAGENOMIC_BINS[0].training_info.to_dict()
+                >>> serialized = json.dumps(data)
+
+            The deserialized dictionary can be loaded back directly::
+
+                >>> tinf = TrainingInfo(**json.loads(serialized))
+                >>> tinf.bias
+                (2.312, 0.463, 0.226)
+
+        """
+        return self.__getstate__()
 
     cpdef object dump(self, fp):
         """dump(self, fp)\n--

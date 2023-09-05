@@ -319,6 +319,7 @@ cdef class TrainingInfo:
     cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil
     cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil
 
+    cpdef dict to_dict(self)
     cpdef object dump(self, object fp)
 
 

@@ -5,6 +5,7 @@
 import configparser
 import doctest
 import importlib
+import json
 import gzip
 import os
 import pkgutil
@@ -73,7 +74,7 @@ def load_tests(loader, tests, ignore):
                 continue
             # import the submodule and add it to the tests
             module = importlib.import_module(".".join([pkg.__name__, subpkgname]))
-            globs = dict(pyrodigal=pyrodigal, gzip=gzip, Bio=Bio, **module.__dict__)
+            globs = dict(pyrodigal=pyrodigal, json=json, gzip=gzip, Bio=Bio, **module.__dict__)
             tests.addTests(
                 doctest.DocTestSuite(
                     module,
