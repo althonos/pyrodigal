@@ -6,9 +6,9 @@
 Attributes:
     PRODIGAL_VERSION (`str`): The version of Prodigal currently wrapped
         in Pyrodigal.
-    IDEAL_SINGLE_GENOME (`int`): The minimum length recommended for a 
+    IDEAL_SINGLE_GENOME (`int`): The minimum length recommended for a
         training sequence to be used in `OrfFinder.train`.
-    MIN_SINGLE_GENOME (`int`): The minimum length required for a 
+    MIN_SINGLE_GENOME (`int`): The minimum length required for a
         training sequence to be used in `OrfFinder.train`.
     TRANSLATION_TABLES (`set` of `int`): A set containing all the
         translation tables supported by Prodigal.
@@ -538,7 +538,7 @@ cdef class Sequence:
                 ASCII-encoded strings.
             mask (`bool`): Enable region-masking for spans of unknown
                 characters, preventing genes from being built across them.
-            mask_size (`int`): The minimum number of contiguous unknown 
+            mask_size (`int`): The minimum number of contiguous unknown
                 nucleotides required to build a mask.
 
         """
@@ -4633,6 +4633,61 @@ cdef class MetagenomicBin:
         """
         assert self.bin != NULL
         return self.bin.desc.decode('ascii')
+
+
+cdef class MetagenomicBins:
+    """An indexed list of `MetagenomicBin` to use in *meta*-mode.
+    """
+
+    def __cinit__(self):
+        self.length = self.capacity = 0
+        self._bins = NULL
+        self._objects = None
+
+    def __dealloc__(self):
+        PyMem_Free(self._bins)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, ssize_t i):
+        assert self._objects is not None
+        return self._objects[i]
+
+    @staticmethod
+    cdef MetagenomicBins from_array(_metagenomic_bin* bins, size_t length) except *:
+        assert bins != NULL
+
+        cdef MetagenomicBins output = MetagenomicBins.__new__(MetagenomicBins)
+        output.length = output.capacity = length
+        output._objects = PyTuple_New(NUM_META)
+        output._bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*) * length)
+        if output._bins == NULL:
+            raise MemoryError()
+
+        cdef size_t         i
+        cdef TrainingInfo   tinf
+        cdef MetagenomicBin meta
+        for i in range(length):
+            # Copy the training info into a new `TrainingInfo` object
+            tinf = TrainingInfo(bins[i].tinf.gc)
+            memcpy(tinf.tinf, bins[i].tinf, sizeof(_training))
+            tinf.meta_index = i # FIXME?
+            # Copy the metagenomic bin into a new `MetagenomicBin` object
+            meta = MetagenomicBin.__new__(MetagenomicBin)
+            meta.bin = <_metagenomic_bin*> PyMem_Malloc(sizeof(_metagenomic_bin))
+            if meta.bin == NULL:
+                raise MemoryError()
+            memcpy(meta.bin, &bins[i], sizeof(_metagenomic_bin))
+            # Setup pointers
+            meta.training_info = tinf
+            meta.bin.tinf = tinf.tinf
+            output._bins[i] = meta.bin
+            # Record the object into the new list
+            PyTuple_SET_ITEM(output._objects, i, meta)
+            Py_INCREF(meta)
+
+        return output
 
 # Reserve raw C memory for the C structs without allocation
 cdef _training _METAGENOMIC_TRAINING_INFO[NUM_META]
