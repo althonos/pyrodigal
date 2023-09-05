@@ -638,19 +638,17 @@ class clean(_clean):
     """
 
     def run(self):
-
-        source_dir = os.path.join(os.path.dirname(__file__), "pyrodigal")
-
-        patterns = ["*.html"]
-        if self.all:
-            patterns.extend(["*.so", "*.c"])
-
-        for pattern in patterns:
-            for file in glob.glob(os.path.join(source_dir, pattern)):
-                log.info("removing {!r}".format(file))
-                os.remove(file)
-
-        _clean.run(self)
+        for ext in self.distribution.ext_modules:
+            source = next(src for src in ext.sources if src.endswith(".pyx"))
+            extensions = [".html"]
+            if self.all:
+                extensions.extend([".*.so", ".c", ".h"])
+            for extension in extensions:
+                for file in glob.glob(source.replace(".pyx", extension)):
+                    log.info("removing {!r}".format(file))
+                    os.remove(file)
+            _clean.run(self)
+            
 
 # --- Setup ---------------------------------------------------------------------
 
