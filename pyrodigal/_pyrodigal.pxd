@@ -331,7 +331,11 @@ cdef class MetagenomicBins:
 
     @staticmethod
     cdef MetagenomicBins from_array(_metagenomic_bin* bins, size_t length) except *
-
+    @staticmethod
+    cdef MetagenomicBins from_initializer(
+        void (*initializer)(_metagenomic_bin*),
+        size_t length,
+    ) except *
 
 cdef class MetagenomicBin:
     cdef          _metagenomic_bin* bin

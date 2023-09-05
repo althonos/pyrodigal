@@ -4659,7 +4659,7 @@ cdef class MetagenomicBins:
 
         cdef MetagenomicBins output = MetagenomicBins.__new__(MetagenomicBins)
         output.length = length
-        output._objects = PyTuple_New(NUM_META)
+        output._objects = PyTuple_New(length)
         output.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*) * length)
         if output.bins == NULL:
             raise MemoryError()
@@ -4687,18 +4687,36 @@ cdef class MetagenomicBins:
 
         return output
 
-# Reserve raw C memory for the C structs without allocation
-cdef _training _METAGENOMIC_TRAINING_INFO[NUM_META]
-cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
-memset(_METAGENOMIC_BINS, 0, sizeof(_metagenomic_bin)*NUM_META)
-memset(_METAGENOMIC_TRAINING_INFO, 0, sizeof(_training)*NUM_META)
-cdef ssize_t _i
-for _i in range(NUM_META):
-    _METAGENOMIC_BINS[_i].tinf = &_METAGENOMIC_TRAINING_INFO[_i]
-initialize_metagenomic_bins(_METAGENOMIC_BINS)
+    @staticmethod
+    cdef MetagenomicBins from_initializer(
+        void (*initializer)(_metagenomic_bin*),
+        size_t length,
+    ) except *:
+        cdef ssize_t _i
+        cdef _training*        metagenomic_training_info = NULL
+        cdef _metagenomic_bin* metagenomic_bins          = NULL
+        try:
+            # Allocate temporary heap memory
+            metagenomic_bins = <_metagenomic_bin*> PyMem_Malloc(sizeof(_metagenomic_bin)*length)
+            metagenomic_training_info = <_training*> PyMem_Malloc(sizeof(_training)*length)
+            if metagenomic_bins == NULL or metagenomic_training_info == NULL:
+                raise MemoryError()
+            # Clear memory to avoid issues with unused parameters
+            memset(metagenomic_bins, 0, sizeof(_metagenomic_bin)*length)
+            memset(metagenomic_training_info, 0, sizeof(_training)*length)
+            # Setup pointers to `_training`
+            for _i in range(length):
+                metagenomic_bins[_i].tinf = &metagenomic_training_info[_i]
+            # Initialize bins with given initializer
+            initializer(metagenomic_bins)
+            # Copy the initialized bins to Python memory
+            return MetagenomicBins.from_array(metagenomic_bins, length)
+        finally:
+            PyMem_Free(metagenomic_bins)
+            PyMem_Free(metagenomic_training_info)
 
 # Create a tuple of objects exposing the C metagenomic bins
-METAGENOMIC_BINS = MetagenomicBins.from_array(_METAGENOMIC_BINS, NUM_META)
+METAGENOMIC_BINS = MetagenomicBins.from_initializer(initialize_metagenomic_bins, NUM_META)
 
 # --- OrfFinder --------------------------------------------------------------
 
