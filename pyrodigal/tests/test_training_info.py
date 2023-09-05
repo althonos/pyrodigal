@@ -64,12 +64,6 @@ class TestTrainingInfo(unittest.TestCase):
         t2 = pickle.loads(pickle.dumps(t1))
         self.assertTrainingInfoEqual(t1, t2)
 
-    def test_metagenomic_bin(self):
-        t1 = TrainingInfo(gc=0.5)
-        self.assertIs(t1.metagenomic_bin, None)
-        t2 = METAGENOMIC_BINS[0].training_info
-        self.assertIs(t2.metagenomic_bin, METAGENOMIC_BINS[0])
-
     @unittest.skipUnless(data.files, "importlib.resources not available")
     @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")

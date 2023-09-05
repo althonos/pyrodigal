@@ -267,15 +267,16 @@ cdef class Gene:
 
 cdef class Genes:
     # Raw gene array
-    cdef          _gene*        genes
-    cdef          size_t       capacity
-    cdef          size_t       length
+    cdef          _gene*         genes
+    cdef          size_t         capacity
+    cdef          size_t         length
     # References to source data
-    cdef          size_t       _num_seq
-    cdef readonly bint         meta
-    cdef readonly Nodes        nodes
-    cdef readonly Sequence     sequence
-    cdef readonly TrainingInfo training_info
+    cdef          size_t         _num_seq
+    cdef readonly bint           meta
+    cdef readonly Nodes          nodes
+    cdef readonly Sequence       sequence
+    cdef readonly TrainingInfo   training_info
+    cdef readonly MetagenomicBin metagenomic_bin
 
     cpdef size_t __sizeof__(self)
 

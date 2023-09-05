@@ -3085,11 +3085,16 @@ cdef class Genes:
             input sequence.
         meta (`bool`): Whether these genes have been found after a run
             in metagenomic mode, or in single mode.
+        metagenomic_bin (`pyrodigal.MetagenomicBin`): The metagenomic model
+            with which these genes have been found.
 
     .. versionadded:: 0.5.4
 
     .. versionadded:: 2.0.0
         The ``meta`` attribute.
+
+    .. versionadded:: 3.0.0
+        The ``metagenomic_bin`` attribute.
 
     """
 
@@ -3100,6 +3105,7 @@ cdef class Genes:
         self.capacity = 0
         self.length = 0
         self.meta = False
+        self.metagenomic_bin = None
 
     def __dealloc__(self):
         PyMem_Free(self.genes)
@@ -3127,7 +3133,6 @@ cdef class Genes:
     def __getstate__(self):
         cdef size_t         i
         cdef dict           state
-        cdef MetagenomicBin mb    = self.training_info.metagenomic_bin
 
         state = {
             "_num_seq": self._num_seq,
@@ -3144,10 +3149,10 @@ cdef class Genes:
                 for i in range(self.length)
             ]
         }
-        if mb is None:
-            state["training_info"] =  self.training_info
+        if self.meta:
+            state["metagenomic_bin"] = self.metagenomic_bin
         else:
-            state["metagenomic_bin"] = mb.index
+            state["training_info"] =  self.training_info
 
         return state
 
@@ -3179,10 +3184,12 @@ cdef class Genes:
             self.genes[i].start_ndx = gene["start_ndx"]
             self.genes[i].stop_ndx = gene["stop_ndx"]
 
-        # recover training info
-        if "metagenomic_bin" in state:
-            self.training_info = METAGENOMIC_BINS[state["metagenomic_bin"]].training_info
+        # recover metagenomic bin and training info
+        if self.meta:
+            self.metagenomic_bin = state["metagenomic_bin"]
+            self.training_info = self.metagenomic_bin.training_info
         else:
+            self.metagenomic_bin = None
             self.training_info = state["training_info"]
 
     # --- C interface --------------------------------------------------------
@@ -3425,9 +3432,8 @@ cdef class Genes:
         cdef Gene           gene
         cdef int            i
         cdef ssize_t        n    = 0
-        cdef MetagenomicBin mb   = self.training_info.metagenomic_bin
         cdef str            run  = "Metagenomic" if self.meta else "Single"
-        cdef str            desc = "Ab initio" if mb is None else mb.description
+        cdef str            desc = self.metagenomic_bin.description if self.meta else "Ab initio"
 
         if header:
             file.write("##gff-version  3\n")
@@ -4579,7 +4585,7 @@ cdef class MetagenomicBin:
         cdef bytes desc = description.encode('ascii')
         if len(desc) >= 500:
             raise ValueError("Description string too long")
-    
+
         self.bin = <_metagenomic_bin *> PyMem_Malloc(sizeof(_metagenomic_bin))
         if self.bin == NULL:
             raise MemoryError()
@@ -4598,6 +4604,9 @@ cdef class MetagenomicBin:
             ty.__name__,
             self.description,
         )
+
+    def __reduce__(self):
+        return (MetagenomicBin, (self.training_info, self.description))
 
     # --- Properties ---------------------------------------------------------
 
@@ -4779,7 +4788,7 @@ cdef class OrfFinder:
         self.max_overlap = max_overlap
         self.backend = backend
         if metagenomic_bins is None:
-            self.metagenomic_bins = METAGENOMIC_BINS 
+            self.metagenomic_bins = METAGENOMIC_BINS
         else:
             self.metagenomic_bins = metagenomic_bins
 
@@ -5024,8 +5033,8 @@ cdef class OrfFinder:
         cdef int              phase
         cdef Sequence         seq
         cdef TrainingInfo     tinf
-        cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
         cdef Genes            genes  = Genes.__new__(Genes)
+        cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
         cdef Nodes            nodes  = Nodes.__new__(Nodes)
 
         # check argument values
@@ -5044,6 +5053,7 @@ cdef class OrfFinder:
         if self.meta:
             with nogil:
                 phase = self._find_genes_meta(seq, scorer, nodes, genes)
+            genes.metagenomic_bin = self.metagenomic_bins[phase]
             tinf = self.metagenomic_bins[phase].training_info
         else:
             tinf = self.training_info
