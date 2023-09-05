@@ -93,7 +93,7 @@ from libc.math cimport sqrt, log, pow, fmax, fmin
 from libc.stdint cimport int8_t, uint8_t, uintptr_t
 from libc.stdio cimport printf
 from libc.stdlib cimport abs, malloc, calloc, free, qsort
-from libc.string cimport memcpy, memchr, memset, strstr
+from libc.string cimport memcpy, memchr, memset, strstr, strcpy
 
 from pyrodigal.prodigal cimport bitmap, dprog, gene, node, sequence
 from pyrodigal.prodigal.metagenomic cimport NUM_META, _metagenomic_bin, initialize_metagenomic_bins
@@ -4588,26 +4588,33 @@ cdef class MetagenomicBin:
         self.bin = NULL
         self.training_info = None
 
+    def __init__(self, TrainingInfo training_info not None, str description not None):
+        assert self.bin == NULL
+
+        cdef bytes desc = description.encode('ascii')
+        if len(desc) >= 500:
+            raise ValueError("Description string too long")
+    
+        self.bin = <_metagenomic_bin *> PyMem_Malloc(sizeof(_metagenomic_bin))
+        if self.bin == NULL:
+            raise MemoryError()
+
+        self.training_info = training_info
+        self.bin.tinf = training_info.tinf
+        strcpy(self.bin.desc, desc)
+
     def __dealloc__(self):
         PyMem_Free(self.bin)
 
     def __repr__(self):
         ty = type(self)
-        return "<{}.{} index={!r} description={!r}>".format(
+        return "<{}.{} description={!r}>".format(
             ty.__module__,
             ty.__name__,
-            self.index,
             self.description,
         )
 
     # --- Properties ---------------------------------------------------------
-
-    @property
-    def index(self):
-        """`int`: The index of this metagenomic bin.
-        """
-        assert self.bin != NULL
-        return self.bin.index
 
     @property
     def description(self):
@@ -4674,11 +4681,11 @@ cdef class MetagenomicBins:
 # Reserve raw C memory for the C structs without allocation
 cdef _training _METAGENOMIC_TRAINING_INFO[NUM_META]
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
+memset(_METAGENOMIC_BINS, 0, sizeof(_metagenomic_bin)*NUM_META)
+memset(_METAGENOMIC_TRAINING_INFO, 0, sizeof(_training)*NUM_META)
 cdef ssize_t _i
 for _i in range(NUM_META):
-    memset(&_METAGENOMIC_BINS[_i], 0, sizeof(_metagenomic_bin))
     _METAGENOMIC_BINS[_i].tinf = &_METAGENOMIC_TRAINING_INFO[_i]
-    memset(_METAGENOMIC_BINS[_i].tinf, 0, sizeof(_training))
 initialize_metagenomic_bins(_METAGENOMIC_BINS)
 
 # Create a tuple of objects exposing the C metagenomic bins
