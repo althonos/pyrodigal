@@ -3737,7 +3737,6 @@ cdef class TrainingInfo:
     # --- Magic methods ----------------------------------------------------
 
     def __cinit__(self):
-        self.owned = True
         self.meta_index = -1
         self.tinf = NULL
 
@@ -3745,7 +3744,6 @@ cdef class TrainingInfo:
         if self.tinf != NULL:
             raise RuntimeError("TrainingInfo.__init__ called more than once")
         # reallocate the training info memory, if needed
-        self.owned = True
         self.meta_index = -1
         self.tinf = <_training*> PyMem_Malloc(sizeof(_training))
         if self.tinf == NULL:
@@ -3758,8 +3756,7 @@ cdef class TrainingInfo:
         self.tinf.trans_table = translation_table
 
     def __dealloc__(self):
-        if self.owned:
-            PyMem_Free(self.tinf)
+        PyMem_Free(self.tinf)
 
     def __repr__(self):
         ty = type(self)
@@ -3817,7 +3814,6 @@ cdef class TrainingInfo:
         cdef int j
         cdef int k
         # allocate memory if possible / needed
-        self._on_modification()
         if self.tinf == NULL:
             self.__init__(state["gc"])
         # copy data
@@ -3859,7 +3855,6 @@ cdef class TrainingInfo:
         assert self.tinf != NULL
         if table not in _TRANSLATION_TABLES:
             raise ValueError(f"{table} is not a valid translation table index")
-        self._on_modification()
         self.raw.trans_table = table
 
     @property
@@ -3872,7 +3867,6 @@ cdef class TrainingInfo:
     @gc.setter
     def gc(self, double gc):
         assert self.tinf != NULL
-        self._on_modification()
         self.tinf.gc = gc
 
     @property
@@ -3885,7 +3879,6 @@ cdef class TrainingInfo:
     @bias.setter
     def bias(self, object bias):
         assert self.tinf != NULL
-        self._on_modification()
         self.tinf.bias = bias
 
     @property
@@ -3898,7 +3891,6 @@ cdef class TrainingInfo:
     @type_weights.setter
     def type_weights(self, object type_weights):
         assert self.tinf != NULL
-        self._on_modification()
         self.tinf.type_wt = type_weights
 
     @property
@@ -3911,7 +3903,6 @@ cdef class TrainingInfo:
     @uses_sd.setter
     def uses_sd(self, bint uses_sd):
         assert self.tinf != NULL
-        self._on_modification()
         self.tinf.uses_sd = uses_sd
 
     @property
@@ -3924,7 +3915,6 @@ cdef class TrainingInfo:
     @start_weight.setter
     def start_weight(self, double st_wt):
         assert self.tinf != NULL
-        self._on_modification()
         self.tinf.st_wt = st_wt
 
     @property
@@ -3940,7 +3930,6 @@ cdef class TrainingInfo:
     @rbs_weights.setter
     def rbs_weights(self, object rbs_weights):
         assert self.tinf != NULL
-        self._on_modification()
         self.tinf.rbs_wt = rbs_weights
 
     @property
@@ -3963,12 +3952,6 @@ cdef class TrainingInfo:
         ]
 
     # --- C interface --------------------------------------------------------
-
-    cdef void _on_modification(self) except * nogil:
-        """Raise an error when attempting to modify a shared `TrainingInfo`.
-        """
-        if not self.owned:
-            raise RuntimeError("Cannot modify a metagenomic `TrainingInfo` instance")
 
     @staticmethod
     cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil:
@@ -4039,8 +4022,6 @@ cdef class TrainingInfo:
         cdef int    right        = -1
         cdef int    glob
 
-        self._on_modification()
-
         for i in range(4096):
             prob[i] = 0.0
             bg[i] = 0.0
@@ -4101,8 +4082,6 @@ cdef class TrainingInfo:
         cdef int j
         cdef int i     = 0
 
-        self._on_modification()
-
         # NOTE: This function is patched not to read out of sequence
         #       boundaries, which can happen in the original Prodigal
         #       code when `count_upstream_composition` is called with
@@ -4147,8 +4126,6 @@ cdef class TrainingInfo:
         cdef ssize_t i
         cdef ssize_t j
         cdef ssize_t nn = nodes.length
-
-        self._on_modification()
 
         # reset training info
         for j in range(3):
@@ -4362,8 +4339,6 @@ cdef class TrainingInfo:
         cdef double wt                = self.tinf.st_wt
         cdef double sthresh           = 35.0;
         cdef int    nn                = nodes.length
-
-        self._on_modification()
 
         for i in range(32):
             for j in range(4):
@@ -4609,6 +4584,13 @@ cdef class MetagenomicBin:
 
     # --- Magic methods ------------------------------------------------------
 
+    def __cinit__(self):
+        self.bin = NULL
+        self.training_info = None
+
+    def __dealloc__(self):
+        PyMem_Free(self.bin)
+
     def __repr__(self):
         ty = type(self)
         return "<{}.{} index={!r} description={!r}>".format(
@@ -4700,18 +4682,7 @@ for _i in range(NUM_META):
 initialize_metagenomic_bins(_METAGENOMIC_BINS)
 
 # Create a tuple of objects exposing the C metagenomic bins
-cdef MetagenomicBin _bin
-cdef tuple _m = PyTuple_New(NUM_META)
-for _i in range(NUM_META):
-    _bin = MetagenomicBin.__new__(MetagenomicBin, )
-    _bin.bin = &_METAGENOMIC_BINS[_i]
-    _bin.training_info = TrainingInfo.__new__(TrainingInfo)
-    _bin.training_info.owned = False
-    _bin.training_info.meta_index = _i
-    _bin.training_info.tinf = _bin.bin.tinf
-    PyTuple_SET_ITEM(_m, _i, _bin)
-    Py_INCREF(_bin)
-METAGENOMIC_BINS = _m
+METAGENOMIC_BINS = MetagenomicBins.from_array(_METAGENOMIC_BINS, NUM_META)
 
 # --- OrfFinder --------------------------------------------------------------
 

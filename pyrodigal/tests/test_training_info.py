@@ -70,20 +70,6 @@ class TestTrainingInfo(unittest.TestCase):
         t2 = METAGENOMIC_BINS[0].training_info
         self.assertIs(t2.metagenomic_bin, METAGENOMIC_BINS[0])
 
-    def test_readonly(self):
-        # TrainingInfo instances from a metagenomic bin should be read-only
-        t1 = METAGENOMIC_BINS[0].training_info
-        with self.assertRaises(RuntimeError):
-            t1.start_weight = 0.0
-        with self.assertRaises(RuntimeError):
-            t1.translation_table = 11
-        with self.assertRaises(RuntimeError):
-            t1.bias = (0.0, 0.0, 0.0)
-        with self.assertRaises(RuntimeError):
-            t1.gc = 0.50
-        with self.assertRaises(RuntimeError):
-            t1.uses_sd = False
-
     @unittest.skipUnless(data.files, "importlib.resources not available")
     @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")

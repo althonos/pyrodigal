@@ -311,8 +311,6 @@ cdef class TrainingInfo:
 
     cpdef size_t __sizeof__(self)
 
-    cdef void _on_modification(self) except * nogil
-
     @staticmethod
     cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
 
