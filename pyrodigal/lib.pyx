@@ -3812,7 +3812,7 @@ cdef class TrainingInfo:
             "gc": self.gc,
             "translation_table": self.translation_table,
             "start_weight": self.start_weight,
-            "bias": self.bias,
+            "bias": self.bias.tolist(),
             "type_weights": self.type_weights,
             "uses_sd": self.uses_sd,
             "rbs_weights": self.rbs_weights,
@@ -3844,6 +3844,24 @@ cdef class TrainingInfo:
         self.missing_motif_weight = state["missing_motif_weight"]
         self.coding_statistics = state["coding_statistics"]
 
+    def __getbuffer__(self, Py_buffer* buffer, int flags):
+        assert self.tinf != NULL
+
+        if flags & PyBUF_FORMAT:
+            buffer.format = b"B"
+        else:
+            buffer.format = NULL
+        buffer.buf = self.tinf
+        buffer.internal = NULL
+        buffer.itemsize = 1
+        buffer.len = sizeof(_training)
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 0
+        buffer.shape = NULL
+        buffer.suboffsets = NULL
+        buffer.strides = NULL
+
     # --- Properties -------------------------------------------------------
 
     @property
@@ -3857,7 +3875,7 @@ cdef class TrainingInfo:
     def translation_table(self, int table):
         assert self.tinf != NULL
         if table not in _TRANSLATION_TABLES:
-            raise ValueError(f"{table} is not a valid translation table index")
+            raise ValueError(f"{table!r} is not a valid translation table index")
         self.tinf.trans_table = table
 
     @property
@@ -3870,14 +3888,18 @@ cdef class TrainingInfo:
     @gc.setter
     def gc(self, double gc):
         assert self.tinf != NULL
+        if gc > 1.0 or gc < 0.0:
+            raise ValueError(f"{gc!r} is not a valid GC percent")
         self.tinf.gc = gc
 
     @property
     def bias(self):
-        """`tuple` of `float`: The GC frame bias for each of the 3 positions.
+        """`memoryview` of `float`: The GC bias for each frame.
         """
         assert self.tinf != NULL
-        return tuple(self.tinf.bias)
+        cdef object  mem    = memoryview(self)
+        cdef ssize_t offset = (<ssize_t> &self.tinf.bias) - (<ssize_t> self.tinf)
+        return mem[offset:offset + sizeof(double)*3].cast("d", [3])
 
     @bias.setter
     def bias(self, object bias):
@@ -3886,10 +3908,12 @@ cdef class TrainingInfo:
 
     @property
     def type_weights(self):
-        """`tuple` of `float`: The weights for ``ATG``, ``GTG`` and ``TTG``.
+        """`memoryview` of `float`: The weights for each start codon.
         """
         assert self.tinf != NULL
-        return tuple(self.tinf.type_wt)
+        cdef object  mem    = memoryview(self)
+        cdef ssize_t offset = (<ssize_t> &self.tinf.type_wt) - (<ssize_t> self.tinf)
+        return mem[offset:offset + sizeof(double)*3].cast("d", [3])
 
     @type_weights.setter
     def type_weights(self, object type_weights):
@@ -3910,7 +3934,7 @@ cdef class TrainingInfo:
 
     @property
     def start_weight(self):
-        """`float`: The start score weight to use for the training sequence.
+        """`float`: The start score weight to use.
         """
         assert self.tinf != NULL
         return self.tinf.st_wt
@@ -3922,13 +3946,15 @@ cdef class TrainingInfo:
 
     @property
     def rbs_weights(self):
-        """`tuple` of `float`: The weights for RBS scores.
+        """`memoryview`: The weights for RBS scores.
 
         .. versionadded:: 2.0.0
 
         """
         assert self.tinf != NULL
-        return tuple(self.tinf.rbs_wt)
+        cdef object  mem    = memoryview(self)
+        cdef ssize_t offset = (<ssize_t> &self.tinf.rbs_wt) - (<ssize_t> self.tinf)
+        return mem[offset:offset + sizeof(double)*28].cast("d", [28])
 
     @rbs_weights.setter
     def rbs_weights(self, object rbs_weights):
@@ -3937,13 +3963,12 @@ cdef class TrainingInfo:
 
     @property
     def upstream_compositions(self):
-        """`list` of `float: The base composition weights for upstream regions.
+        """`memoryview`: The base composition weights for upstream regions.
         """
         assert self.tinf != NULL
-        return [
-            tuple(self.tinf.ups_comp[i][j] for j in range(4))
-            for i in range(32)
-        ]
+        cdef object  mem    = memoryview(self)
+        cdef ssize_t offset = (<ssize_t> &self.tinf.ups_comp) - (<ssize_t> self.tinf)
+        return mem[offset:offset + sizeof(double)*32*4].cast("d", [32, 4])
 
     @upstream_compositions.setter
     def upstream_compositions(self, object upstream_compositions):
@@ -3952,16 +3977,12 @@ cdef class TrainingInfo:
 
     @property
     def motif_weights(self):
-        """`list` of `float: The weights for upstream motifs.
+        """`memoryview`: The weights for upstream motifs.
         """
         assert self.tinf != NULL
-        return [
-            [
-                [ self.tinf.mot_wt[i][j][k] for k in range(4096) ]
-                for j in range(4)
-            ]
-            for i in range(4)
-        ]
+        cdef object  mem    = memoryview(self)
+        cdef ssize_t offset = (<ssize_t> &self.tinf.mot_wt) - (<ssize_t> self.tinf)
+        return mem[offset:offset + sizeof(double)*4*4*4096].cast("d", [4, 4, 4096])
 
     @motif_weights.setter
     def motif_weights(self, object motif_weights):
@@ -3971,6 +3992,9 @@ cdef class TrainingInfo:
     @property
     def missing_motif_weight(self):
         """`float: The weight for the case of no motif.
+
+        .. versionadded:: 3.0.0
+
         """
         assert self.tinf != NULL
         return self.tinf.no_mot
@@ -3981,10 +4005,15 @@ cdef class TrainingInfo:
 
     @property
     def coding_statistics(self):
-        """`float: The coding statistics for the genome.
+        """`memoryview`: The coding statistics for the genome.
+
+        .. versionadded:: 3.0.0
+
         """
         assert self.tinf != NULL
-        return list(self.tinf.gene_dc)
+        cdef object  mem    = memoryview(self)
+        cdef ssize_t offset = (<ssize_t> &self.tinf.gene_dc) - (<ssize_t> self.tinf)
+        return mem[offset:offset + sizeof(double)*4096].cast("d", [4096])
 
     @coding_statistics.setter
     def coding_statistics(self, object coding_statistics):
@@ -4605,8 +4634,8 @@ cdef class TrainingInfo:
             The deserialized dictionary can be loaded back directly::
 
                 >>> tinf = TrainingInfo(**json.loads(serialized))
-                >>> tinf.bias
-                (2.312, 0.463, 0.226)
+                >>> list(tinf.bias)
+                [2.312, 0.463, 0.226]
 
         """
         return self.__getstate__()
