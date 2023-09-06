@@ -4620,14 +4620,14 @@ cdef class TrainingInfo:
 
         Convert this training info to a dictionary.
 
-        This method can be useful to save and load a `TrainingInfo` to 
-        JSON format for language and platform-agnostic exchange of the 
-        training info. The keys of the dictionary are the same as the 
+        This method can be useful to save and load a `TrainingInfo` to
+        JSON format for language and platform-agnostic exchange of the
+        training info. The keys of the dictionary are the same as the
         Python constructor.
 
         Example:
             Save the training info to a JSON string using the `json` module::
-                
+
                 >>> data = METAGENOMIC_BINS[0].training_info.to_dict()
                 >>> serialized = json.dumps(data)
 
@@ -4881,6 +4881,9 @@ cdef class OrfFinder:
             meta (`bool`): Set to `True` to run in metagenomic mode, using
                 a pre-trained profiles for better results with metagenomic
                 or progenomic inputs. Defaults to `False`.
+            metagenomic_bins (`~pyrodigal.MetagenomicBins`, optional): The
+                metagenomic bins to use while in *meta* mode. When `None`
+                is given, use all models from Prodigal.
             closed (`bool`): Set to `True` to consider sequences ends
                 *closed*, which prevents proteins from running off edges.
                 Defaults to `False`.
