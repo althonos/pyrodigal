@@ -94,17 +94,17 @@ regarding memory management:
 
 ### 🧶 Thread-safety
 
-[`pyrodigal.OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
 instances are thread-safe. In addition, the
-[`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.find_genes)
+[`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.find_genes)
 method is re-entrant. This means you can train an
-[`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+[`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 instance once, and then use a pool to process sequences in parallel:
 ```python
 import multiprocessing.pool
 import pyrodigal
 
-orf_finder = pyrodigal.OrfFinder()
+orf_finder = pyrodigal.GeneFinder()
 orf_finder.train(training_sequence)
 
 with multiprocessing.pool.ThreadPool() as pool:
@@ -132,16 +132,16 @@ $ conda install -c bioconda pyrodigal
 ## 💡 Example
 
 Let's load a sequence from a
-[GenBank](http://www.insdc.org/files/feature_table.html) file, use an `OrfFinder`
+[GenBank](http://www.insdc.org/files/feature_table.html) file, use an `GeneFinder`
 to find all the genes it contains, and print the proteins in two-line FASTA
 format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the [`OrfFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder)
+To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
 in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal),
 you must explicitly call the
-[`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.OrfFinder.train) method
+[`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder.train) method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
@@ -150,7 +150,7 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.OrfFinder()
+orf_finder = pyrodigal.GeneFinder()
 orf_finder.train(bytes(record.seq))
 genes = orf_finder.find_genes(bytes(record.seq))
 ```
@@ -162,7 +162,7 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.OrfFinder(meta=True)
+orf_finder = pyrodigal.GeneFinder(meta=True)
 for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
@@ -180,7 +180,7 @@ import pyrodigal
 
 seq = next(skbio.io.read("sequence.gbk", "genbank"))
 
-orf_finder = pyrodigal.OrfFinder(meta=True)
+orf_finder = pyrodigal.GeneFinder(meta=True)
 for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())

@@ -343,7 +343,7 @@ class MetagenomicBins(typing.Sequence[MetagenomicBin]):
 
 # --- Pyrodigal --------------------------------------------------------------
 
-class OrfFinder:
+class GeneFinder:
     lock: threading.Lock
     _num_seq: int
     def __init__(

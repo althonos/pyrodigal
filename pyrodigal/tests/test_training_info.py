@@ -9,7 +9,7 @@ import pickle
 import platform
 import warnings
 
-from .. import OrfFinder, TrainingInfo, METAGENOMIC_BINS
+from .. import GeneFinder, TrainingInfo, METAGENOMIC_BINS
 from . import data
 
 
@@ -54,7 +54,7 @@ class TestTrainingInfo(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             record = data.load_record("SRR492066.fna.gz")
-            t1 = OrfFinder().train(record.seq)
+            t1 = GeneFinder().train(record.seq)
         t2 = pickle.loads(pickle.dumps(t1))
         self.assertTrainingInfoEqual(t1, t2)
 
@@ -70,6 +70,6 @@ class TestTrainingInfo(unittest.TestCase):
         records = data.load_records("GCF_001457455.1_NCTC11397_genomic.fna.gz")
         with data.load("GCF_001457455.1_NCTC11397_genomic.tinf_closed.bin", "rb") as f:
             expected = TrainingInfo.load(f)
-        orf_finder = OrfFinder(closed=True)
+        orf_finder = GeneFinder(closed=True)
         actual = orf_finder.train(*(str(r.seq) for r in records))
         self.assertTrainingInfoEqual(actual, expected)

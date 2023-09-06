@@ -8,7 +8,7 @@ import sys
 import unittest
 import pickle
 
-from .. import OrfFinder, METAGENOMIC_BINS
+from .. import GeneFinder, METAGENOMIC_BINS
 from . import data
 
 
@@ -17,7 +17,7 @@ class TestGenes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.record = data.load_record("SRR492066.fna.gz")
-        cls.p = OrfFinder(meta=True)
+        cls.p = GeneFinder(meta=True)
         cls.genes = cls.p.find_genes(str(cls.record.seq))
 
     def test_indexing(self):

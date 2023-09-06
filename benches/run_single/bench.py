@@ -12,7 +12,7 @@ import tqdm
 
 sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
-from pyrodigal import lib, OrfFinder
+from pyrodigal import lib, GeneFinder
 from pyrodigal.lib import METAGENOMIC_BINS, ConnectionScorer
 from pyrodigal.tests.fasta import parse
 
@@ -35,7 +35,7 @@ if lib._NEON_RUNTIME_SUPPORT:
 
 
 def run_pyrodigal(sequences, backend):
-    orf_finder = OrfFinder(backend=backend)
+    orf_finder = GeneFinder(backend=backend)
     orf_finder.train(*sequences)
     all_genes = [orf_finder.find_genes(seq) for seq in sequences]
     return sum(len(genes.nodes) for genes in all_genes)

@@ -10,7 +10,7 @@ import os
 import multiprocessing.pool
 
 from . import __name__, __author__, __version__
-from .lib import TRANSLATION_TABLES, OrfFinder, TrainingInfo
+from .lib import TRANSLATION_TABLES, GeneFinder, TrainingInfo
 from .tests.fasta import parse
 
 
@@ -166,7 +166,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 training_info = None
 
             # initialize the ORF finder
-            orf_finder = OrfFinder(
+            orf_finder = GeneFinder(
                 meta=args.p == "meta",
                 closed=args.c,
                 mask=args.m,

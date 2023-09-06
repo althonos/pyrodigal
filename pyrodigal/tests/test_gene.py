@@ -5,7 +5,7 @@ import textwrap
 import unittest
 import warnings
 
-from .. import OrfFinder
+from .. import GeneFinder
 from . import data
 
 
@@ -13,7 +13,7 @@ from . import data
 class TestGene(unittest.TestCase):
     @classmethod
     def find_genes(cls, seq):
-        p = OrfFinder(meta=True)
+        p = GeneFinder(meta=True)
         return p.find_genes(seq)
 
     @classmethod

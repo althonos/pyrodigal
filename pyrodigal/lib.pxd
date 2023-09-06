@@ -345,9 +345,9 @@ cdef class MetagenomicBin:
 cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 
 
-# --- OrfFinder --------------------------------------------------------------
+# --- GeneFinder --------------------------------------------------------------
 
-cdef class OrfFinder:
+cdef class GeneFinder:
     cdef readonly size_t          _num_seq
     cdef readonly str             backend
     cdef readonly bint            closed

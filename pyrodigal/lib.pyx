@@ -7,13 +7,13 @@ Attributes:
     PRODIGAL_VERSION (`str`): The version of Prodigal currently wrapped
         in Pyrodigal.
     IDEAL_SINGLE_GENOME (`int`): The minimum length recommended for a
-        training sequence to be used in `OrfFinder.train`.
+        training sequence to be used in `GeneFinder.train`.
     MIN_SINGLE_GENOME (`int`): The minimum length required for a
-        training sequence to be used in `OrfFinder.train`.
+        training sequence to be used in `GeneFinder.train`.
     TRANSLATION_TABLES (`set` of `int`): A set containing all the
         translation tables supported by Prodigal.
-    METAGENOMIC_BINS (`tuple` of `~pyrodigal.MetagenomicBin`): A tuple
-        containing all the built-in metagenomic models.
+    METAGENOMIC_BINS (`~pyrodigal.MetagenomicBins`): A sequence containing 
+        all the built-in metagenomic models.
 
 Example:
     Pyrodigal can work on any DNA sequence stored in either a text or a
@@ -32,7 +32,7 @@ Example:
 
         >>> import collections
         >>> import pyrodigal
-        >>> p = pyrodigal.OrfFinder(meta=True)
+        >>> p = pyrodigal.GeneFinder(meta=True)
         >>> for gene in p.find_genes(record.seq.encode()):
         ...     gene_seq = gene.sequence()
         ...     codon_counter = collections.Counter()
@@ -2722,7 +2722,7 @@ cdef class Gene:
         """`str`: The start codon of this gene.
 
         Can be one of ``ATG``, ``GTG`` or ``TTG``, or ``Edge`` if the
-        `OrfFinder` has been initialized in open ends mode and the gene
+        `GeneFinder` has been initialized in open ends mode and the gene
         starts right at the beginning of the input sequence.
 
         """
@@ -4826,10 +4826,10 @@ cdef class MetagenomicBins:
 # Create a tuple of objects exposing the C metagenomic bins
 METAGENOMIC_BINS = MetagenomicBins.from_initializer(initialize_metagenomic_bins, NUM_META)
 
-# --- OrfFinder --------------------------------------------------------------
+# --- GeneFinder --------------------------------------------------------------
 
-cdef class OrfFinder:
-    """A configurable ORF finder for genomes and metagenomes.
+cdef class GeneFinder:
+    """A configurable gene finder for genomes and metagenomes.
 
     Attributes:
         meta (`bool`): Whether or not this object is configured to
@@ -5255,7 +5255,7 @@ cdef class OrfFinder:
         Returns:
             `~pyrodigal.TrainingInfo`: The resulting training info, which
             can be saved to disk and used later on to create a new
-            `~pyrodigal.OrfFinder` instance.
+            `~pyrodigal.GeneFinder` instance.
 
         Raises:
             `MemoryError`: When allocation of an internal buffers fails.
@@ -5282,7 +5282,7 @@ cdef class OrfFinder:
         # extract sequence
         if isinstance(sequence, Sequence):
             if sequences:
-                raise NotImplementedError("cannot use more than one `Sequence` object in `OrfFinder.train`")
+                raise NotImplementedError("cannot use more than one `Sequence` object in `GeneFinder.train`")
             seq = sequence
         elif isinstance(sequence, str):
             if sequences:

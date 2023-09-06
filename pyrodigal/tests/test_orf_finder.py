@@ -6,11 +6,11 @@ import textwrap
 import unittest
 import warnings
 
-from .. import OrfFinder, MetagenomicBins, METAGENOMIC_BINS
+from .. import GeneFinder, MetagenomicBins, METAGENOMIC_BINS
 from . import data
 
 
-class _OrfFinderTestCase(object):
+class _GeneFinderTestCase(object):
     def assertGeneEqual(self, gene1, gene2):
         self.assertEqual(gene1.begin, gene2.begin)
         self.assertEqual(gene1.end, gene2.end)
@@ -98,7 +98,7 @@ class _OrfFinderTestCase(object):
         self.assertGeneDataEqual(predictions, proteins)
 
 
-class _TestMode(_OrfFinderTestCase):
+class _TestMode(_GeneFinderTestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_KK037166(self):
         record = data.load_record("KK037166.fna.gz")
@@ -147,7 +147,7 @@ class _TestSingle(object):
 
     @classmethod
     def find_genes(cls, seq):
-        p = OrfFinder(meta=False)
+        p = GeneFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(seq)
@@ -159,7 +159,7 @@ class _TestMeta(object):
 
     @classmethod
     def find_genes(cls, seq):
-        p = OrfFinder(meta=True)
+        p = GeneFinder(meta=True)
         return p.find_genes(seq)
 
 
@@ -179,20 +179,20 @@ class TestSingleBin(_TestSingle, _TestBin, _TestMode, unittest.TestCase):
     pass
 
 
-class TestOrfFinder(_OrfFinderTestCase, unittest.TestCase):
+class TestGeneFinder(_GeneFinderTestCase, unittest.TestCase):
     def test_invalid_overlap(self):
-        self.assertRaises(ValueError, OrfFinder, min_gene=10, max_overlap=100)
-        self.assertRaises(ValueError, OrfFinder, max_overlap=-1)
+        self.assertRaises(ValueError, GeneFinder, min_gene=10, max_overlap=100)
+        self.assertRaises(ValueError, GeneFinder, max_overlap=-1)
 
     def test_invalid_min_gene(self):
-        self.assertRaises(ValueError, OrfFinder, min_gene=-1)
+        self.assertRaises(ValueError, GeneFinder, min_gene=-1)
 
 
-class TestMeta(_OrfFinderTestCase, unittest.TestCase):
+class TestMeta(_GeneFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train(self):
         record = data.load_record("SRR492066.fna.gz")
-        p = OrfFinder(meta=True)
+        p = GeneFinder(meta=True)
         self.assertRaises(RuntimeError, p.train, str(record.seq))
 
     def test_overflow(self):
@@ -212,7 +212,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         GTGGGCAACCAGGGCAATATCAGTACCGCGGGCAATGCAACCCTGACTGCCGGCGGTAAC
         CTGAGC
         """
-        p = OrfFinder(meta=True, closed=False)
+        p = GeneFinder(meta=True, closed=False)
         genes = p.find_genes(textwrap.dedent(seq).replace("\n", ""))
         self.assertEqual(len(genes), 1)
         self.assertEqual(genes[0].start_type, "Edge")
@@ -221,14 +221,14 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
 
     def test_short_sequences(self):
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
-        p = OrfFinder(meta=True)
+        p = GeneFinder(meta=True)
         for i in range(1, len(seq)):
             genes = p.find_genes(seq[:i])
             self.assertEqual(len(genes), 0)
             self.assertRaises(StopIteration, next, iter(genes))
 
     def test_empty_sequence(self):
-        p = OrfFinder(meta=True)
+        p = GeneFinder(meta=True)
         genes = p.find_genes("")
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
@@ -239,7 +239,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         proteins = data.load_records("MIIJ01000039.{}.faa.gz".format("meta+mask"))
         genes = data.load_records("MIIJ01000039.{}.fna.gz".format("meta+mask"))
 
-        orf_finder = OrfFinder(meta=True, mask=True)
+        orf_finder = GeneFinder(meta=True, mask=True)
         preds = orf_finder.find_genes(record.seq)
         self.assertEqual(len(preds.sequence.masks), 1)
         self.assertGenesEqual(preds, genes)
@@ -251,7 +251,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         genes = data.load_records("KK037166.{}.fna.gz".format("meta+mask"))
         large_genes = [gene for gene in genes if len(gene.seq) >= 200]
 
-        orf_finder = OrfFinder(meta=True, min_gene=200, min_edge_gene=200, mask=True)
+        orf_finder = GeneFinder(meta=True, min_gene=200, min_edge_gene=200, mask=True)
         preds = orf_finder.find_genes(record.seq)
         self.assertEqual(len(preds), len(large_genes))
 
@@ -260,7 +260,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         record = data.load_record("KK037166.fna.gz")
         genes = data.load_records("KK037166.{}.fna.gz".format("meta+mask"))
 
-        orf_finder = OrfFinder(
+        orf_finder = GeneFinder(
             meta=True, min_gene=30, min_edge_gene=20, max_overlap=20, mask=True
         )
         preds = orf_finder.find_genes(record.seq)
@@ -287,7 +287,7 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
         GCTTTTGGTATGACTTAATTACGTACTTCGAATTTATAGCCGATGCCCCAGATGGTGCTG
         ATCTTCCAGTTGGCATGATCCTTGATCTTCTC
         """
-        p = OrfFinder(meta=True, closed=True, min_gene=33, max_overlap=0)
+        p = GeneFinder(meta=True, closed=True, min_gene=33, max_overlap=0)
         for _ in range(10):
             genes = p.find_genes(textwrap.dedent(seq).replace("\n", ""))
             self.assertEqual(len(genes), 2)
@@ -302,13 +302,13 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
     def test_custom_metagenomic_bins(self):
         record = data.load_record("SRR492066.fna.gz")
         
-        orf_finder = OrfFinder(meta=True)
+        orf_finder = GeneFinder(meta=True)
         preds = orf_finder.find_genes(record.seq)
         self.assertIsNot(preds.metagenomic_bin, None)
         self.assertEqual(preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description)
 
         metagenomic_bins = MetagenomicBins(( METAGENOMIC_BINS[0], METAGENOMIC_BINS[4] ))
-        orf_finder = OrfFinder(meta=True, metagenomic_bins=metagenomic_bins)
+        orf_finder = GeneFinder(meta=True, metagenomic_bins=metagenomic_bins)
         preds = orf_finder.find_genes(record.seq)
         self.assertIsNot(preds.metagenomic_bin, None)
         self.assertEqual(preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description)
@@ -317,17 +317,17 @@ class TestMeta(_OrfFinderTestCase, unittest.TestCase):
     def test_empty_metagenomic_bins(self):
         record = data.load_record("SRR492066.fna.gz")
         metagenomic_bins = MetagenomicBins()
-        orf_finder = OrfFinder(meta=True, metagenomic_bins=metagenomic_bins)
+        orf_finder = GeneFinder(meta=True, metagenomic_bins=metagenomic_bins)
         preds = orf_finder.find_genes(record.seq)
         self.assertEqual(len(preds), 0)
         self.assertIs(preds.metagenomic_bin, None)
         self.assertIs(preds.training_info, None)
 
-class TestSingle(_OrfFinderTestCase, unittest.TestCase):
+class TestSingle(_GeneFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train_info(self):
         record = data.load_record("SRR492066.fna.gz")
-        p = OrfFinder(meta=False)
+        p = GeneFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             info = p.train(record.seq)
@@ -346,14 +346,14 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train_not_called(self):
         record = data.load_record("SRR492066.fna.gz")
-        p = OrfFinder(meta=False)
+        p = GeneFinder(meta=False)
         self.assertRaises(RuntimeError, p.find_genes, str(record.seq))
 
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_training_info_deallocation(self):
         record = data.load_record("SRR492066.fna.gz")
         proteins = data.load_records("SRR492066.{}.faa.gz".format("single"))
-        p = OrfFinder(meta=False)
+        p = GeneFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(str(record.seq))
@@ -365,7 +365,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
     def test_short_sequences(self):
         record = data.load_record("SRR492066.fna.gz")
         seq = "AATGTAGGAAAAACAGCATTTTCATTTCGCCATTTT"
-        p = OrfFinder(meta=False)
+        p = GeneFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(str(record.seq[:20000]))
@@ -377,7 +377,7 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_empty_sequence(self):
         record = data.load_record("SRR492066.fna.gz")
-        p = OrfFinder(meta=False)
+        p = GeneFinder(meta=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p.train(str(record.seq[:20000]))
@@ -389,11 +389,11 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
     def test_pickle(self):
         record = data.load_record("SRR492066.fna.gz")
         # train separately
-        p1 = OrfFinder(meta=False, min_gene=60)
+        p1 = GeneFinder(meta=False, min_gene=60)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p1.train(str(record.seq[:20000]))
-        # pickle/unpickle the OrfFinder
+        # pickle/unpickle the GeneFinder
         p2 = pickle.loads(pickle.dumps(p1))
         # make sure the same genes are found
         g1 = p1.find_genes(record.seq)
@@ -407,13 +407,13 @@ class TestSingle(_OrfFinderTestCase, unittest.TestCase):
     def test_training_info_pickle(self):
         record = data.load_record("SRR492066.fna.gz")
         # train separately
-        p1 = OrfFinder(meta=False, min_gene=60)
+        p1 = GeneFinder(meta=False, min_gene=60)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             p1.train(str(record.seq[:20000]))
         # pickle/unpickle the TrainingInfo
         ti = pickle.loads(pickle.dumps(p1.training_info))
-        p2 = OrfFinder(meta=False, training_info=ti, min_gene=60)
+        p2 = GeneFinder(meta=False, training_info=ti, min_gene=60)
         # make sure the same genes are found
         g1 = p1.find_genes(record.seq)
         g2 = p2.find_genes(record.seq)
