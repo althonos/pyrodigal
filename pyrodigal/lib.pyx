@@ -4666,6 +4666,8 @@ cdef class MetagenomicBins:
 
         if self.length > 0:
             self.bins = <_metagenomic_bin**> PyMem_Malloc(sizeof(_metagenomic_bin*)*self.length)
+            if self.bins == NULL:
+                raise MemoryError()
             for i, meta in enumerate(self._objects):
                 self.bins[i] = meta.bin
 
