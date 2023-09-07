@@ -207,7 +207,7 @@ jobs:
       with:
         submodules: true
     - name: Set up Python 3.11
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.11
     - name: Install build requirements
@@ -227,7 +227,7 @@ jobs:
     - sdist
     steps:
     - name: Setup Python 3.11
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     - name: Download built wheels
@@ -293,7 +293,7 @@ jobs:
       with:
         submodules: true
     - name: Set up Python 3.10
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     - name: Download built wheels
