@@ -7,6 +7,7 @@ import platform
 import re
 import subprocess
 import sys
+import sysconfig
 
 import setuptools
 import setuptools.extension
@@ -456,11 +457,13 @@ class build_clib(_build_clib):
     # --- Compatibility with `setuptools.Command`
 
     user_options = _build_clib.user_options + [
-        ("parallel", "j", "number of parallel build jobs"),
+        ("parallel=", "j", "number of parallel build jobs"),
+        ("plat-name=", "p", "platform name to cross-compile for, if supported")
     ]
 
     def initialize_options(self):
         _build_clib.initialize_options(self)
+        self.plat_name = None
         self.parallel = None
         self.target_machine = None
         self.target_system = None
@@ -471,6 +474,8 @@ class build_clib(_build_clib):
         if self.parallel is not None:
             self.parallel = int(self.parallel)
         # detect platform options
+        if self.plat_name is None:
+            self.plat_name = sysconfig.get_platform()
         self.target_machine = _detect_target_machine(self.plat_name)
         self.target_system = _detect_target_system(self.plat_name)
         self.target_cpu = _detect_target_cpu(self.plat_name)

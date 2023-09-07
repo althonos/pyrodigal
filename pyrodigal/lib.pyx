@@ -1,5 +1,5 @@
 # coding: utf-8
-# cython: language_level=3, linetrace=True
+# cython: language_level=3, linetrace=True, binding=True
 
 """Bindings to Prodigal, an ORF finder for genomes and metagenomes.
 
@@ -181,8 +181,8 @@ cdef int    _WINDOW              = 120
 cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 cdef str    _PRODIGAL_VERSION    = "v2.6.3+c1e2d36"
 
-IDEAL_SINGLE_GENOME = 100000
-MIN_SINGLE_GENOME   = 20000
+IDEAL_SINGLE_GENOME = _IDEAL_SINGLE_GENOME
+MIN_SINGLE_GENOME   = _MIN_SINGLE_GENOME
 TRANSLATION_TABLES  = frozenset(_TRANSLATION_TABLES)
 PRODIGAL_VERSION    = _PRODIGAL_VERSION
 
@@ -276,9 +276,7 @@ cdef class Mask:
     # --- Python interface ---------------------------------------------------
 
     cpdef bint intersects(self, int begin, int end):
-        """intersects(self, begin, end)\n--
-
-        Check whether the mask intersects a range of sequence coordinates.
+        """Check whether the mask intersects a range of sequence coordinates.
 
         Arguments:
             begin (`int`): The rightmost coordinate of the region to
@@ -353,8 +351,6 @@ cdef class Masks:
         return self.capacity * sizeof(_mask) + sizeof(self)
 
     def __getstate__(self):
-        """__getstate__(self)\n--
-        """
         cdef size_t i
         return [
             (self.masks[i].begin, self.masks[i].end)
@@ -362,8 +358,6 @@ cdef class Masks:
         ]
 
     def __setstate__(self, list state):
-        """__setstate__(self, state)\n--
-        """
         cdef size_t i
         cdef tuple  mask
 
@@ -425,19 +419,13 @@ cdef class Masks:
     # --- Python interface ---------------------------------------------------
 
     cpdef void clear(self):
-        """clear(self)\n--
-
-        Remove all masks from the list.
-
+        """Remove all masks from the list.
         """
         with nogil:
             self._clear()
 
     cpdef Masks copy(self):
-        """copy(self)\n--
-
-        Return a copy of this list of masks.
-
+        """Return a copy of this list of masks.
         """
         cdef Masks new = Masks.__new__(Masks)
         new.capacity = self.capacity
@@ -528,9 +516,7 @@ cdef class Sequence:
         self.masks = Masks.__new__(Masks)
 
     def __init__(self, object sequence, bint mask = False, size_t mask_size = MASK_SIZE):
-        """__init__(self, sequence, mask=False, mask_size=50)\n--
-
-        Create a new `Sequence` object from a nucleotide sequence.
+        """Create a new `Sequence` object from a nucleotide sequence.
 
         Arguments:
             sequence (`str`, `bytes` or `Sequence`): The sequence to read
@@ -582,10 +568,7 @@ cdef class Sequence:
         PyMem_Free(self.digits)
 
     def __len__(self):
-        """__len__(self)\n--
-
-        Return the number of nucleotides in the sequence.
-
+        """Return the number of nucleotides in the sequence.
         """
         return self.slen
 
@@ -631,8 +614,6 @@ cdef class Sequence:
             return dna
 
     def __getstate__(self):
-        """__getstate__(self)\n--
-        """
         assert self.digits != NULL
         # copy sequence digits
         cdef bytearray    digits = bytearray(self.slen)
@@ -647,8 +628,6 @@ cdef class Sequence:
         }
 
     def __setstate__(self, dict state):
-        """__setstate__(self, state)\n--
-        """
         # get a view on the digits
         cdef uint8_t[::1] view = state["digits"]
         # copy attributes
@@ -1017,9 +996,7 @@ cdef class Sequence:
     # --- Python interface ---------------------------------------------------
 
     cpdef object max_gc_frame_plot(self, int window_size=_WINDOW):
-        """max_gc_frame_plot(self, window_size=120)\n--
-
-        Create a maximum GC frame plot for the sequence.
+        """Create a maximum GC frame plot for the sequence.
 
         Arguments:
             window_size (`int`): The width of the sliding window to
@@ -1053,9 +1030,7 @@ cdef class Sequence:
         int strand=1,
         bint exact=True
     ) except -1:
-        """shine_dalgarno(self, pos, start, training_info, strand=1, exact=True)\n--
-
-        Find the highest scoring Shine-Dalgarno motif upstream of ``start``.
+        """Find the highest scoring Shine-Dalgarno motif upstream of ``start``.
 
         Arguments:
             pos (`int`): The position where to look for the Shine-Dalgarno
@@ -1143,9 +1118,7 @@ cdef class ConnectionScorer:
         self.node_frames     = self.node_frames_raw     = NULL
 
     def __init__(self, str backend="detect"):
-        """__init__(self, backend="detect")\n--
-
-        Create a new connection score.
+        """Create a new connection score.
 
         Arguments:
             backend (`str`): The SIMD backend to use for the heuristic filter.
@@ -1323,18 +1296,13 @@ cdef class ConnectionScorer:
     # --- Python interface ---------------------------------------------------
 
     def index(self, Nodes nodes not None):
-        """index(self, nodes)\n--
-
-        Index the nodes in preparation for the heuristic SIMD filter.
-
+        """Index the nodes in preparation for the heuristic SIMD filter.
         """
         with nogil:
             self._index(nodes)
 
     def compute_skippable(self, int min, int i):
-        """compute_skippable(self, min, i)\n--
-
-        Find which connections to node *i* are invalid, starting from *min*.
+        """Find which connections to node *i* are invalid, starting from *min*.
 
         Arguments:
             min (`int`): The index of the first node from which to start
@@ -1356,9 +1324,7 @@ cdef class ConnectionScorer:
         TrainingInfo tinf not None,
         bint final=False
     ):
-        """score_connections(self, nodes, min, i, tinf, final=False)\n--
-
-        Score all connections to node *i*, starting from node *min*.
+        """Score all connections to node *i*, starting from node *min*.
 
         Arguments:
             nodes (`~pyrodigal.Nodes`): The array of nodes to score.
@@ -1601,10 +1567,7 @@ cdef class Nodes:
 
     @classmethod
     def with_capacity(cls, size_t capacity):
-        """with_capacity(cls, capacity)\n--
-
-        Create a new node array with the given capacity.
-
+        """Create a new node array with the given capacity.
         """
         cdef Nodes nodes = Nodes.__new__(Nodes)
         nodes._allocate(capacity)
@@ -1644,8 +1607,6 @@ cdef class Nodes:
         return self.capacity * sizeof(_node) + sizeof(self)
 
     def __getstate__(self):
-        """__getstate__(self)\n--
-        """
         cdef size_t i
         return [
             {
@@ -1692,8 +1653,6 @@ cdef class Nodes:
         ]
 
     def __setstate__(self, list state):
-        """__setstate__(self, state)\n--
-        """
         cdef size_t i
         cdef dict   node
         cdef dict   motif
@@ -2524,10 +2483,7 @@ cdef class Nodes:
     # --- Python interface ---------------------------------------------------
 
     cpdef Nodes copy(self):
-        """copy(self)\n--
-
-        Create a copy of the `Nodes` object.
-
+        """Create a copy of the `Nodes` object.
         """
         cdef Nodes new = Nodes.__new__(Nodes)
         new.capacity = self.capacity
@@ -2538,10 +2494,7 @@ cdef class Nodes:
         return new
 
     def clear(self):
-        """clear(self)\n--
-
-        Remove all nodes from the node list.
-
+        """Remove all nodes from the node list.
         """
         with nogil:
             self._clear()
@@ -2555,9 +2508,7 @@ cdef class Nodes:
         int min_edge_gene=MIN_EDGE_GENE,
         int translation_table=11,
     ):
-        """extract(self, sequence, *, closed=False, min_gene=90, min_edge_gene=60, translation_table=11)\n--
-
-        Extract nodes from the given sequence based on the training info.
+        """Extract nodes from the given sequence based on the training info.
 
         After calling this method, nodes won't be sorted; make sure to call
         `Nodes.sort` before using this further.
@@ -2597,10 +2548,7 @@ cdef class Nodes:
         return nn
 
     def reset_scores(self):
-        """reset_scores(self)\n--
-
-        Reset node scores.
-
+        """Reset node scores.
         """
         with nogil:
             self._reset_scores()
@@ -2613,9 +2561,7 @@ cdef class Nodes:
         bint closed=False,
         bint is_meta=False
     ):
-        """score(self, sequence, training_info, *, closed=False, is_meta=False)\n--
-
-        Score the start nodes currently stored.
+        """Score the start nodes currently stored.
 
         Note:
             This function is reimplemented from the ``score_nodes`` function of
@@ -2627,10 +2573,7 @@ cdef class Nodes:
             self._score(sequence, training_info.tinf, closed=closed, is_meta=is_meta)
 
     def sort(self):
-        """sort(self)\n--
-
-        Sort all nodes in the vector by their index and strand.
-
+        """Sort all nodes in the vector by their index and strand.
         """
         with nogil:
             self._sort()
@@ -2899,9 +2842,7 @@ cdef class Gene:
     # --- Python interface ---------------------------------------------------
 
     cpdef double confidence(self):
-        """confidence(self)\n--
-
-        Estimate the confidence of the prediction.
+        """Estimate the confidence of the prediction.
 
         Returns:
             `float`: A confidence percentage (between *0* and *100*).
@@ -2914,9 +2855,7 @@ cdef class Gene:
         )
 
     cpdef str sequence(self):
-        """sequence(self)\n--
-
-        Build the nucleotide sequence of this predicted gene.
+        """Build the nucleotide sequence of this predicted gene.
 
         This function takes care of reverse-complementing the sequence
         if it is on the reverse strand.
@@ -2995,9 +2934,7 @@ cdef class Gene:
         object translation_table=None,
         char unknown_residue=b"X",
     ):
-        """translate(self, translation_table=None, unknown_residue="X")\n--
-
-        Translate the predicted gene into a protein sequence.
+        """Translate the predicted gene into a protein sequence.
 
         Arguments:
             translation_table (`int`, optional): An alternative translation
@@ -3409,9 +3346,7 @@ cdef class Genes:
     # --- Python interface ---------------------------------------------------
 
     cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=True) except -1:
-        """write_gff(self, file, sequence_id, header=True)\n--
-
-        Write the genes to ``file`` in General Feature Format.
+        """Write the genes to ``file`` in General Feature Format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
@@ -3479,9 +3414,7 @@ cdef class Genes:
         return n
 
     cpdef ssize_t write_genes(self, object file, str sequence_id, object width=70) except -1:
-        """write_genes(self, file, sequence_id, width=70)\n--
-
-        Write nucleotide sequences of genes to ``file`` in FASTA format.
+        """Write nucleotide sequences of genes to ``file`` in FASTA format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
@@ -3523,9 +3456,7 @@ cdef class Genes:
         return n
 
     cpdef ssize_t write_translations(self, object file, str sequence_id, object width=60, object translation_table=None) except -1:
-        """write_translations(self, file, sequence_id, width=60, translation_table=None)\n--
-
-        Write protein sequences of genes to ``file`` in FASTA format.
+        """Write protein sequences of genes to ``file`` in FASTA format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
@@ -3573,9 +3504,7 @@ cdef class Genes:
         return n
 
     cpdef ssize_t write_scores(self, object file, str sequence_id, bint header=True) except -1:
-        """write_scores(self, file, sequence_id, header=True)\n--
-
-        Write the start scores to ``file`` in tabular format.
+        """Write the start scores to ``file`` in tabular format.
 
         Arguments:
             file (`io.TextIOBase`): A file open in text mode where to write
@@ -3689,15 +3618,16 @@ cdef class TrainingInfo:
 
     .. versionadded:: 0.5.0
 
+    .. versionchanged:: 3.0.0
+       Add setters to all properties.
+
     """
 
     # --- Class methods ----------------------------------------------------
 
     @classmethod
     def load(cls, fp):
-        """load(cls, fp)\n--
-
-        Load a training info from a file-like handle.
+        """Load a training info from a file-like handle.
 
         Arguments:
             fp (file-like object): An file-like handle opened in *binary*
@@ -3805,8 +3735,6 @@ cdef class TrainingInfo:
         return sizeof(_training) + sizeof(self)
 
     def __getstate__(self):
-        """__getstate__(self)\n--
-        """
         assert self.tinf != NULL
         return {
             "gc": self.gc,
@@ -3823,8 +3751,6 @@ cdef class TrainingInfo:
         }
 
     def __setstate__(self, dict state):
-        """__setstate__(self, state)\n--
-        """
         cdef int i
         cdef int j
         cdef int k
@@ -4616,9 +4542,7 @@ cdef class TrainingInfo:
     # --- Python interface ---------------------------------------------------
 
     cpdef dict to_dict(self):
-        """to_dict(self)\n--
-
-        Convert this training info to a dictionary.
+        """Convert this training info to a dictionary.
 
         This method can be useful to save and load a `TrainingInfo` to
         JSON format for language and platform-agnostic exchange of the
@@ -4641,9 +4565,7 @@ cdef class TrainingInfo:
         return self.__getstate__()
 
     cpdef object dump(self, fp):
-        """dump(self, fp)\n--
-
-        Write a training info to a file-like handle.
+        """Write a training info to a file-like handle.
 
         Arguments:
             fp (file-like object): An file-like handle opened in *binary*
@@ -4723,6 +4645,9 @@ cdef class MetagenomicBin:
 
 cdef class MetagenomicBins:
     """An indexed list of `MetagenomicBin` to use in *meta*-mode.
+
+    .. versionadded:: 3.0.0
+
     """
 
     def __cinit__(self):
@@ -4868,9 +4793,7 @@ cdef class GeneFinder:
         int max_overlap=MAX_SAM_OVLP,
         str backend="detect",
     ):
-        """__init__(self, training_info=None, *, meta=False, metagenomic_bins=None, closed=False, mask=False, min_gene=90, min_edge_gene=60, max_overlap=60, backend="detect")\n--
-
-        Instantiate and configure a new ORF finder.
+        """Instantiate and configure a new ORF finder.
 
         Arguments:
             training_info (`~pyrodigal.TrainingInfo`, optional): A training
@@ -4909,6 +4832,9 @@ cdef class GeneFinder:
 
         .. versionadded:: 2.0.0
             The ``backend`` argument.
+
+        .. versionadded:: 3.0.0
+           The ``metagenomic_bins`` argument.
 
         """
         if meta and training_info is not None:
@@ -4959,8 +4885,6 @@ cdef class GeneFinder:
         return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
     def __getstate__(self):
-        """__getstate__(self)\n--
-        """
         return {
             "_num_seq": self._num_seq,
             "closed": self.closed,
@@ -4973,8 +4897,6 @@ cdef class GeneFinder:
         }
 
     def __setstate__(self, dict state):
-        """__setstate__(self, state)\n--
-        """
         self.lock = threading.Lock()
         self._num_seq = state["_num_seq"]
         self.closed = state["closed"]
@@ -5150,9 +5072,7 @@ cdef class GeneFinder:
     # --- Python interface ---------------------------------------------------
 
     cpdef Genes find_genes(self, object sequence):
-        """find_genes(self, sequence)\n--
-
-        Find all the genes in the input DNA sequence.
+        """Find all the genes in the input DNA sequence.
 
         Arguments:
             sequence (`str` or buffer): The nucleotide sequence to use,
@@ -5226,9 +5146,7 @@ cdef class GeneFinder:
         double start_weight=4.35,
         int translation_table=11
     ):
-        """train(self, sequence, *sequences, force_nonsd=False, start_weight=4.35, translation_table=11)\n--
-
-        Search parameters for the ORF finder using a training sequence.
+        """Search parameters for the ORF finder using a training sequence.
 
         If more than one sequence is provided, it is assumed that they are
         different contigs part of the same genome. Like in the original
