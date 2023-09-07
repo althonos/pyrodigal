@@ -3618,8 +3618,8 @@ cdef class TrainingInfo:
 
     .. versionadded:: 0.5.0
 
-    .. versionchanged:: 3.0.0
-       Add setters to all properties.
+    .. versionadded:: 3.0.0
+       Propert constructor and setters to all properties.
 
     """
 
@@ -3917,7 +3917,7 @@ cdef class TrainingInfo:
 
     @property
     def missing_motif_weight(self):
-        """`float: The weight for the case of no motif.
+        """`float`: The weight for the case of no motif.
 
         .. versionadded:: 3.0.0
 

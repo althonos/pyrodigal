@@ -32,7 +32,15 @@ API Reference
        :nosignatures:
 
        pyrodigal.TrainingInfo
+
+    MetagenomicBin
+    --------------
+
+       .. autosummary::
+       :nosignatures:
+
        pyrodigal.MetagenomicBin
+       pyrodigal.MetagenomicBins
 
 
     Genes
