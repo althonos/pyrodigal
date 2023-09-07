@@ -37,6 +37,7 @@ __all__ = [
     "Sequence",
     "TrainingInfo",
     "MetagenomicBin",
+    "MetagenomicBins",
     "IDEAL_SINGLE_GENOME",
     "METAGENOMIC_BINS",
     "MIN_SINGLE_GENOME",
@@ -51,6 +52,7 @@ _Sized.register(Sequence)
 _Sequence.register(Genes)
 _Sequence.register(Masks)
 _Sequence.register(Nodes)
+_Sequence.register(MetagenomicBins)
 
 # Small addition to the docstring: we want to show a link redirecting to the
 # rendered version of the documentation, but this can only work when Python
