@@ -207,7 +207,9 @@ jobs:
       run: python -m pip install -r .github/workflows/requirements.txt
     - name: Install coverage package
       run: python -m pip install -U coverage
-    - name: Build C extension
+    - name: Build Prodigal with optimizations
+      run: python setup.py build_clib --inplace
+    - name: Build Cython extension in debug mode
       run: python setup.py build_ext --inplace --debug
     - name: Test with coverage
       run: python -m coverage run -m unittest discover -vv
