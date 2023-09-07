@@ -205,10 +205,12 @@ jobs:
       run: python -m pip install -U pip wheel setuptools
     - name: Install Python requirements
       run: python -m pip install -r .github/workflows/requirements.txt
+    - name: Install test requirements
+      run: python -m pip install -r pyrodigal/tests/requirements.txt
     - name: Install coverage package
       run: python -m pip install -U coverage
     - name: Build Prodigal with optimizations
-      run: python setup.py build_clib --inplace
+      run: python setup.py build_clib
     - name: Build Cython extension in debug mode
       run: python setup.py build_ext --inplace --debug
     - name: Test with coverage

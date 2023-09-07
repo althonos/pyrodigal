@@ -36,7 +36,7 @@ API Reference
     MetagenomicBin
     --------------
 
-       .. autosummary::
+    .. autosummary::
        :nosignatures:
 
        pyrodigal.MetagenomicBin
