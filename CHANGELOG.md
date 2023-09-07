@@ -6,7 +6,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha1...HEAD
+
+
+## [v3.0.0-alpha1] - 2023-09-07
+[v3.0.0-alpha1]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0-alpha1
+
+### Added
+- `MetagenomicBins` collection to store a dense array of `MetagenomicBin` objects.
+- `metagenomic_bins` keyword argument to `GeneFinder` allowing to control which models are used when running gene finding in *meta* mode ([#24](https://github.com/althonos/pyrodigal/issues/24)).
+- `metagenomic_bin` attribute to `Genes` referencing the metagenomic model with which the genes were predicted, if in *meta* mode.
+- Additional `TrainingInfo` properties (`missing_motif_weight`, `coding_statistics`).
+- Setters for all remaining `TrainingInfo` properties.
+- Proper `TrainingInfo` constructor with configuration option for all attributes.
+- `TrainingInfo.to_dict` method to extract all parameters from a `TrainingInfo`.
+
+### Changed
+- **BREAKING**: Rename `OrfFinder` to `GeneFinder` for consistency.
+- Reorganize memory management of the built-in metagenomic models.
+- Make the internal Cython model public (`pyrodigal.lib`) to allow importing the underlying classes in other Cython projects.
+- **BREAKING**: Use `memoryview` to expose all `TrainingInfo` attributes instead manually building lists or tuples.
+
+### Removed
+- **BREAKING**: `metagenomic_bin` attribute of `TrainingInfo`.
 
 
 ## [v2.3.0] - 2023-07-20
