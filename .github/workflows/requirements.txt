@@ -1,4 +1,3 @@
-coverage ~=4.0 ; implementation_name == 'cpython'
 cython ~=3.0
 wheel
 auditwheel <5.2
