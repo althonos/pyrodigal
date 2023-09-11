@@ -81,7 +81,6 @@ from cpython.ref cimport Py_INCREF
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
 from cpython.unicode cimport (
     PyUnicode_New,
-    PyUnicode_READ,
     PyUnicode_WRITE,
     PyUnicode_KIND,
     PyUnicode_DATA,
@@ -145,6 +144,9 @@ if SYS_IMPLEMENTATION_NAME == "pypy":
 else:
     MVIEW_READ  = PyBUF_READ
     MVIEW_WRITE = PyBUF_WRITE
+
+cdef extern from *:
+    Py_UCS4 PyUnicode_READ(int kind, const void* data, size_t i) noexcept nogil
 
 # ----------------------------------------------------------------------------
 
@@ -464,7 +466,7 @@ cdef class Sequence:
         const size_t   length,
               double*  gc,
               uint8_t* digits,
-    ) except 1:
+    ) except 1 nogil:
         cdef size_t  i
         cdef Py_UCS4 letter
         cdef int     gc_count   = 0
@@ -535,9 +537,17 @@ cdef class Sequence:
         cdef const unsigned char[::1] view
 
         if isinstance(sequence, Sequence):
-            self._allocate(sequence.slen)
+            self._allocate((<Sequence> sequence).slen)
             self.gc = sequence.gc
-            memcpy(self.digits, (<Sequence> sequence).digits, self.slen * sizeof(uint8_t))
+            with nogil:
+                memcpy(self.digits, (<Sequence> sequence).digits, self.slen * sizeof(uint8_t))
+                if mask:
+                    Sequence._mask(
+                        self.digits,
+                        self.slen,
+                        self.masks,
+                        mask_size,
+                    )
         else:
             if isinstance(sequence, str):
                 kind = PyUnicode_KIND(sequence)
@@ -548,22 +558,21 @@ cdef class Sequence:
                 kind = PyUnicode_1BYTE_KIND
                 data = &view[0]
                 self._allocate(view.shape[0])
-            Sequence._build(
-                kind,
-                data,
-                self.slen,
-                &self.gc,
-                self.digits,
-            )
-
-        if mask:
             with nogil:
-                Sequence._mask(
-                    self.digits,
+                Sequence._build(
+                    kind,
+                    data,
                     self.slen,
-                    self.masks,
-                    mask_size,
+                    &self.gc,
+                    self.digits,
                 )
+                if mask:
+                    Sequence._mask(
+                        self.digits,
+                        self.slen,
+                        self.masks,
+                        mask_size,
+                    )
 
     def __dealloc__(self):
         PyMem_Free(self.digits)
@@ -588,9 +597,10 @@ cdef class Sequence:
             dna = PyBytes_FromStringAndSize(NULL, self.slen)
             data = <void*> PyBytes_AsString(dna)
 
-            for i in range(self.slen):
-                nuc = _letters[self.digits[i]]
-                (<char*> data)[i] = nuc
+            with nogil:
+                for i in range(self.slen):
+                    nuc = _letters[self.digits[i]]
+                    (<char*> data)[i] = nuc
 
             return dna.decode("ascii")
 
@@ -619,7 +629,8 @@ cdef class Sequence:
         # copy sequence digits
         cdef bytearray    digits = bytearray(self.slen)
         cdef uint8_t[::1] view   = digits
-        memcpy(&view[0], self.digits, self.slen * sizeof(uint8_t))
+        with nogil:
+            memcpy(&view[0], self.digits, self.slen * sizeof(uint8_t))
         # build the state dict
         return {
             "slen": self.slen,
@@ -636,7 +647,8 @@ cdef class Sequence:
         self.gc = state["gc"]
         # allocate sequence storage and copy bytes
         self._allocate(state["slen"])
-        memcpy(self.digits, &view[0], self.slen * sizeof(uint8_t))
+        with nogil:
+            memcpy(self.digits, &view[0], self.slen * sizeof(uint8_t))
 
     def __getbuffer__(self, Py_buffer* buffer, int flags):
         assert self.digits != NULL
