@@ -20,7 +20,7 @@ cdef        size_t MIN_NODES_ALLOC
 cdef public int    _MIN_SINGLE_GENOME
 cdef public int    _IDEAL_SINGLE_GENOME
 cdef public set    _TRANSLATION_TABLES
-cdef public str    _PRODIGAL_VERSION 
+cdef public str    _PRODIGAL_VERSION
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -103,7 +103,7 @@ cdef class Sequence:
         const _training* tinf,
         const int strand
     ) noexcept nogil
-    
+
 
     cpdef size_t __sizeof__(self)
 
@@ -297,7 +297,7 @@ cdef class Genes:
     ) noexcept nogil
     cdef int _clear(self) except 1 nogil
 
-    cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=*) except -1
+    cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=*, bint translation_table=*) except -1
     cpdef ssize_t write_genes(self, object file, str sequence_id, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str sequence_id, object width=*, object translation_table=?) except -1
     cpdef ssize_t write_scores(self, object file, str sequence_id, bint header=*) except -1

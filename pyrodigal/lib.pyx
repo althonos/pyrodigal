@@ -12,7 +12,7 @@ Attributes:
         training sequence to be used in `GeneFinder.train`.
     TRANSLATION_TABLES (`set` of `int`): A set containing all the
         translation tables supported by Prodigal.
-    METAGENOMIC_BINS (`~pyrodigal.MetagenomicBins`): A sequence containing 
+    METAGENOMIC_BINS (`~pyrodigal.MetagenomicBins`): A sequence containing
         all the built-in metagenomic models.
 
 Example:
@@ -3345,7 +3345,13 @@ cdef class Genes:
 
     # --- Python interface ---------------------------------------------------
 
-    cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=True) except -1:
+    cpdef ssize_t write_gff(
+        self,
+        object file,
+        str sequence_id,
+        bint header=True,
+        bint translation_table=False
+    ) except -1:
         """Write the genes to ``file`` in General Feature Format.
 
         Arguments:
@@ -3356,12 +3362,20 @@ cdef class Genes:
                 GFF-formated output.
             header (`bool`): `True` to write a GFF header line,
                 `False` otherwise.
+            translation_table (`bool`): `True` to include the translation
+                table used to predict the genes in the GFF attributes,
+                `False` otherwise. Useful for genes that were predicted
+                from *meta* mode, since the different metagenomic models
+                may have a different translation table.
 
         Returns:
             `int`: The number of bytes written to the file.
 
         .. versionchanged:: 2.0.0
             Replaced optional``prefix`` argument with ``sequence_id``.
+
+        .. versionadded:: 3.0.0
+            The ``translation_table`` argument.
 
         """
         cdef Gene           gene
@@ -3408,6 +3422,9 @@ cdef class Genes:
             n += file.write("\t")
             n += file.write(gene._gene_data(sequence_id))
             n += file.write(";")
+            if translation_table:
+                n += file.write("transl_table={}".format(self.training_info.translation_table))
+                n += file.write(";")
             n += file.write(gene._score_data())
             n += file.write("\n")
 
