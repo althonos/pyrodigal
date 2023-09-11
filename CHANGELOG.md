@@ -6,7 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...HEAD
+
+
+## [v3.0.0-alpha2] - 2023-09-11
+[v3.0.0-alpha2]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...v3.0.0-alpha1
+
+### Added
+- `Genes.write_genbank` method to write a GenBank record with all predicted genes from a sequence.
+- `include_stop` flag to `Gene.translate` and `Genes.write_translations` to allow excluding the stop codon from the translated sequence.
+- `include_translation_table` flag to `Genes.write_gff` to include the translation table to the GFF attributes of each gene.
+- `gbk` output format to the Pyrodigal CLI.
+
+### Fixed
+- `Genes.write_gff` not properly reporting the number of bytes written.
+
+### Changed
+- Use `typing.Literal` for allowed translation table values in `pyrodigal.lib` annotations
 
 
 ## [v3.0.0-alpha1] - 2023-09-07
