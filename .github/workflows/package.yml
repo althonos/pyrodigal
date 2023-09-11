@@ -283,7 +283,7 @@ jobs:
   aur:
     environment: Arch Linux User Repository
     runs-on: ubuntu-latest
-    if: "!contains(github.ref, 'rc')"
+    if: "!contains(github.ref, 'rc') && !contains(github.ref, 'alpha')"
     name: Update AUR package
     needs:
     - sdist
