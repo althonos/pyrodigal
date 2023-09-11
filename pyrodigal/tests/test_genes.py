@@ -97,24 +97,27 @@ class TestGenes(unittest.TestCase):
 
     def test_write_translations(self):
         buffer = io.StringIO()
-        self.genes.write_translations(buffer, self.record.id)
+        n = self.genes.write_translations(buffer, self.record.id)
         actual = buffer.getvalue()
         expected = data.load_text("SRR492066.meta.faa.gz")
+        self.assertEqual(n, buffer.tell())
         self.assertEqual(actual, expected)
 
     def test_write_genes(self):
         buffer = io.StringIO()
-        self.genes.write_genes(buffer, self.record.id)
+        n = self.genes.write_genes(buffer, self.record.id)
         actual = buffer.getvalue()
         expected = data.load_text("SRR492066.meta.fna.gz")
+        self.assertEqual(n, len(actual))
         self.assertEqual(actual, expected)
 
     def test_write_gff(self):
         buffer = io.StringIO()
-        self.genes.write_gff(buffer, self.record.id)
+        n = self.genes.write_gff(buffer, self.record.id)
         actual = buffer.getvalue().splitlines()
         expected = data.load_text("SRR492066.meta.gff").splitlines()
 
+        self.assertEqual(n, buffer.tell())
         self.assertEqual(actual[0], expected[0])
         self.assertEqual(actual[1], expected[1])
         self.assertEqual(actual[2].split(";")[1:], expected[2].split(";")[1:])
@@ -134,3 +137,10 @@ class TestGenes(unittest.TestCase):
             self.assertEqual(attributes_actual['rbs_motif'], attributes_expected['rbs_motif'])
             self.assertEqual(attributes_actual['rbs_spacer'], attributes_expected['rbs_spacer'])
             self.assertEqual(attributes_actual['start_type'], attributes_expected['start_type'])
+
+    def test_write_genbank(self):
+        buffer = io.StringIO()
+        n = self.genes.write_genbank(buffer, self.record.id)
+        # actual = buffer.getvalue().splitlines()
+        # expected = data.load_text("SRR492066.meta.gbk").splitlines()
+        self.assertEqual(n, buffer.tell())
