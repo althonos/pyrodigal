@@ -95,29 +95,37 @@ class TestGenes(unittest.TestCase):
         self.assertEqual(genes.metagenomic_bin.description, mb.description)
         self.assertEqual(genes.training_info.gc, mb.training_info.gc)
 
-    def test_write_translations(self):
+
+
+@unittest.skipUnless(data.files, "importlib.resources not available")
+class _TestWrite(object):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.record = data.load_record("SRR492066.fna.gz")
+        cls.p = GeneFinder(meta=True)
+        cls.genes = cls.p.find_genes(str(cls.record.seq))
+    
+    def _write(self, buffer, **kwargs):
+        raise NotImplementedError
+
+    def test_reported_bytes(self):
         buffer = io.StringIO()
-        n = self.genes.write_translations(buffer, self.record.id)
-        actual = buffer.getvalue()
-        expected = data.load_text("SRR492066.meta.faa.gz")
+        n = self._write(buffer)
         self.assertEqual(n, buffer.tell())
-        self.assertEqual(actual, expected)
 
-    def test_write_genes(self):
-        buffer = io.StringIO()
-        n = self.genes.write_genes(buffer, self.record.id)
-        actual = buffer.getvalue()
-        expected = data.load_text("SRR492066.meta.fna.gz")
-        self.assertEqual(n, len(actual))
-        self.assertEqual(actual, expected)
 
-    def test_write_gff(self):
+class TestWriteGFF(_TestWrite, unittest.TestCase):
+    
+    def _write(self, buffer, **kwargs):
+        return self.genes.write_gff(buffer, self.record.id, **kwargs)
+
+    def test_example(self):
         buffer = io.StringIO()
-        n = self.genes.write_gff(buffer, self.record.id)
+        self._write(buffer)
         actual = buffer.getvalue().splitlines()
         expected = data.load_text("SRR492066.meta.gff").splitlines()
 
-        self.assertEqual(n, buffer.tell())
         self.assertEqual(actual[0], expected[0])
         self.assertEqual(actual[1], expected[1])
         self.assertEqual(actual[2].split(";")[1:], expected[2].split(";")[1:])
@@ -138,18 +146,44 @@ class TestGenes(unittest.TestCase):
             self.assertEqual(attributes_actual['rbs_spacer'], attributes_expected['rbs_spacer'])
             self.assertEqual(attributes_actual['start_type'], attributes_expected['start_type'])
 
-    def test_write_gff_write_header(self):
+    def test_header(self):
         buffer = io.StringIO()
-        self.genes.write_gff(buffer, self.record.id, write_header=True)
+        self._write(buffer, header=True)
         actual = buffer.getvalue().splitlines()
         self.assertEqual(actual[0], "##gff-version  3")
-        self.genes.write_gff(buffer, self.record.id, write_header=False)
+        buffer = io.StringIO()
+        self._write(buffer, header=False)
         actual = buffer.getvalue().splitlines()
         self.assertNotEqual(actual[0], "##gff-version  3")
 
-    def test_write_genbank(self):
+
+class TestWriteTranslation(_TestWrite, unittest.TestCase):
+
+    def _write(self, buffer, **kwargs):
+        return self.genes.write_translations(buffer, self.record.id, **kwargs)
+
+    def test_example(self):
         buffer = io.StringIO()
-        n = self.genes.write_genbank(buffer, self.record.id)
-        # actual = buffer.getvalue().splitlines()
-        # expected = data.load_text("SRR492066.meta.gbk").splitlines()
-        self.assertEqual(n, buffer.tell())
+        self._write(buffer)
+        actual = buffer.getvalue()
+        expected = data.load_text("SRR492066.meta.faa.gz")
+        self.assertEqual(actual, expected)
+
+
+class TestWriteGenes(_TestWrite, unittest.TestCase):
+
+    def _write(self, buffer, **kwargs):
+        return self.genes.write_genes(buffer, self.record.id, **kwargs)
+
+    def test_example(self):
+        buffer = io.StringIO()
+        self._write(buffer)
+        actual = buffer.getvalue()
+        expected = data.load_text("SRR492066.meta.fna.gz")
+        self.assertEqual(actual, expected)
+
+
+class TestWriteGenbank(_TestWrite, unittest.TestCase):
+
+    def _write(self, buffer, **kwargs):
+        return self.genes.write_genbank(buffer, self.record.id, **kwargs)

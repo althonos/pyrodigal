@@ -246,8 +246,8 @@ class Genes(typing.Sequence[Gene]):
         self,
         file: TextIO,
         sequence_id: str,
-        write_header: bool = True,
-        write_translation_table: bool = False,
+        header: bool = True,
+        include_translation_table: bool = False,
     ) -> int: ...
     def write_genes(
         self,
@@ -261,6 +261,7 @@ class Genes(typing.Sequence[Gene]):
         sequence_id: str,
         width: typing.Optional[int] = 60,
         translation_table: typing.Optional[_TRANSLATION_TABLE] = None,
+        include_stop: bool = True,
     ) -> int: ...
     def write_scores(
         self,

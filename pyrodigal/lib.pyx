@@ -3422,8 +3422,8 @@ cdef class Genes:
         self,
         object file,
         str sequence_id,
-        bint write_header=True,
-        bint write_translation_table=False
+        bint header=True,
+        bint include_translation_table=False,
     ) except -1:
         """Write the genes to ``file`` in General Feature Format.
 
@@ -3433,13 +3433,13 @@ cdef class Genes:
             sequence_id (`str`): The identifier of the sequence these
                 genes were extracted from. Used in the first column of the
                 GFF-formated output.
-            write_header (`bool`): `True` to write a GFF header line,
-                `False` otherwise.
-            write_translation_table (`bool`): `True` to write the translation
-                table used to predict the genes in the GFF attributes,
-                `False` otherwise. Useful for genes that were predicted
-                from *meta* mode, since the different metagenomic models
-                have different translation tables.
+            header (`bool`): `True` to write a GFF header line, `False`
+                otherwise.
+            include_translation_table (`bool`): `True` to write the
+                translation table used to predict the genes in the GFF
+                attributes, `False` otherwise. Useful for genes that were
+                predicted from *meta* mode, since the different metagenomic
+                models have different translation tables.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3448,7 +3448,7 @@ cdef class Genes:
             Replaced optional``prefix`` argument with ``sequence_id``.
 
         .. versionadded:: 3.0.0
-            The ``write_translation_table`` argument.
+            The ``include_translation_table`` argument.
 
         """
         cdef Gene           gene
@@ -3457,7 +3457,7 @@ cdef class Genes:
         cdef str            run  = "Metagenomic" if self.meta else "Single"
         cdef str            desc = self.metagenomic_bin.description if self.meta else "Ab initio"
 
-        if write_header:
+        if header:
             n += file.write("##gff-version  3\n")
         n += file.write(
             f"# Sequence Data: "
@@ -3495,7 +3495,7 @@ cdef class Genes:
             n += file.write("\t")
             n += file.write(gene._gene_data(sequence_id))
             n += file.write(";")
-            if write_translation_table:
+            if include_translation_table:
                 n += file.write("transl_table={}".format(self.training_info.translation_table))
                 n += file.write(";")
             n += file.write(gene._score_data())
@@ -3545,7 +3545,14 @@ cdef class Genes:
 
         return n
 
-    cpdef ssize_t write_translations(self, object file, str sequence_id, object width=60, object translation_table=None) except -1:
+    cpdef ssize_t write_translations(
+        self,
+        object file,
+        str sequence_id,
+        object width=60,
+        object translation_table=None,
+        bint include_stop=True,
+    ) except -1:
         """Write protein sequences of genes to ``file`` in FASTA format.
 
         Arguments:
@@ -3558,6 +3565,11 @@ cdef class Genes:
             translation_table (`int`, optional): A different translation to
                 use to translation the genes. If `None` given, use the one
                 from the training info.
+            include_stop (`bool`): Pass `False` to disable translating the
+                STOP codon into a star character (``*``)  for complete genes.
+                `True` keeps the default behaviour of Prodigal, however it
+                often does not play nice with other programs or libraries
+                that will use the FASTA file for downstream processing.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3565,10 +3577,14 @@ cdef class Genes:
         .. versionchanged:: 2.0.0
             Replaced optional``prefix`` argument with ``sequence_id``.
 
+        .. versionadded:: 3.0.0
+            The ``include_stop`` argument.
+
         """
-        cdef Gene    gene
+        cdef ssize_t n     = 0
         cdef int     i
-        cdef ssize_t n    = 0
+        cdef str     trans
+        cdef Gene    gene
 
         if translation_table is not None and translation_table not in _TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
@@ -3587,7 +3603,10 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
-            for line in textwrap.wrap(gene.translate(translation_table), width=width):
+            trans = gene.translate(translation_table)
+            if not include_stop:
+                trans = trans.rstrip('*')
+            for line in textwrap.wrap(trans, width=width):
                 n += file.write(line)
                 n += file.write("\n")
 
