@@ -246,8 +246,8 @@ class Genes(typing.Sequence[Gene]):
         self,
         file: TextIO,
         sequence_id: str,
-        header: bool = True,
-        translation_table: bool = False,
+        write_header: bool = True,
+        write_translation_table: bool = False,
     ) -> int: ...
     def write_genes(
         self,

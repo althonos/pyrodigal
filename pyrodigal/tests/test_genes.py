@@ -138,6 +138,15 @@ class TestGenes(unittest.TestCase):
             self.assertEqual(attributes_actual['rbs_spacer'], attributes_expected['rbs_spacer'])
             self.assertEqual(attributes_actual['start_type'], attributes_expected['start_type'])
 
+    def test_write_gff_write_header(self):
+        buffer = io.StringIO()
+        self.genes.write_gff(buffer, self.record.id, write_header=True)
+        actual = buffer.getvalue().splitlines()
+        self.assertEqual(actual[0], "##gff-version  3")
+        self.genes.write_gff(buffer, self.record.id, write_header=False)
+        actual = buffer.getvalue().splitlines()
+        self.assertNotEqual(actual[0], "##gff-version  3")
+
     def test_write_genbank(self):
         buffer = io.StringIO()
         n = self.genes.write_genbank(buffer, self.record.id)

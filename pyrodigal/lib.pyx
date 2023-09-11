@@ -3422,8 +3422,8 @@ cdef class Genes:
         self,
         object file,
         str sequence_id,
-        bint header=True,
-        bint translation_table=False
+        bint write_header=True,
+        bint write_translation_table=False
     ) except -1:
         """Write the genes to ``file`` in General Feature Format.
 
@@ -3433,13 +3433,13 @@ cdef class Genes:
             sequence_id (`str`): The identifier of the sequence these
                 genes were extracted from. Used in the first column of the
                 GFF-formated output.
-            header (`bool`): `True` to write a GFF header line,
+            write_header (`bool`): `True` to write a GFF header line,
                 `False` otherwise.
-            translation_table (`bool`): `True` to include the translation
+            write_translation_table (`bool`): `True` to write the translation
                 table used to predict the genes in the GFF attributes,
                 `False` otherwise. Useful for genes that were predicted
                 from *meta* mode, since the different metagenomic models
-                may have a different translation table.
+                have different translation tables.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3448,7 +3448,7 @@ cdef class Genes:
             Replaced optional``prefix`` argument with ``sequence_id``.
 
         .. versionadded:: 3.0.0
-            The ``translation_table`` argument.
+            The ``write_translation_table`` argument.
 
         """
         cdef Gene           gene
@@ -3457,7 +3457,7 @@ cdef class Genes:
         cdef str            run  = "Metagenomic" if self.meta else "Single"
         cdef str            desc = self.metagenomic_bin.description if self.meta else "Ab initio"
 
-        if header:
+        if write_header:
             n += file.write("##gff-version  3\n")
         n += file.write(
             f"# Sequence Data: "
@@ -3495,7 +3495,7 @@ cdef class Genes:
             n += file.write("\t")
             n += file.write(gene._gene_data(sequence_id))
             n += file.write(";")
-            if translation_table:
+            if write_translation_table:
                 n += file.write("transl_table={}".format(self.training_info.translation_table))
                 n += file.write(";")
             n += file.write(gene._score_data())

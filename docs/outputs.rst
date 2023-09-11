@@ -86,6 +86,33 @@ writing genes from different sequences to the same result file:
             genes = orf_finder.find_genes(str(record.seq))
             genes.write_gff(dst, sequence_id=record.id, header=(i == 0))
 
+Use ``translation_table=True`` to include the translation table of the 
+genes in the GFF attributes. This may be useful for genes predicted in 
+metagenomic mode, since they may have been predicted with non-standard 
+genetic codes.
+
+Genbank
+-------
+
+Use `Genes.write_genbank` to write the genes to a file or file-like object 
+in `GenBank <https://www.insdc.org/submitting-standards/feature-table/#3.1>`_ 
+format:
+
+.. code:: python
+
+    genes = orf_finder.find_genes(sequence)
+    with open("genes.gbk", "w") as dst:
+        genes.write_genbank(dst, sequence_id="seqXYZ")
+
+.. note::
+    
+    The original Prodigal outputs incomplete GenBank files containing only
+    the coordinates of the predicted genes inside 
+    `CDS <https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html#CDSB>`_ features, 
+    without including the translation or the original sequence. Since this is
+    not the most useful output, and often requires additional post-processing, 
+    Pyrodigal outputs a complete GenBank record instead.
+
 
 Scores
 ------
