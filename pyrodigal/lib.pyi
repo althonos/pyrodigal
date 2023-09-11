@@ -237,12 +237,13 @@ class Genes(typing.Sequence[Gene]):
         sequence_id: str,
         str: _DIVISION = "BCT",
         date: Optional[datetime.date] = None,
-    )
+    ) -> int: ...
     def write_gff(
         self,
         file: TextIO,
         sequence_id: str,
         header: bool = True,
+        translation_table: bool = False,
     ) -> int: ...
     def write_genes(
         self,
