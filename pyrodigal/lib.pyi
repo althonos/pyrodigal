@@ -1,4 +1,5 @@
 import array
+import datetime
 import threading
 import typing
 from typing import (
@@ -16,7 +17,7 @@ from typing import (
 try:
     from typing import Literal
 except ImportError:
-    from typing_extensions import Literal
+    from typing_extensions import Literal  # type: ignore
 
 # --- Globals ----------------------------------------------------------------
 
@@ -36,6 +37,9 @@ MIN_SINGLE_GENOME: int
 IDEAL_SINGLE_GENOME: int
 PRODIGAL_VERSION: str
 
+_TRANSLATION_TABLE = Literal[
+    1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25
+]
 _DIVISION = Literal[
     "PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN", 
     "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"
@@ -147,7 +151,7 @@ class Nodes(typing.Sequence[Node]):
         closed: bool = False,
         min_gene: int = 90,
         min_edge_gene: int = 60,
-        translation_table: int = 11,
+        translation_table: _TRANSLATION_TABLE = 11,
     ) -> int: ...
     def reset_scores(self) -> None: ...
     def score(
@@ -191,7 +195,7 @@ class Gene:
     @property
     def gc_cont(self) -> float: ...
     @property
-    def translation_table(self) -> int: ...
+    def translation_table(self) -> _TRANSLATION_TABLE: ...
     @property
     def cscore(self) -> float: ...
     @property
@@ -207,7 +211,7 @@ class Gene:
     def confidence(self) -> float: ...
     def sequence(self) -> str: ...
     def translate(
-        self, translation_table: Optional[int] = None, unknown_residue: str = "X"
+        self, translation_table: Optional[_TRANSLATION_TABLE] = None, unknown_residue: str = "X"
     ) -> str: ...
 
 class Genes(typing.Sequence[Gene]):
@@ -256,7 +260,7 @@ class Genes(typing.Sequence[Gene]):
         file: TextIO,
         sequence_id: str,
         width: typing.Optional[int] = 60,
-        translation_table: typing.Optional[int] = None,
+        translation_table: typing.Optional[_TRANSLATION_TABLE] = None,
     ) -> int: ...
     def write_scores(
         self,
@@ -274,7 +278,7 @@ class TrainingInfo:
         self,
         gc: float,
         *,
-        translation_table: int = 11,
+        translation_table: _TRANSLATION_TABLE = 11,
         start_weight: float = 4.35,
         bias: Optional[Iterable[float]] = None,
         type_weights: Optional[Iterable[float]] = None,
@@ -290,9 +294,9 @@ class TrainingInfo:
     def __setstate__(self, state: Dict[str, object]) -> None: ...
     def __sizeof__(self) -> int: ...
     @property
-    def translation_table(self) -> int: ...
+    def translation_table(self) -> _TRANSLATION_TABLE: ...
     @translation_table.setter
-    def translation_table(self, table: int) -> None: ...
+    def translation_table(self, table: _TRANSLATION_TABLE) -> None: ...
     @property
     def gc(self) -> float: ...
     @gc.setter
@@ -404,7 +408,7 @@ class GeneFinder:
         *sequences: str,
         force_nonsd: bool = False,
         start_weight: float = 4.35,
-        translation_table: int = 11,
+        translation_table: _TRANSLATION_TABLE = 11,
     ) -> TrainingInfo: ...
     @typing.overload
     def train(
@@ -413,5 +417,5 @@ class GeneFinder:
         *sequences: Union[bytes, bytearray],
         force_nonsd: bool = False,
         start_weight: float = 4.35,
-        translation_table: int = 11,
+        translation_table: _TRANSLATION_TABLE = 11,
     ) -> TrainingInfo: ...
