@@ -23,7 +23,7 @@ jobs:
         - pp38-manylinux_aarch64
         - pp39-manylinux_aarch64
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up QEMU
@@ -63,7 +63,7 @@ jobs:
         - pp38-manylinux_x86_64
         - pp39-manylinux_x86_64
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
@@ -98,7 +98,7 @@ jobs:
         - pp38-macosx_x86_64
         - pp39-macosx_x86_64
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
@@ -128,7 +128,7 @@ jobs:
         - cp310-macosx_arm64
         - cp311-macosx_arm64
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
@@ -163,7 +163,7 @@ jobs:
         - pp38-win_amd64
         - pp39-win_amd64
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
@@ -186,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build source distribution
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python 3.11
@@ -256,7 +256,7 @@ jobs:
     name: Release
     needs: upload
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - uses: rasmus-saks/release-a-changelog-action@v1.0.1
@@ -272,7 +272,7 @@ jobs:
     - sdist
     - upload
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python 3.10
