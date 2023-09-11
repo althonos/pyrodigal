@@ -3,20 +3,20 @@ Output Formats
 
 .. currentmodule:: pyrodigal
 
-Pyrodigal was created among other things to skip parsing the results 
+Pyrodigal was created among other things to skip parsing the results
 from Prodigal while building a larger pipeline. Therefore, it's advised
 to manipulate the genes predicted by Pyrodigal through the object layer
 instead of writing them to a file only to parse it later.
 
-Nevertheless, Pyrodigal provides convenience methods to write the genes 
-from a `~pyrodigal.Genes` collection to a variety of formats, as found in the 
-Prodigal command line. Note that all these functions need to know the 
+Nevertheless, Pyrodigal provides convenience methods to write the genes
+from a `~pyrodigal.Genes` collection to a variety of formats, as found in the
+Prodigal command line. Note that all these functions need to know the
 name of the sequence they were obtained from.
 
 .. note::
-    
-    The methods shown before are implemented using only the Python 
-    interface, so it should be possible to replicate them using the 
+
+    The methods shown before are implemented using only the Python
+    interface, so it should be possible to replicate them using the
     attributes of the individual `Gene` objects.
 
 
@@ -32,7 +32,7 @@ found by Pyrodigal to a file or a file-like object:
     with open("genes.fna", "w") as dst:
         genes.write_genes(dst, sequence_id="seqXYZ")
 
-It's also possible to change the width of the FASTA columns, 
+It's also possible to change the width of the FASTA columns,
 if needed (use `math.inf` as the width to write 2-line FASTA):
 
 .. code:: python
@@ -45,7 +45,7 @@ if needed (use `math.inf` as the width to write 2-line FASTA):
 Translations
 ------------
 
-Use `Genes.write_translations` to write the protein sequences of all the 
+Use `Genes.write_translations` to write the protein sequences of all the
 genes found by Pyrodigal to a file or file-object:
 
 .. code:: python
@@ -55,7 +55,7 @@ genes found by Pyrodigal to a file or file-object:
         genes.write_translations(dst, sequence_id="seqXYZ")
 
 
-It's also possible to change the translation table and to control the 
+It's also possible to change the translation table and to control the
 width of the FASTA columns, if needed:
 
 .. code:: python
@@ -67,7 +67,7 @@ width of the FASTA columns, if needed:
 GFF
 ---
 
-Use `Genes.write_gff` to write the genes to a file or file-like object in GFF 
+Use `Genes.write_gff` to write the genes to a file or file-like object in GFF
 format:
 
 .. code:: python
@@ -76,7 +76,7 @@ format:
     with open("genes.gff", "w") as dst:
         genes.write_gff(dst, sequence_id="seqXYZ")
 
-Use ``header=False`` to skip writing the GFF3 header. This can be useful when 
+Use ``header=False`` to skip writing the GFF3 header. This can be useful when
 writing genes from different sequences to the same result file:
 
 .. code:: python
@@ -86,16 +86,16 @@ writing genes from different sequences to the same result file:
             genes = orf_finder.find_genes(str(record.seq))
             genes.write_gff(dst, sequence_id=record.id, header=(i == 0))
 
-Use ``translation_table=True`` to include the translation table of the 
-genes in the GFF attributes. This may be useful for genes predicted in 
-metagenomic mode, since they may have been predicted with non-standard 
+Use ``include_translation_table=True`` to include the translation table
+of the genes in the GFF attributes. This may be useful for genes predicted in
+metagenomic mode, since they may have been predicted with non-standard
 genetic codes.
 
 Genbank
 -------
 
-Use `Genes.write_genbank` to write the genes to a file or file-like object 
-in `GenBank <https://www.insdc.org/submitting-standards/feature-table/#3.1>`_ 
+Use `Genes.write_genbank` to write the genes to a file or file-like object
+in `GenBank <https://www.insdc.org/submitting-standards/feature-table/#3.1>`_
 format:
 
 .. code:: python
@@ -105,12 +105,12 @@ format:
         genes.write_genbank(dst, sequence_id="seqXYZ")
 
 .. note::
-    
+
     The original Prodigal outputs incomplete GenBank files containing only
-    the coordinates of the predicted genes inside 
-    `CDS <https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html#CDSB>`_ features, 
+    the coordinates of the predicted genes inside
+    `CDS <https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html#CDSB>`_ features,
     without including the translation or the original sequence. Since this is
-    not the most useful output, and often requires additional post-processing, 
+    not the most useful output, and often requires additional post-processing,
     Pyrodigal outputs a complete GenBank record instead.
 
 

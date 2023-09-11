@@ -2934,6 +2934,7 @@ cdef class Gene:
         self,
         object translation_table=None,
         char unknown_residue=b"X",
+        bint include_stop=True,
     ):
         """Translate the predicted gene into a protein sequence.
 
@@ -2944,6 +2945,11 @@ cdef class Gene:
                 was found with.
             unknown_residue (`str`): A single character to use for residues
                 translated from codons with unknown nucleotides.
+            include_stop (`bool`): Pass `False` to disable translating the
+                STOP codon into a star character (``*``) for complete genes.
+                `True` keeps the default behaviour of Prodigal, however it
+                often does not play nice with other programs or libraries
+                that will use the protein sequence for downstream processing.
 
         Returns:
             `str`: The proteins sequence as a string using the right
@@ -2953,6 +2959,9 @@ cdef class Gene:
         Raises:
             `ValueError`: when ``translation_table`` is not a valid
                 genetic code number.
+
+        .. versionadded:: 3.0.0
+            The ``include_stop`` keyword argument.
 
         """
         cdef size_t nucl_length
@@ -2968,7 +2977,8 @@ cdef class Gene:
         cdef char   aa
         cdef _gene* gene        = self.gene
         cdef int    slen        = self.owner.sequence.slen
-        cdef int    edge        = self.owner.nodes.nodes[gene.start_ndx].edge
+        cdef int    start_edge  = self.owner.nodes.nodes[gene.start_ndx].edge
+        cdef int    stop_edge   = self.owner.nodes.nodes[gene.stop_ndx].edge
         cdef int    strand      = self.owner.nodes.nodes[gene.start_ndx].strand
 
         # HACK: support changing the translation table (without allocating a
@@ -2983,12 +2993,7 @@ cdef class Gene:
 
         # compute the right length to hold the protein
         nucl_length = (<size_t> gene.end) - (<size_t> gene.begin) + 1
-        prot_length = nucl_length//3
-        # create an empty protein string that we can write to
-        # with the appropriate functions
-        protein = PyUnicode_New(prot_length, 0x7F)
-        kind    = PyUnicode_KIND(protein)
-        data    = PyUnicode_DATA(protein)
+        prot_length = nucl_length // 3
 
         # compute the offsets in the sequence
         if strand == 1:
@@ -2998,12 +3003,24 @@ cdef class Gene:
             begin = slen - gene.end
             end = slen - gene.begin
 
+        # check if the stop codon needs to be trimmed out
+        if not stop_edge and not include_stop:
+            prot_length -= 1
+            end -= 3
+
+        # create an empty protein string that we can write to
+        # with the appropriate functions
+        protein = PyUnicode_New(prot_length, 0x7F)
+        kind    = PyUnicode_KIND(protein)
+        data    = PyUnicode_DATA(protein)
+
         for i, j in enumerate(range(begin, end, 3)):
+            assert i < prot_length
             aa = self.owner.sequence._amino(
                 j,
                 tt,
                 strand=strand,
-                is_init=i==0 and not edge,
+                is_init=i==0 and not start_edge,
                 unknown_residue=unknown_residue
             )
             PyUnicode_WRITE(kind, data, i, aa)
@@ -3566,7 +3583,7 @@ cdef class Genes:
                 use to translation the genes. If `None` given, use the one
                 from the training info.
             include_stop (`bool`): Pass `False` to disable translating the
-                STOP codon into a star character (``*``)  for complete genes.
+                STOP codon into a star character (``*``) for complete genes.
                 `True` keeps the default behaviour of Prodigal, however it
                 often does not play nice with other programs or libraries
                 that will use the FASTA file for downstream processing.
@@ -3603,9 +3620,7 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
-            trans = gene.translate(translation_table)
-            if not include_stop:
-                trans = trans.rstrip('*')
+            trans = gene.translate(translation_table, include_stop=include_stop)
             for line in textwrap.wrap(trans, width=width):
                 n += file.write(line)
                 n += file.write("\n")

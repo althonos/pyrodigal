@@ -263,6 +263,7 @@ cdef class Gene:
         self,
         object translation_table=?,
         char unknown_residue=*,
+        bint include_stop=*,
     )
 
 cdef class Genes:

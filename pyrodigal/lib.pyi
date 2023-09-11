@@ -41,7 +41,7 @@ _TRANSLATION_TABLE = Literal[
     1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25
 ]
 _DIVISION = Literal[
-    "PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN", 
+    "PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN",
     "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"
 ]
 
@@ -211,7 +211,10 @@ class Gene:
     def confidence(self) -> float: ...
     def sequence(self) -> str: ...
     def translate(
-        self, translation_table: Optional[_TRANSLATION_TABLE] = None, unknown_residue: str = "X"
+        self,
+        translation_table: Optional[_TRANSLATION_TABLE] = None,
+        unknown_residue: str = "X",
+        include_stop: bool = True,
     ) -> str: ...
 
 class Genes(typing.Sequence[Gene]):

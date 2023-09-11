@@ -32,13 +32,16 @@ class TestGene(unittest.TestCase):
         ]
 
     def test_translate(self):
-        gene = self.preds[0]
-        prot = self.proteins[0].seq
-        self.assertEqual(self.preds[0].translation_table, 4)
-        self.assertEqual(gene.translate(), prot)
-        self.assertEqual(gene.translate(translation_table=4), prot)
-        self.assertNotEqual(gene.translate(translation_table=2), prot)
-        self.assertEqual(gene.translate(), prot)
+        for gene, prot in zip(self.preds, self.proteins):
+            self.assertEqual(self.preds[0].translation_table, 4)
+            self.assertEqual(gene.translate(), prot.seq)
+            self.assertEqual(gene.translate(translation_table=4), prot.seq)
+            self.assertNotEqual(gene.translate(translation_table=2), prot.seq)
+            self.assertEqual(gene.translate(), prot.seq)
+
+    def test_translate_no_include_stop(self):
+        for gene, prot in zip(self.preds, self.proteins):
+            self.assertEqual(gene.translate(include_stop=False), prot.seq.rstrip("*"))
 
     def test_translate_error(self):
         gene = self.preds[0]
