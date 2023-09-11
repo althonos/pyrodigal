@@ -13,6 +13,11 @@ from typing import (
     Union,
 )
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 # --- Globals ----------------------------------------------------------------
 
 _TARGET_CPU: str
@@ -30,6 +35,11 @@ METAGENOMIC_BINS: MetagenomicBins
 MIN_SINGLE_GENOME: int
 IDEAL_SINGLE_GENOME: int
 PRODIGAL_VERSION: str
+
+_DIVISION = Literal[
+    "PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN", 
+    "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"
+]
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -221,6 +231,13 @@ class Genes(typing.Sequence[Gene]):
     def __getstate__(self) -> Dict[str, object]: ...
     def __setstate__(self, state: Dict[str, object]) -> None: ...
     def clear(self) -> None: ...
+    def write_genbank(
+        self,
+        file: TextIO,
+        sequence_id: str,
+        str: _DIVISION = "BCT",
+        date: Optional[datetime.date] = None,
+    )
     def write_gff(
         self,
         file: TextIO,

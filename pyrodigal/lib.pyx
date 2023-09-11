@@ -149,6 +149,7 @@ else:
 # ----------------------------------------------------------------------------
 
 import array
+import datetime
 import itertools
 import textwrap
 import threading
@@ -3345,6 +3346,78 @@ cdef class Genes:
 
     # --- Python interface ---------------------------------------------------
 
+    cpdef ssize_t write_genbank(
+        self,
+        object file,
+        str sequence_id,
+        str division="BCT",
+        object date=None,
+    ) except -1:
+        cdef Gene           gene
+        cdef ssize_t        i
+        cdef ssize_t        n    = 0
+
+        # use today date if none given
+        if date is None:
+            date = datetime.date.today()
+        elif not isinstance(date, datetime.date):
+            ty = type(date).__name__
+            raise TypeError(f"Expected datetime.date, found {ty}")
+
+        # header
+        n += file.write("LOCUS       {:<23} ".format(sequence_id))
+        n += file.write("{} bp    ".format(len(self.sequence)))
+        n += file.write("DNA     linear   {} ".format(division))
+        n += file.write(date.strftime("%d-%b-%y").upper())
+        n += file.write("\n")
+
+        # prodigal reference
+        n += file.write("REFERENCE   1  (bases 1 to {})\n".format(len(self.sequence)))
+        n += file.write("  AUTHORS   Hyatt,D., Chen,G-L., LoCascio,P.F., Land,M.L., Larimer,F.W.\n")
+        n += file.write("            Hauser,L.J.\n")
+        n += file.write("  TITLE     Prodigal: prokaryotic gene recognition and translation initiation\n")
+        n += file.write("            site identification\n")
+        n += file.write("  JOURNAL   BMC Bioinformatics. 2010;11:119.\n")
+        n += file.write("   PUBMED   20211023\n")
+        # pyrodigal reference
+        n += file.write("REFERENCE   2  (bases 1 to {})\n".format(len(self.sequence)))
+        n += file.write("  AUTHORS   Larralde,M.\n")
+        n += file.write("  TITLE     Pyrodigal: Python bindings and interface to Prodigal, an efficient\n")
+        n += file.write("            method for gene prediction in prokaryotes\n")
+        n += file.write("  JOURNAL   Journal of Open Source Software, 7(72), 4296.\n")
+
+        # Features section
+        n += file.write("FEATURES             Location/Qualifiers\n")
+        for i, gene in enumerate(self):
+            begin = "<{}".format(gene.begin) if gene.start_node.edge else "{}".format(gene.begin)
+            end = ">{}".format(gene.end) if gene.stop_node.edge else "{}".format(gene.end)
+            if gene.strand == 1:
+                n += file.write("     CDS             {}..{}\n".format(begin, end))
+            else:
+                n += file.write("     CDS             complement({}..{})\n".format(begin, end))
+            n += file.write("{:21}/codon_start=1\n".format(""))
+            n += file.write("{:21}/inference=\"ab initio prediction:pyrodigal:{}\"\n".format("", __version__))
+            n += file.write("{:21}/locus_tag=\"{}_{}\"\n".format("", sequence_id, i+1))
+            n += file.write("{:21}/transl_table={}\n".format("", self.training_info.translation_table))
+            translation = "/translation=\"{}\"".format(gene.translate().rstrip("*"))
+            for block in textwrap.wrap(translation, 59):
+                n += file.write(" "*21)
+                n += file.write(block)
+                n += file.write("\n")
+
+        # sequence section
+        seq = str(self.sequence).lower()
+        n += file.write("ORIGIN\n")
+        for i in range(0, len(seq), 60):
+            n += file.write("{:>9}".format(i+1))
+            for j in range(i, min(i+60, len(seq)), 10):
+                n += file.write(" ")
+                n += file.write(seq[j:j+10])
+            n += file.write("\n")
+
+        n += file.write("//\n")
+        return n
+
     cpdef ssize_t write_gff(
         self,
         object file,
@@ -3385,14 +3458,14 @@ cdef class Genes:
         cdef str            desc = self.metagenomic_bin.description if self.meta else "Ab initio"
 
         if header:
-            file.write("##gff-version  3\n")
-        file.write(
+            n += file.write("##gff-version  3\n")
+        n += file.write(
             f"# Sequence Data: "
             f"seqnum={self._num_seq};"
             f"seqlen={len(self.sequence)};"
             f'seqhdr="{sequence_id}"\n'
         )
-        file.write(
+        n += file.write(
             f"# Model Data: "
             f"version=pyrodigal.v{__version__};"
             f"run_type={run};"

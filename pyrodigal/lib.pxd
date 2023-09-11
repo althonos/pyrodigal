@@ -297,6 +297,7 @@ cdef class Genes:
     ) noexcept nogil
     cdef int _clear(self) except 1 nogil
 
+    cpdef ssize_t write_genbank(self, object file, str sequence_id, str division=*, object date=*) except -1
     cpdef ssize_t write_gff(self, object file, str sequence_id, bint header=*, bint translation_table=*) except -1
     cpdef ssize_t write_genes(self, object file, str sequence_id, object width=*) except -1
     cpdef ssize_t write_translations(self, object file, str sequence_id, object width=*, object translation_table=?) except -1
