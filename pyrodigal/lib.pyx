@@ -3370,6 +3370,34 @@ cdef class Genes:
         str division="BCT",
         object date=None,
     ) except -1:
+        """Write predicted genes and sequence to ``file`` in GenBank format.
+
+        Arguments:
+            file (`io.TextIOBase`): A file open in text mode where to write
+                the GenBank record.
+            sequence_id (`str`): The identifier of the sequence these
+                genes were extracted from.
+            division (`str`): The GenBank division to write in the
+                GenBank header. Should often be ``BCT`` (for bacterial
+                sequences) given the scope of Prodigal.
+            date (`datetime.date`, optional): The date to write in the
+                GenBank header, or `None` to use `~datetime.date.now`.
+
+        Returns:
+            `int`: The number of bytes written to the file.
+
+        Note:
+            The original Prodigal outputs incomplete GenBank files containing 
+            only the coordinates of the predicted genes inside
+            `CDS <https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html#CDSB>`_ 
+            features, without including the translation or the original 
+            sequence. Since this is not the most useful output, and often 
+            requires additional post-processing, Pyrodigal outputs a complete 
+            GenBank record instead.
+
+        .. versionadded:: 3.0.0
+
+        """
         cdef Gene           gene
         cdef ssize_t        i
         cdef ssize_t        n    = 0
@@ -3520,7 +3548,12 @@ cdef class Genes:
 
         return n
 
-    cpdef ssize_t write_genes(self, object file, str sequence_id, object width=70) except -1:
+    cpdef ssize_t write_genes(
+        self,
+        object file,
+        str sequence_id,
+        object width=70
+    ) except -1:
         """Write nucleotide sequences of genes to ``file`` in FASTA format.
 
         Arguments:
