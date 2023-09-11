@@ -40,7 +40,7 @@ def argument_parser():
         required=False,
         metavar="output_type",
         help="Select output format.",
-        choices={"gff"},
+        choices={"gff", "gbk"},
         default="gff",
     )
     parser.add_argument(
@@ -206,9 +206,11 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 return (sequence.id, orf_finder.find_genes(sequence.seq))
 
             for seq_id, preds in parallel_map(process, sequences):
-                # write output in GFF format
+                # write output in GFF or GBK format
                 if args.f == "gff":
                     preds.write_gff(out_file, seq_id)
+                elif args.f == "gbk":
+                    preds.write_gbk(out_file, seq_id)
                 # if asked, write nucleotide sequences of genes
                 if nuc_file is not None:
                     preds.write_genes(nuc_file, seq_id)
