@@ -5,7 +5,7 @@ ctypedef unsigned char* bitmap_t
 
 cdef extern from "bitmap.h" nogil:
 
-    unsigned char test(bitmap_t, int)
-    void clear(bitmap_t, int)
-    void set(bitmap_t, int)
-    void toggle(bitmap_t, int)
+    unsigned char test(bitmap_t, int) noexcept
+    void clear(bitmap_t, int) noexcept
+    void set(bitmap_t, int) noexcept
+    void toggle(bitmap_t, int) noexcept

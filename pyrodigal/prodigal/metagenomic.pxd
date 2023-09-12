@@ -19,4 +19,4 @@ cdef extern from "metagenomic.h" nogil:
         # double weight
         # double gc
 
-    void initialize_metagenomic_bins(_metagenomic_bin*)
+    void initialize_metagenomic_bins(_metagenomic_bin*) noexcept
