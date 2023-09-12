@@ -177,7 +177,7 @@ cdef extern from *:
 # --- Module-level constants -------------------------------------------------
 
 cdef size_t MIN_MASKS_ALLOC      = 8
-cdef size_t MIN_GENES_ALLOC      = 8
+cdef size_t MIN_GENES_ALLOC      = 32
 cdef size_t MIN_NODES_ALLOC      = 8 * MIN_GENES_ALLOC
 cdef int    _IDEAL_SINGLE_GENOME = 100000
 cdef int    _MIN_SINGLE_GENOME   = 20000
