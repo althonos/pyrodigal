@@ -32,7 +32,7 @@ cdef class Mask:
     cpdef size_t __sizeof__(self)
 
     @staticmethod
-    cdef bint _intersects(_mask* mask, int begin, int end) nogil
+    cdef bint _intersects(_mask* mask, int begin, int end) noexcept nogil
 
     cpdef bint intersects(self, int begin, int end)
 
@@ -47,7 +47,7 @@ cdef class Masks:
         const int  begin,
         const int  end,
     ) except NULL nogil
-    cdef int _clear(self) nogil
+    cdef int _clear(self) noexcept nogil
 
     cpdef size_t __sizeof__(self)
 
@@ -88,7 +88,7 @@ cdef class Sequence:
         int strand=*,
         bint is_init=*,
         char unknown_residue=*
-    ) nogil
+    ) noexcept nogil
     cdef int _shine_dalgarno_exact(
         self,
         const int pos,
@@ -172,13 +172,13 @@ cdef class Node:
         Sequence seq,
         const _training* tinf,
         const int stage
-    ) nogil
+    ) noexcept nogil
     @staticmethod
     cdef void _score_upstream_composition(
         _node* node,
         Sequence seq,
         const _training* tinf,
-    ) nogil
+    ) noexcept nogil
 
 cdef class Nodes:
     # contiguous array of nodes, with capacity and length
@@ -204,7 +204,7 @@ cdef class Nodes:
         const _training* tinf,
         ConnectionScorer scorer,
         const bint final
-    ) nogil
+    ) noexcept nogil
     cdef int _extract(
         self,
         Sequence sequence,
@@ -314,12 +314,18 @@ cdef class TrainingInfo:
     cpdef size_t __sizeof__(self)
 
     @staticmethod
-    cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil
+    cdef void _update_motif_counts(
+        double mcnt[4][4][4096],
+        const double *zero,
+        Sequence seq,
+        _node* nod,
+        int stage
+    ) noexcept nogil
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) except * nogil
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil
+    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) noexcept nogil
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=*) noexcept nogil
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) noexcept nogil
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) noexcept nogil
 
     cpdef dict to_dict(self)
     cpdef object dump(self, object fp)

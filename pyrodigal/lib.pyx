@@ -271,7 +271,7 @@ cdef class Mask:
     # --- C interface -------------------------------------------------------
 
     @staticmethod
-    cdef bint _intersects(_mask* mask, int begin, int end) nogil:
+    cdef bint _intersects(_mask* mask, int begin, int end) noexcept nogil:
         if mask == NULL:
             return False
         return mask.begin < end and begin < mask.end
@@ -412,7 +412,7 @@ cdef class Masks:
         mask.end = end
         return mask
 
-    cdef int _clear(self) nogil:
+    cdef int _clear(self) noexcept nogil:
         """Remove all masks from the vector.
         """
         cdef size_t old_length
@@ -732,7 +732,7 @@ cdef class Sequence:
         int strand = 1,
         bint is_init = False,
         char unknown_residue = b"X"
-    ) nogil:
+    ) noexcept nogil:
         cdef uint8_t x0
         cdef uint8_t x1
         cdef uint8_t x2
@@ -1484,7 +1484,7 @@ cdef class Node:
         Sequence seq,
         const _training* tinf,
         const int stage
-    ) nogil:
+    ) noexcept nogil:
         cdef int i
         cdef int j
         cdef int start
@@ -1545,7 +1545,7 @@ cdef class Node:
         _node* node,
         Sequence seq,
         const _training* tinf,
-    ) nogil:
+    ) noexcept nogil:
         cdef int i
         cdef int start
         cdef int count = 0
@@ -1817,7 +1817,7 @@ cdef class Nodes:
         const _training* tinf,
         ConnectionScorer scorer,
         const bint final
-    ) nogil:
+    ) noexcept nogil:
         cdef int    i
         cdef int    j
         cdef int    min
@@ -3399,12 +3399,12 @@ cdef class Genes:
             `int`: The number of bytes written to the file.
 
         Note:
-            The original Prodigal outputs incomplete GenBank files containing 
+            The original Prodigal outputs incomplete GenBank files containing
             only the coordinates of the predicted genes inside
-            `CDS <https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html#CDSB>`_ 
-            features, without including the translation or the original 
-            sequence. Since this is not the most useful output, and often 
-            requires additional post-processing, Pyrodigal outputs a complete 
+            `CDS <https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html#CDSB>`_
+            features, without including the translation or the original
+            sequence. Since this is not the most useful output, and often
+            requires additional post-processing, Pyrodigal outputs a complete
             GenBank record instead.
 
         .. versionadded:: 3.0.0
@@ -4118,14 +4118,20 @@ cdef class TrainingInfo:
     # --- C interface --------------------------------------------------------
 
     @staticmethod
-    cdef void _update_motif_counts(double mcnt[4][4][4096], double *zero, Sequence seq, _node* nod, int stage) nogil:
-        cdef int     i
-        cdef int     j
-        cdef int     k
-        cdef int     mer
-        cdef int     start
-        cdef int     spacendx
-        cdef _motif* mot      = &nod.mot
+    cdef void _update_motif_counts(
+        double mcnt[4][4][4096],
+        double *zero,
+        Sequence seq,
+        const _node* nod,
+        int stage
+    ) noexcept nogil:
+        cdef int           i
+        cdef int           j
+        cdef int           k
+        cdef int           mer
+        cdef int           start
+        cdef int           spacendx
+        cdef const _motif* mot      = &nod.mot
 
         if nod.type == node_type.STOP or nod.edge == 1:
             return
@@ -4170,7 +4176,12 @@ cdef class TrainingInfo:
         elif stage == 2:
             mcnt[mot.len-3][mot.spacendx][mot.ndx] += 1.0
 
-    cdef void _calc_dicodon_gene(self, Sequence seq, _node* nodes, int ipath) except * nogil:
+    cdef void _calc_dicodon_gene(
+        self,
+        Sequence seq,
+        const _node* nodes,
+        int ipath
+    ) noexcept nogil:
         """Compute the dicodon frequency in genes and in the background.
 
         Stores the log-likelihood of each 6-mer relative to the background.
@@ -4241,7 +4252,7 @@ cdef class TrainingInfo:
             elif self.tinf.gene_dc[i] < -5.0:
                 self.tinf.gene_dc[i] = -5.0
 
-    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) except * nogil:
+    cdef void _count_upstream_composition(self, Sequence seq, int pos, int strand=1) noexcept nogil:
         cdef int start
         cdef int j
         cdef int i     = 0
@@ -4272,7 +4283,7 @@ cdef class TrainingInfo:
                     self.tinf.ups_comp[i][_complement[seq.digits[pos+j]] & 0b11] += 1
                 i += 1
 
-    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) except * nogil:
+    cdef void _train_starts_sd(self, Nodes nodes, Sequence seq) noexcept nogil:
         cdef int phase
         cdef int rbs[3]
         cdef int type[3]
@@ -4482,7 +4493,7 @@ cdef class TrainingInfo:
                   if self.tinf.ups_comp[i][j] < -4.0:
                       self.tinf.ups_comp[i][j] = -4.0
 
-    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) except * nogil:
+    cdef void _train_starts_nonsd(self, Nodes nodes, Sequence seq) noexcept nogil:
         cdef int i
         cdef int j
         cdef int k
