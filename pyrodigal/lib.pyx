@@ -70,6 +70,7 @@ References:
 
 # ----------------------------------------------------------------------------
 
+cimport cython
 from cpython cimport Py_buffer
 from cpython.buffer cimport PyBUF_FORMAT, PyBUF_READ, PyBUF_WRITE
 from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
@@ -216,6 +217,7 @@ cdef inline size_t new_capacity(size_t capacity) nogil:
 
 # --- Sequence mask ----------------------------------------------------------
 
+@cython.freelist(8)
 cdef class Mask:
     """The coordinates of a masked region.
 
@@ -442,6 +444,7 @@ cdef class Masks:
 
 # --- Input sequence ---------------------------------------------------------
 
+@cython.freelist(8)
 cdef class Sequence:
     """A digitized input sequence.
 
@@ -1359,6 +1362,7 @@ cdef class ConnectionScorer:
 
 # --- Nodes ------------------------------------------------------------------
 
+@cython.freelist(8)
 cdef class Node:
     """A dynamic programming node used by Prodigal to score ORFs.
 
@@ -2604,6 +2608,7 @@ cdef struct _gene:
     int start_ndx
     int stop_ndx
 
+@cython.freelist(8)
 cdef class Gene:
     """A single raw gene found by Prodigal within a DNA sequence.
 
@@ -4769,6 +4774,7 @@ cdef class TrainingInfo:
 
 # --- Metagenomic Bins -------------------------------------------------------
 
+@cython.freelist(8)
 cdef class MetagenomicBin:
     """A pre-trained collection used to find genes in metagenomic mode.
 
