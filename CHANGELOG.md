@@ -6,11 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha3...HEAD
+
+
+## [v3.0.0-alpha3] - 2023-09-11
+[v3.0.0-alpha3]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...v3.0.0-alpha3
+
+### Fixed
+- Merge several `nogil` sections in `Sequence` constructor.
+- Several Cython functions missing a `noexcept` qualifier.
+
+### Changed
+- Use Cython `freelist` for allocating `Node`, `Gene`, `MetagenomicBin` and `Mask`.
+- Increase minimum allocation for `Genes` and `Nodes` to reduce early reallocations.
 
 
 ## [v3.0.0-alpha2] - 2023-09-11
-[v3.0.0-alpha2]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...v3.0.0-alpha1
+[v3.0.0-alpha2]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha1...v3.0.0-alpha2
 
 ### Added
 - `Genes.write_genbank` method to write a GenBank record with all predicted genes from a sequence.
