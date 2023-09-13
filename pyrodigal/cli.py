@@ -210,7 +210,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 if args.f == "gff":
                     preds.write_gff(out_file, seq_id)
                 elif args.f == "gbk":
-                    preds.write_gbk(out_file, seq_id)
+                    preds.write_genbank(out_file, seq_id)
                 # if asked, write nucleotide sequences of genes
                 if nuc_file is not None:
                     preds.write_genes(nuc_file, seq_id)
