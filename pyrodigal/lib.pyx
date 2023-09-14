@@ -2126,8 +2126,11 @@ cdef class Nodes:
     ) except -1 nogil:
         cdef double  score[3]
         cdef double  lfac
+        cdef double  lfac_min
+        cdef double  lfac_max
         cdef double  no_stop
         cdef double  gsize
+        cdef double  tmp
         cdef ssize_t last[3]
         cdef size_t  phase
         cdef ssize_t j
@@ -2142,6 +2145,9 @@ cdef class Nodes:
             no_stop =  ((1-tinf.gc)*(1-tinf.gc)*tinf.gc)     / 4.0
             no_stop += ((1-tinf.gc)*(1-tinf.gc)*(1-tinf.gc)) / 8.0
             no_stop = 1 - no_stop
+
+        lfac_max = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0))
+        lfac_min = log((1-pow(no_stop, 80))/pow(no_stop, 80))
 
         # Initial Pass: Score coding potential (start->stop)
         score[0] = score[1] = score[2] = 0.0
@@ -2189,7 +2195,7 @@ cdef class Nodes:
                 elif self.nodes[i].cscore > score[phase]:
                     score[phase] = self.nodes[i].cscore
                 else:
-                    self.nodes[i].cscore -= (score[phase] - self.nodes[i].cscore);
+                    self.nodes[i].cscore -= (score[phase] - self.nodes[i].cscore)
 
         # Third Pass: Add length-based factor to the score
         # Penalize start nodes based on length to their left
@@ -2197,16 +2203,14 @@ cdef class Nodes:
             if self.nodes[i].strand == 1:
                 phase = self.nodes[i].ndx%3
                 if self.nodes[i].type == node_type.STOP:
-                    score[phase] = -10000.0;
+                    score[phase] = -10000.0
                 else:
                     gsize = ((<double> self.nodes[i].stop_val - self.nodes[i].ndx)+3.0)/3.0
                     if gsize > 1000.0:
-                        lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0))
-                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
-                        lfac *= (gsize - 80) / 920.0
+                        lfac = (lfac_max - lfac_min) * (gsize - 80) / 920.0
                     else:
-                        lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize))
-                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80))
+                        tmp = pow(no_stop, gsize)
+                        lfac = log((1-tmp)/tmp) - lfac_min
                     if lfac > score[phase]:
                         score[phase] = lfac
                     else:
@@ -2216,22 +2220,20 @@ cdef class Nodes:
                     self.nodes[i].cscore += lfac
         for i in reversed(range(nn)):
             if self.nodes[i].strand == -1:
-                phase = self.nodes[i].ndx%3;
+                phase = self.nodes[i].ndx%3
                 if self.nodes[i].type == node_type.STOP:
-                    score[phase] = -10000.0;
+                    score[phase] = -10000.0
                 else:
                     gsize = ((<double> self.nodes[i].ndx - self.nodes[i].stop_val)+3.0)/3.0
-                    if(gsize > 1000.0):
-                        lfac = log((1-pow(no_stop, 1000.0))/pow(no_stop, 1000.0));
-                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
-                        lfac *= (gsize - 80) / 920.0;
+                    if gsize > 1000.0:
+                        lfac = (lfac_max - lfac_min) * (gsize - 80) / 920.0
                     else:
-                        lfac = log((1-pow(no_stop, gsize))/pow(no_stop, gsize));
-                        lfac -= log((1-pow(no_stop, 80))/pow(no_stop, 80));
+                        tmp = pow(no_stop, gsize)
+                        lfac = log((1-tmp)/tmp) - lfac_min
                     if lfac > score[phase]:
                         score[phase] = lfac
                     else:
-                        lfac -= fmax(fmin(score[phase] - lfac, lfac), 0);
+                        lfac -= fmax(fmin(score[phase] - lfac, lfac), 0)
                     if lfac > 3.0 and self.nodes[i].cscore < 0.5*lfac:
                         self.nodes[i].cscore = 0.5*lfac
                     self.nodes[i].cscore += lfac
