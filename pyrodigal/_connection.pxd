@@ -21,14 +21,14 @@ cdef extern from "_connection.h" nogil:
         const int        final
     )
 
-    ctypedef void (*connection_function)(
-        const _node*,
-        const _node*,
-        _node*,
-        const _training*,
-        const bint,
-    )
-    cdef connection_function CONNECTION_FUNCTIONS[4]
+    # ctypedef void (*connection_function)(
+    #     const _node*,
+    #     const _node*,
+    #     _node*,
+    #     const _training*,
+    #     const bint,
+    # )
+    # cdef connection_function CONNECTION_FUNCTIONS[4]
 
     cdef void _score_connection_forward_start(
         const _node*     nodes,

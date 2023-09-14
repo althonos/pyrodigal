@@ -88,7 +88,7 @@ static inline double _intergenic_mod(
 }
 
 
-static void _score_connection_forward_start(
+static inline void _score_connection_forward_start(
     const struct _node*              nodes,
     const struct _node*     restrict n1,
           struct _node*     restrict n2,
@@ -137,7 +137,7 @@ static void _score_connection_forward_start(
 }
 
 
-static void _score_connection_forward_stop(
+static inline void _score_connection_forward_stop(
     const struct _node*              nodes,
     const struct _node*     restrict n1,
           struct _node*     restrict n2,
@@ -199,7 +199,7 @@ static void _score_connection_forward_stop(
 }
 
 
-static void _score_connection_backward_start(
+static inline void _score_connection_backward_start(
     const struct _node*              nodes,
     const struct _node*     restrict n1,
           struct _node*     restrict n2,
@@ -264,7 +264,7 @@ static void _score_connection_backward_start(
 }
 
 
-static void _score_connection_backward_stop(
+static inline void _score_connection_backward_stop(
     const struct _node*              nodes,
     const struct _node*     restrict n1,
           struct _node*     restrict n2,
@@ -364,20 +364,20 @@ static void _score_connection_backward_stop(
 }
 
 
-typedef void(*connection_function)(
-    const struct _node*,
-    const struct _node*,
-          struct _node*,
-    const struct _training*,
-    const int
-);
+// typedef void(*connection_function)(
+//     const struct _node*,
+//     const struct _node*,
+//           struct _node*,
+//     const struct _training*,
+//     const int
+// );
 
-static connection_function CONNECTION_FUNCTIONS[4] = {
-    _score_connection_forward_start,
-    _score_connection_forward_stop,
-    _score_connection_backward_start,
-    _score_connection_backward_stop,
-};
+// static connection_function CONNECTION_FUNCTIONS[4] = {
+//     _score_connection_forward_start,
+//     _score_connection_forward_stop,
+//     _score_connection_backward_start,
+//     _score_connection_backward_stop,
+// };
 
 
 static inline void _score_connections(
@@ -394,8 +394,14 @@ static inline void _score_connections(
     int kind;
     kind = 2*(node_strands[i] == -1) + 1*(node_types[i] == STOP);
     for (j = min; j < i; j++)
-        if (!skip_connection[j])
-            CONNECTION_FUNCTIONS[kind](nodes, &nodes[j], &nodes[i], tinf, final);
+        if (!skip_connection[j]) {
+            switch(kind) {
+                case 0: _score_connection_forward_start( nodes, &nodes[j], &nodes[i], tinf, final); break;
+                case 1: _score_connection_forward_stop(  nodes, &nodes[j], &nodes[i], tinf, final); break;
+                case 2: _score_connection_backward_start(nodes, &nodes[j], &nodes[i], tinf, final); break;
+                case 3: _score_connection_backward_stop( nodes, &nodes[j], &nodes[i], tinf, final); break;
+            }
+        }
 }
 
 
