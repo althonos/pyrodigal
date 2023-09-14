@@ -827,7 +827,7 @@ cdef class Sequence:
         self,
         const int pos,
         const int start,
-        const _training* tinf,
+        const double rbs_wt[28],
         const int strand
     ) noexcept nogil:
         cdef int i
@@ -915,9 +915,9 @@ cdef class Sequence:
                 else:
                     cur_val = 0
                 # record the motif only if this is the maximal scoring motif so far
-                if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
+                if rbs_wt[cur_val] < rbs_wt[max_val]:
                     continue
-                if tinf.rbs_wt[cur_val] == tinf.rbs_wt[max_val] and cur_val < max_val:
+                if rbs_wt[cur_val] == rbs_wt[max_val] and cur_val < max_val:
                     continue
                 max_val = cur_val
 
@@ -927,7 +927,7 @@ cdef class Sequence:
         self,
         const int pos,
         const int start,
-        const _training* tinf,
+        const double rbs_wt[28],
         const int strand
     ) noexcept nogil:
         cdef int i
@@ -1001,9 +1001,9 @@ cdef class Sequence:
                     elif dis_flag == 2: cur_val = 17
                     elif dis_flag == 3: cur_val = 3
                 # record the motif only if this is the maximal scoring motif so far
-                if tinf.rbs_wt[cur_val] < tinf.rbs_wt[max_val]:
+                if rbs_wt[cur_val] < rbs_wt[max_val]:
                     continue
-                if tinf.rbs_wt[cur_val] == tinf.rbs_wt[max_val] and cur_val < max_val:
+                if rbs_wt[cur_val] == rbs_wt[max_val] and cur_val < max_val:
                     continue
                 max_val = cur_val
 
@@ -1078,9 +1078,9 @@ cdef class Sequence:
         cdef int phase
         with nogil:
             if exact:
-                phase = self._shine_dalgarno_exact(pos, start, training_info.tinf, strand)
+                phase = self._shine_dalgarno_exact(pos, start, training_info.tinf.rbs_wt, strand)
             else:
-                phase = self._shine_dalgarno_mm(pos, start, training_info.tinf, strand)
+                phase = self._shine_dalgarno_mm(pos, start, training_info.tinf.rbs_wt, strand)
 
         return phase
 
@@ -2260,8 +2260,8 @@ cdef class Nodes:
                 for j in range(self.nodes[i].ndx - 20, self.nodes[i].ndx - 5):
                     if j < 0:
                         continue
-                    cur_sc[0] = seq._shine_dalgarno_exact(j, self.nodes[i].ndx, tinf, strand=1)
-                    cur_sc[1] = seq._shine_dalgarno_mm(j, self.nodes[i].ndx, tinf, strand=1)
+                    cur_sc[0] = seq._shine_dalgarno_exact(j, self.nodes[i].ndx, tinf.rbs_wt, strand=1)
+                    cur_sc[1] = seq._shine_dalgarno_mm(j, self.nodes[i].ndx, tinf.rbs_wt, strand=1)
                     if cur_sc[0] > self.nodes[i].rbs[0]:
                         self.nodes[i].rbs[0] = cur_sc[0]
                     if cur_sc[1] > self.nodes[i].rbs[1]:
@@ -2270,8 +2270,8 @@ cdef class Nodes:
                 for j in range(slen - self.nodes[i].ndx - 21, slen - self.nodes[i].ndx - 6):
                     if j >= slen:
                         continue
-                    cur_sc[0] = seq._shine_dalgarno_exact(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
-                    cur_sc[1] = seq._shine_dalgarno_mm(j, slen-1-self.nodes[i].ndx, tinf, strand=-1)
+                    cur_sc[0] = seq._shine_dalgarno_exact(j, slen-1-self.nodes[i].ndx, tinf.rbs_wt, strand=-1)
+                    cur_sc[1] = seq._shine_dalgarno_mm(j, slen-1-self.nodes[i].ndx, tinf.rbs_wt, strand=-1)
                     if cur_sc[0] > self.nodes[i].rbs[0]:
                         self.nodes[i].rbs[0] = cur_sc[0]
                     if cur_sc[1] > self.nodes[i].rbs[1]:

@@ -93,14 +93,14 @@ cdef class Sequence:
         self,
         const int pos,
         const int start,
-        const _training* tinf,
+        const double rbs_wt[28],
         const int strand
     ) noexcept nogil
     cdef int _shine_dalgarno_mm(
         self,
         const int pos,
         const int start,
-        const _training* tinf,
+        const double rbs_wt[28],
         const int strand
     ) noexcept nogil
 
