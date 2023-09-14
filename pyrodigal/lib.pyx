@@ -122,8 +122,6 @@ from pyrodigal._connection cimport (
     _score_connection_backward_start,
     _score_connection_backward_stop,
     _score_connections,
-    connection_function,
-    CONNECTION_FUNCTIONS,
 )
 from pyrodigal.impl.generic cimport skippable_generic
 
