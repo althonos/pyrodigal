@@ -566,22 +566,23 @@ class build_clib(_build_clib):
             self._write_source_split(training_temp, index, lines)
 
     def _copy_prodigal_sources(self):
-        # copy source
+        # copy source folder
         self.mkpath(os.path.join(self.build_src, "vendor", "Prodigal"))
         for c_file in glob.iglob(os.path.join("vendor", "Prodigal", "*.c")):
             self.copy_file(c_file, os.path.join(self.build_src, c_file))
         for h_file in glob.iglob(os.path.join("vendor", "Prodigal", "*.h")):
-            self.copy_file(h_file, os.path.join(self.build_src, h_file))
-
-    def build_libraries(self, libraries):
-        # copy Prodigal source files to the build folder so they can be patched
-        self._copy_prodigal_sources()
+            if os.path.basename(h_file) != "node.h":
+                self.copy_file(h_file, os.path.join(self.build_src, h_file))
         # replace `node.h` with the packed `struct _node` 
-        shutil.copy(
+        self.copy_file(
             os.path.join("pyrodigal", "prodigal", "node.h"),
             os.path.join(self.build_src, "vendor", "Prodigal", "node.h"),
         )
 
+    def build_libraries(self, libraries):
+        # copy Prodigal source files to the build folder so they can be patched
+        self._copy_prodigal_sources()
+        
         # split the huge `training.c` file in small chunks with individual
         # functions so that it can compile even on low-memory machines
         self.make_file(
