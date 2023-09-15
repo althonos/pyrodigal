@@ -1548,11 +1548,12 @@ cdef class Node:
         Sequence seq,
         const _training* tinf,
     ) noexcept nogil:
-        cdef int i
-        cdef int start
-        cdef int count = 0
-        cdef int mer
-        cdef int strand
+        cdef int    i
+        cdef int    start
+        cdef int    mer
+        cdef int    strand
+        cdef int    count  = 0
+        cdef double uscore = 0.0
 
         if node.strand == 1:
             start = node.ndx
@@ -1561,15 +1562,19 @@ cdef class Node:
             start = seq.slen - 1 - node.ndx
             strand = -1
 
-        node.uscore = 0.0;
-        for i in range(1, 45):
-            if i > 2 and i < 15:
-                continue
+        for i in range(1, 3):
             if i > start:
-                continue
+                break
             mer = _mer_ndx(seq.digits, seq.slen, start - i, 1, strand=strand)
-            node.uscore += 0.4 * tinf.st_wt * tinf.ups_comp[count][mer]
+            uscore += 0.4 * tinf.st_wt * tinf.ups_comp[count][mer]
             count += 1
+        for i in range(15, 45):
+            if i > start:
+                break
+            mer = _mer_ndx(seq.digits, seq.slen, start - i, 1, strand=strand)
+            uscore += 0.4 * tinf.st_wt * tinf.ups_comp[count][mer]
+            count += 1
+        node.uscore = uscore
 
 cdef class Nodes:
     """A list of dynamic programming nodes used by Prodigal to score ORFs.
