@@ -1597,6 +1597,7 @@ cdef class Nodes:
 
     def __cinit__(self):
         self.nodes = NULL
+        self.nodes_raw = NULL
         self.capacity = 0
         self.length = 0
 
@@ -1604,7 +1605,7 @@ cdef class Nodes:
         self._clear()
 
     def __dealloc__(self):
-        PyMem_Free(self.nodes)
+        PyMem_Free(self.nodes_raw)
 
     def __copy__(self):
         return self.copy()
@@ -1723,15 +1724,26 @@ cdef class Nodes:
 
     cdef int _allocate(self, size_t capacity) except 1:
         # record new capacity
-        cdef size_t old_capacity = self.capacity
+        cdef size_t old_capacity  = self.capacity
+        cdef void*  old_nodes_raw = self.nodes_raw
+        cdef _node* old_nodes     = self.nodes
+
+        # allocate new array        
         self.capacity = capacity
-        # allocate node array
-        self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
-        if self.nodes == NULL:
+        self.nodes_raw = PyMem_Malloc(self.capacity * sizeof(_node) + 0x7f)
+        self.nodes = <_node*> ((<uintptr_t> self.nodes_raw + 0x7f) & (~0x7f))
+        if self.nodes_raw == NULL:
             raise MemoryError("Failed to reallocate node array")
-        # clean newly-allocated memory
-        if self.capacity > old_capacity:
-            memset(&self.nodes[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_node))
+
+        with nogil:
+            # copy and free old block
+            if old_capacity > 0 and old_nodes != NULL:
+                memcpy(self.nodes, old_nodes, old_capacity * sizeof(_node))
+            # clean newly-allocated memory
+            if self.capacity > old_capacity:
+                memset(&self.nodes[old_capacity], 0, (self.capacity - old_capacity) * sizeof(_node))
+
+        PyMem_Free(old_nodes_raw)
         return 0
 
     cdef inline _node* _add_node(

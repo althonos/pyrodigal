@@ -182,6 +182,7 @@ cdef class Node:
 
 cdef class Nodes:
     # contiguous array of nodes, with capacity and length
+    cdef          void*  nodes_raw
     cdef          _node* nodes
     cdef readonly size_t capacity
     cdef readonly size_t length
