@@ -73,6 +73,8 @@ class Masks(typing.Sequence[Mask]):
 
 class Sequence(typing.Sized):
     gc: float
+    gc_known: float
+    unknown: int
     masks: Masks
     def __init__(
         self,
@@ -93,6 +95,8 @@ class Sequence(typing.Sized):
         strand: int = 1,
         exact: bool = True,
     ) -> int: ...
+    def start_probability(self) -> float: ...
+    def stop_probability(self) -> float: ...
 
 # --- Connection Scorer ------------------------------------------------------
 

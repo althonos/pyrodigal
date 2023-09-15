@@ -109,6 +109,10 @@ cdef class Sequence:
         bint exact=*
     ) except -1
 
+    cpdef double start_probability(self) noexcept
+    cpdef double stop_probability(self) noexcept
+        
+        
 
 # --- Connection Scorer ------------------------------------------------------
 

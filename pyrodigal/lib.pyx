@@ -464,60 +464,6 @@ cdef class Sequence:
 
     """
 
-    # --- Class methods ------------------------------------------------------
-
-    cdef int _build(
-        self,
-        const int    kind,
-        const void*  data,
-        const size_t length,
-    ) except 1 nogil:
-        cdef size_t  i
-        cdef Py_UCS4 letter
-        cdef size_t  unknown  = 0
-        cdef int     gc_count = 0
-
-        for i in range(length):
-            letter = PyUnicode_READ(kind, data, i)
-            if letter == u'A' or letter == u'a':
-                self.digits[i] = nucleotide.A
-            elif letter == u'T' or letter == u't':
-                self.digits[i] = nucleotide.T
-            elif letter == u'G' or letter == u'g':
-                self.digits[i] = nucleotide.G
-                gc_count += 1
-            elif letter == u'C' or letter == u'c':
-                self.digits[i] = nucleotide.C
-                gc_count += 1
-            else:
-                unknown += 1
-                self.digits[i] = nucleotide.N
-
-        self.unknown = unknown
-        if length > 0:
-            self.gc = (<double> gc_count) / (<double> length)
-        if length > unknown:
-            self.gc_known = (<double> gc_count) / (<double> length - unknown)
-
-        return 0
-
-    cdef int _mask(
-        self,
-        const size_t mask_size,
-    ) except 1 nogil:
-        cdef size_t i
-        cdef int    mask_begin = -1
-        for i in range(self.slen):
-            if self.digits[i] == nucleotide.N:
-                if mask_begin == -1:
-                    mask_begin = i
-            else:
-                if mask_begin != -1:
-                    if i >= mask_size + mask_begin:
-                        self.masks._add_mask(mask_begin, i)
-                    mask_begin = -1
-        return 0
-
     # --- Magic methods ------------------------------------------------------
 
     def __cinit__(self):
@@ -663,6 +609,57 @@ cdef class Sequence:
         buffer.strides = NULL
 
     # --- C interface -------------------------------------------------------
+
+    # --- Class methods ------------------------------------------------------
+
+    cdef int _build(
+        self,
+        const int    kind,
+        const void*  data,
+        const size_t length,
+    ) except 1 nogil:
+        cdef size_t  i
+        cdef Py_UCS4 letter
+        cdef size_t  unknown  = 0
+        cdef int     gc_count = 0
+
+        for i in range(length):
+            letter = PyUnicode_READ(kind, data, i)
+            if letter == u'A' or letter == u'a':
+                self.digits[i] = nucleotide.A
+            elif letter == u'T' or letter == u't':
+                self.digits[i] = nucleotide.T
+            elif letter == u'G' or letter == u'g':
+                self.digits[i] = nucleotide.G
+                gc_count += 1
+            elif letter == u'C' or letter == u'c':
+                self.digits[i] = nucleotide.C
+                gc_count += 1
+            else:
+                unknown += 1
+                self.digits[i] = nucleotide.N
+
+        self.unknown = unknown
+        if length > 0:
+            self.gc = (<double> gc_count) / (<double> length)
+        if length > unknown:
+            self.gc_known = (<double> gc_count) / (<double> length - unknown)
+
+        return 0
+
+    cdef int _mask(self, const size_t mask_size) except 1 nogil:
+        cdef size_t i
+        cdef int    mask_begin = -1
+        for i in range(self.slen):
+            if self.digits[i] == nucleotide.N:
+                if mask_begin == -1:
+                    mask_begin = i
+            else:
+                if mask_begin != -1:
+                    if i >= mask_size + mask_begin:
+                        self.masks._add_mask(mask_begin, i)
+                    mask_begin = -1
+        return 0
 
     cdef int _allocate(self, int slen) except 1:
         self.slen = slen
@@ -1001,6 +998,24 @@ cdef class Sequence:
         return max_val
 
     # --- Python interface ---------------------------------------------------
+
+    cpdef double start_probability(self) noexcept:
+        """Estimate the start codon probability based on the sequence GC%.
+        """
+        cdef double gc    = self.gc_known
+        cdef double p_atg = (1-gc) * (1-gc) * gc / 8
+        cdef double p_gtg = gc * (1-gc) * gc / 8
+        cdef double p_ttg = (1-gc) * (1-gc) * gc / 8
+        return p_atg + p_gtg + p_ttg
+
+    cpdef double stop_probability(self) noexcept:
+        """Estimate the stop codon probability based on the sequence GC%.
+        """
+        cdef double gc    = self.gc_known
+        cdef double p_tga = (1-gc) * (1-gc) * gc / 8.0
+        cdef double p_tag = (1-gc) * gc * (1-gc) / 8.0
+        cdef double p_taa = (1-gc) * (1-gc) * (1-gc) / 8.0
+        return p_tga + p_tag + p_taa
 
     cpdef object max_gc_frame_plot(self, int window_size=_WINDOW):
         """Create a maximum GC frame plot for the sequence.
