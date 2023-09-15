@@ -5322,6 +5322,10 @@ cdef class GeneFinder:
         # convert the input to a `Sequence` object
         seq = Sequence(sequence, mask=self.mask)
 
+        # pre-allocate `Nodes` storage based on sequence estimate
+        cdef double node_probability = seq.start_probability() + seq.stop_probability()
+        nodes._allocate(<size_t> (node_probability * (seq.slen - seq.unknown)))
+
         # extract the current sequence index
         with self.lock:
             genes._num_seq = self._num_seq
@@ -5436,6 +5440,10 @@ cdef class GeneFinder:
             warnings.warn(
                 f"sequence should be at least {_IDEAL_SINGLE_GENOME} characters ({seq.slen} found)"
             )
+
+        # pre-allocate `Nodes` storage based on sequence estimate
+        cdef double node_probability = seq.start_probability() + seq.stop_probability()
+        nodes._allocate(<size_t> (node_probability * (seq.slen - seq.unknown)))
 
         # build training info
         tinf = TrainingInfo(seq.gc, start_weight=start_weight, translation_table=translation_table)
