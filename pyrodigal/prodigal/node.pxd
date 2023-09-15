@@ -1,3 +1,5 @@
+from libc.stdint cimport uint16_t, int8_t, uint8_t
+
 from pyrodigal.prodigal.bitmap cimport bitmap_t
 from pyrodigal.prodigal.sequence cimport _mask
 from pyrodigal.prodigal.training cimport _training
@@ -16,34 +18,39 @@ cdef extern from "node.h" nogil:
     const double META_PEN
 
     struct _motif:
-        int ndx
-        int len
-        int spacer
-        int spacendx
         double score
+        uint16_t ndx
+        uint8_t  len
+        uint8_t  spacer
+        uint8_t  spacendx
 
     struct _node:
-        int type
-        bint edge
-        int ndx
-        int strand
-        int stop_val
-        int star_ptr[3]
-        int gc_bias
+        _motif mot
+
         double gc_score[3]
         double cscore
         double gc_cont
-        int rbs[2]
-        _motif mot
         double uscore
         double tscore
         double rscore
         double sscore
+        double score
+
+        int star_ptr[3]
+        uint8_t rbs[2]
+
         int traceb
         int tracef
-        int ov_mark
-        double score
-        int elim
+        int ndx
+        int stop_val
+
+        int8_t  ov_mark
+        int8_t  strand
+        uint8_t edge
+        uint8_t elim
+        uint8_t gc_bias
+        uint8_t type
+
 
     int add_nodes(bitmap_t seq, bitmap_t rseq, int slen, _node* nodes, bint closed, _mask* mlist, int nm, _training* tinf) noexcept
     void reset_node_scores(_node*, int) noexcept

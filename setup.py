@@ -5,6 +5,7 @@ import multiprocessing.pool
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import sysconfig
@@ -379,6 +380,8 @@ class build_ext(_build_ext):
         # compile the C library if not done already
         if not self.distribution.have_run.get("build_clib", False):
             self._clib_cmd.run()
+            for ext in self.distribution.ext_modules:
+                ext.include_dirs.append(os.path.join(self._clib_cmd.build_src, "vendor", "Prodigal"))
 
         # use debug directives with Cython if building in debug mode
         cython_args = {
@@ -468,6 +471,7 @@ class build_clib(_build_clib):
         self.target_machine = None
         self.target_system = None
         self.target_cpu = None
+        self.build_src = None
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
@@ -476,9 +480,18 @@ class build_clib(_build_clib):
         # detect platform options
         if self.plat_name is None:
             self.plat_name = sysconfig.get_platform()
+        if self.build_src is None:
+            self.build_src = os.path.join(os.path.dirname(self.build_temp), "src")
         self.target_machine = _detect_target_machine(self.plat_name)
         self.target_system = _detect_target_system(self.plat_name)
         self.target_cpu = _detect_target_cpu(self.plat_name)
+        # find training file to split   
+        self.training_temp = os.path.join(self.build_src, "training")
+        self.training_file = next(
+            os.path.join(self.build_src, s) 
+            for s in self.libraries[0].sources 
+            if os.path.basename(s) == "training.c"
+        )
 
     # --- Autotools-like helpers ---
 
@@ -528,16 +541,6 @@ class build_clib(_build_clib):
     def get_library(self, name):
         return next(lib for lib in self.libraries if lib.name == name)
 
-    # --- Compatibility with `setuptools.Command`
-
-    def finalize_options(self):
-        _build_clib.finalize_options(self)
-        # extract the training file and the temporary folder where to split
-        # the training profiles
-        lib = self.libraries[0]
-        self.training_file = next(s for s in lib.sources if os.path.basename(s) == "training.c")
-        self.training_temp = os.path.join(self.build_temp, "training")
-
     # --- Build code ---
 
     def _write_source_split(self, training_temp, index, lines):
@@ -562,7 +565,23 @@ class build_clib(_build_clib):
                 lines.append(line)
             self._write_source_split(training_temp, index, lines)
 
+    def _copy_prodigal_sources(self):
+        # copy source
+        self.mkpath(os.path.join(self.build_src, "vendor", "Prodigal"))
+        for c_file in glob.iglob(os.path.join("vendor", "Prodigal", "*.c")):
+            self.copy_file(c_file, os.path.join(self.build_src, c_file))
+        for h_file in glob.iglob(os.path.join("vendor", "Prodigal", "*.h")):
+            self.copy_file(h_file, os.path.join(self.build_src, h_file))
+
     def build_libraries(self, libraries):
+        # copy Prodigal source files to the build folder so they can be patched
+        self._copy_prodigal_sources()
+        # replace `node.h` with the packed `struct _node` 
+        shutil.copy(
+            os.path.join("pyrodigal", "prodigal", "node.h"),
+            os.path.join(self.build_src, "vendor", "Prodigal", "node.h"),
+        )
+
         # split the huge `training.c` file in small chunks with individual
         # functions so that it can compile even on low-memory machines
         self.make_file(
@@ -581,6 +600,10 @@ class build_clib(_build_clib):
     def build_library(self, library):
         # show the compiler being used
         _eprint("building", library.name, "for", self.plat_name, "with", self.compiler.compiler_type, "compiler")
+
+        # fix include dirs
+        if library.name == "prodigal":
+            library.include_dirs.append(os.path.join(self.build_src, "vendor", "Prodigal"))
 
         # add debug flags if we are building in debug mode
         if self.debug:
@@ -601,7 +624,7 @@ class build_clib(_build_clib):
         )
 
         # manually prepare sources and get the names of object files
-        sources = library.sources.copy()
+        sources = [os.path.join(self.build_src, src) for src in library.sources]
         if library.name == "prodigal":
             sources.remove(self.training_file)
             sources.extend(sorted(glob.iglob(os.path.join(self.training_temp, "*.c"))))
@@ -636,7 +659,6 @@ class build_clib(_build_clib):
             self.compiler.compile,
             ([source], *compile_args)
         )
-
 
 class clean(_clean):
     """A `clean` that removes intermediate files created by Cython.
@@ -673,7 +695,6 @@ setuptools.setup(
                     "training"
                 ]
             ],
-            include_dirs=[os.path.join("vendor", "Prodigal")]
         ),
     ],
     ext_modules=[
@@ -689,13 +710,8 @@ setuptools.setup(
                 "SSE2": ["pyrodigal/impl/sse.c"],
                 "MMX": ["pyrodigal/impl/mmx.c"],
             },
-            include_dirs=[
-                "pyrodigal",
-                os.path.join("vendor", "Prodigal"),
-            ],
-            libraries=[
-                "prodigal",
-            ],
+            include_dirs=["pyrodigal"],
+            libraries=["prodigal"],
         ),
     ],
     cmdclass={
