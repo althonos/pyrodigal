@@ -1695,12 +1695,15 @@ cdef class Nodes:
             self.nodes[i].ndx = node["ndx"]
             self.nodes[i].strand = node["strand"]
             self.nodes[i].stop_val = node["stop_val"]
-            self.nodes[i].star_ptr = node["star_ptr"]
+            self.nodes[i].star_ptr[0] = node["star_ptr"][0]
+            self.nodes[i].star_ptr[1] = node["star_ptr"][1]
+            self.nodes[i].star_ptr[2] = node["star_ptr"][2]
             self.nodes[i].gc_bias = node["gc_bias"]
             self.nodes[i].gc_score = node["gc_score"]
             self.nodes[i].cscore = node["cscore"]
             self.nodes[i].gc_cont = node["gc_cont"]
-            self.nodes[i].rbs = node["rbs"]
+            self.nodes[i].rbs[0] = node["rbs"][0]
+            self.nodes[i].rbs[1] = node["rbs"][1]
             self.nodes[i].mot.ndx = motif["ndx"]
             self.nodes[i].mot.len = motif["len"]
             self.nodes[i].mot.spacer = motif["spacer"]
@@ -1872,7 +1875,7 @@ cdef class Nodes:
         while self.nodes[path].traceb != -1:
             nxt = self.nodes[path].traceb
             if self.nodes[path].strand == -1 and self.nodes[path].type == node_type.STOP and self.nodes[nxt].strand == 1 and self.nodes[nxt].type == node_type.STOP and self.nodes[path].ov_mark != -1 and self.nodes[path].ndx > self.nodes[nxt].ndx:
-                tmp = self.nodes[path].star_ptr[self.nodes[path].ov_mark];
+                tmp = self.nodes[path].star_ptr[self.nodes[path].ov_mark]
                 i = tmp
                 while self.nodes[i].ndx != self.nodes[tmp].stop_val:
                     i -= 1
