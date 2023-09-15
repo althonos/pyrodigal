@@ -448,10 +448,16 @@ cdef class Sequence:
 
     Attributes:
         gc (`float`): The GC content of the sequence, as a fraction
-            (between 0 and 1).
+            (between 0 and 1). The computation in Prodigal takes the
+            total length of the sequence as the denominator of the GC%,
+            ignoring the unknown bases.
+        gc_known (`float`): The GC content of the sequence, taking only
+            known nucleotides into account.
         masks (`~pyrodigal.Masks`): A list of masked regions within the
             sequence. It will be empty if the sequence was created with
             ``mask=False``.
+        unknown (`int`): The number of unknown bases (encoded as an ``N``)
+            in the sequence.
 
     .. versionchanged:: 2.0.0
         Removed the ``from_string`` and ``from_bytes`` constructors.
@@ -460,54 +466,55 @@ cdef class Sequence:
 
     # --- Class methods ------------------------------------------------------
 
-    @staticmethod
     cdef int _build(
-        const int      kind,
-        const void*    data,
-        const size_t   length,
-              double*  gc,
-              uint8_t* digits,
+        self,
+        const int    kind,
+        const void*  data,
+        const size_t length,
     ) except 1 nogil:
         cdef size_t  i
         cdef Py_UCS4 letter
-        cdef int     gc_count   = 0
+        cdef size_t  unknown  = 0
+        cdef int     gc_count = 0
 
         for i in range(length):
             letter = PyUnicode_READ(kind, data, i)
             if letter == u'A' or letter == u'a':
-                digits[i] = nucleotide.A
+                self.digits[i] = nucleotide.A
             elif letter == u'T' or letter == u't':
-                digits[i] = nucleotide.T
+                self.digits[i] = nucleotide.T
             elif letter == u'G' or letter == u'g':
-                digits[i] = nucleotide.G
+                self.digits[i] = nucleotide.G
                 gc_count += 1
             elif letter == u'C' or letter == u'c':
-                digits[i] = nucleotide.C
+                self.digits[i] = nucleotide.C
                 gc_count += 1
             else:
-                digits[i] = nucleotide.N
+                unknown += 1
+                self.digits[i] = nucleotide.N
 
+        self.unknown = unknown
         if length > 0:
-            gc[0] = (<double> gc_count) / (<double> length)
+            self.gc = (<double> gc_count) / (<double> length)
+        if length > unknown:
+            self.gc_known = (<double> gc_count) / (<double> length - unknown)
 
         return 0
 
-    @staticmethod
     cdef int _mask(
-        const uint8_t* digits,
-        const size_t   length,
-              Masks    masks,
-        const size_t   mask_size,
+        self,
+        const size_t mask_size,
     ) except 1 nogil:
-        cdef int     mask_begin = -1
-        for i in range(length):
-            if digits[i] == nucleotide.N:
+        cdef size_t i
+        cdef int    mask_begin = -1
+        for i in range(self.slen):
+            if self.digits[i] == nucleotide.N:
                 if mask_begin == -1:
                     mask_begin = i
             else:
                 if mask_begin != -1:
                     if i >= mask_size + mask_begin:
-                        masks._add_mask(mask_begin, i)
+                        self.masks._add_mask(mask_begin, i)
                     mask_begin = -1
         return 0
 
@@ -516,6 +523,8 @@ cdef class Sequence:
     def __cinit__(self):
         self.slen = 0
         self.gc = 0.0
+        self.gc_known = 0.0
+        self.unknown = 0
         self.digits = NULL
         self.masks = Masks.__new__(Masks)
 
@@ -543,12 +552,7 @@ cdef class Sequence:
             with nogil:
                 memcpy(self.digits, (<Sequence> sequence).digits, self.slen * sizeof(uint8_t))
                 if mask:
-                    Sequence._mask(
-                        self.digits,
-                        self.slen,
-                        self.masks,
-                        mask_size,
-                    )
+                    self._mask(mask_size)
         else:
             if isinstance(sequence, str):
                 kind = PyUnicode_KIND(sequence)
@@ -560,20 +564,9 @@ cdef class Sequence:
                 data = &view[0]
                 self._allocate(view.shape[0])
             with nogil:
-                Sequence._build(
-                    kind,
-                    data,
-                    self.slen,
-                    &self.gc,
-                    self.digits,
-                )
+                self._build(kind, data, self.slen)
                 if mask:
-                    Sequence._mask(
-                        self.digits,
-                        self.slen,
-                        self.masks,
-                        mask_size,
-                    )
+                    self._mask(mask_size)
 
     def __dealloc__(self):
         PyMem_Free(self.digits)
@@ -1589,7 +1582,7 @@ cdef class Nodes:
     def with_capacity(cls, size_t capacity):
         """Create a new node array with the given capacity.
         """
-        cdef Nodes nodes = Nodes.__new__(Nodes)
+        cdef Nodes nodes = cls()
         nodes._allocate(capacity)
         return nodes
 
@@ -5303,9 +5296,9 @@ cdef class GeneFinder:
         cdef int              phase
         cdef Sequence         seq
         cdef TrainingInfo     tinf
+        cdef Nodes            nodes  = Nodes.__new__(Nodes)
         cdef Genes            genes  = Genes.__new__(Genes)
         cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
-        cdef Nodes            nodes  = Nodes.__new__(Nodes)
 
         # check argument values
         if not self.meta and self.training_info is None:
@@ -5396,7 +5389,7 @@ cdef class GeneFinder:
         cdef Sequence         seq
         cdef int              slen
         cdef TrainingInfo     tinf
-        cdef Nodes            nodes  = Nodes()
+        cdef Nodes            nodes  = Nodes.__new__(Nodes)
         cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
 
         # Check arguments

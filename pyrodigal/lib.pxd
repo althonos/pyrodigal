@@ -61,24 +61,17 @@ cdef class Sequence:
     cdef          Py_ssize_t slen
     cdef          uint8_t*   digits
     cdef readonly double     gc
+    cdef readonly double     gc_known
+    cdef readonly size_t     unknown
     cdef readonly Masks      masks
 
-    @staticmethod
     cdef int _build(
+        self,
         const int      kind,
         const void*    data,
         const size_t   length,
-              double*  gc,
-              uint8_t* digits,
     ) except 1 nogil
-    @staticmethod
-    cdef int _mask(
-        const uint8_t* digits,
-        const size_t   length,
-              Masks    masks,
-        const size_t   mask_size,
-    ) except 1 nogil
-
+    cdef int _mask(self, const size_t mask_size) except 1 nogil
     cdef int _allocate(self, int slen) except 1
     cdef int* _max_gc_frame_plot(self, int window_size) except NULL nogil
     cdef char _amino(
@@ -103,7 +96,6 @@ cdef class Sequence:
         const double rbs_wt[28],
         const int strand
     ) noexcept nogil
-
 
     cpdef size_t __sizeof__(self)
 
