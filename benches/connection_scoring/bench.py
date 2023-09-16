@@ -9,7 +9,7 @@ import platform
 
 import tqdm
 
-sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
+sys.path.insert(0, os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
 from pyrodigal import lib, Nodes, Sequence
 from pyrodigal.lib import METAGENOMIC_BINS, ConnectionScorer
@@ -49,7 +49,7 @@ for filename in tqdm.tqdm(glob.glob(os.path.join(args.data, "*.fna"))):
     # load sequence
     with open(filename) as f:
         record = next(parse(f))
-    seq = Sequence.from_string(record.seq)
+    seq = Sequence(record.seq)
     tinf = METAGENOMIC_BINS[0].training_info
 
     # create nodes

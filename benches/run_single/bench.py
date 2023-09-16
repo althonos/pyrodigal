@@ -10,7 +10,7 @@ import subprocess
 
 import tqdm
 
-sys.path.append(os.path.realpath(os.path.join(__file__, "..", "..", "..")))
+sys.path.insert(0, os.path.realpath(os.path.join(__file__, "..", "..", "..")))
 
 from pyrodigal import lib, GeneFinder
 from pyrodigal.lib import METAGENOMIC_BINS, ConnectionScorer
