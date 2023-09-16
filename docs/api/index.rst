@@ -6,6 +6,7 @@ API Reference
 
    gene_finder <gene_finder>
    training_info <training_info>
+   metagenomic_bin <metagenomic_bin>
    genes <genes>
    nodes <nodes>
    sequence <sequence>
