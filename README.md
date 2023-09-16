@@ -34,9 +34,10 @@ internals, which has the following advantages:
   sub-process and temporary files. Sequences can be passed directly as
   strings or bytes, which avoids the overhead of formatting your input to
   FASTA for Prodigal.
-- **lower memory usage**: Pyrodigal is slightly more conservative when it comes
-  to using memory, which can help process very large sequences. It also lets
-  you save some more memory when running several *meta*-mode analyses
+- **better memory usage**: Pyrodigal uses more compact data structures compared
+  to the original Prodigal implementation, allowing to save memory to store 
+  the same information. A heuristic is used to estimate the number of nodes
+  to allocate based on the sequence GC% in order to minimize reallocations.
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
   save from a third to half the runtime depending on the sequence. The [Benchmarks](https://pyrodigal.readthedocs.io/en/stable/benchmarks.html) page of the documentation contains comprehensive comparisons. See the [JOSS paper](https://doi.org/10.21105/joss.04296)
@@ -74,6 +75,10 @@ In addition, the **new** features are available:
 - **custom gene size threshold**: While Prodigal uses a minimum gene size
   of 90 nucleotides (60 if on edge), Pyrodigal allows to customize this
   threshold, allowing for smaller ORFs to be identified if needed.
+- **custom metagenomic models**: Since `v3.0.0`, you can use your own 
+  metagenomic models to run Pyrodigal in *meta*-mode. *Check for instance
+  [`pyrodigal-gv`](https://github.com/althonos/pyrodigal-gv), which 
+  provides additional models for giant viruses and gut phages.*
 
 ### 🐏 Memory
 
@@ -85,9 +90,10 @@ regarding memory management:
   for storing the sequence is often negligible compared to the memory used to
   store dynamic programming nodes, this is an acceptable trade-off for better
   performance when extracting said nodes.
-* Node arrays are dynamically allocated and grow exponentially instead of
-  being pre-allocated with a large size. On small sequences, this leads to
-  Pyrodigal using about 30% less memory.
+* Node fields use smaller data types to fit into 128 bytes, compared to the 
+  176 bytes of the original Prodigal data structure.
+* Node arrays are pre-allocated based on the sequence GC% to extrapolate the
+  probability to find a start or stop codon.
 * Genes are stored in a more compact data structure than in Prodigal (which
   reserves a buffer to store string data), saving around 1KiB per gene.
 
@@ -104,8 +110,8 @@ instance once, and then use a pool to process sequences in parallel:
 import multiprocessing.pool
 import pyrodigal
 
-orf_finder = pyrodigal.GeneFinder()
-orf_finder.train(training_sequence)
+gene_finder = pyrodigal.GeneFinder()
+gene_finder.train(training_sequence)
 
 with multiprocessing.pool.ThreadPool() as pool:
     predictions = pool.map(orf_finder.find_genes, sequences)
@@ -127,7 +133,8 @@ package:
 $ conda install -c bioconda pyrodigal
 ```
 
-
+Check the [*install* page](https://pyrodigal.readthedocs.io/en/stable/install.html)
+of the documentation for other ways to install Pyrodigal on your machine.
 
 ## 💡 Example
 
