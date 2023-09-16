@@ -16,6 +16,18 @@ class TestSequence(unittest.TestCase):
             self.assertEqual(m1.begin, m2.begin)
             self.assertEqual(m1.end, m2.end)
 
+    def test_unknown(self):
+        raw_seq = "ATGCNNNNNNNNNNATGCNNNNNNNNTGC"
+        s = Sequence(raw_seq)
+        self.assertEqual(s.unknown, raw_seq.count("N"))
+
+    def test_gc_known(self):
+        raw_seq = "ATGCNNNNNNNNNNATGCNNNNNNNNTGC"
+        s = Sequence(raw_seq)
+        gc = raw_seq.count("G") + raw_seq.count("C")
+        n_known = len(raw_seq) - raw_seq.count("N")
+        self.assertEqual(s.gc_known, gc / n_known)
+
     def test_str(self):
         s = "ATGCNNNNNNNNNNATGCNNNNNNNNTGC"
         seq = Sequence(s, mask=False)
