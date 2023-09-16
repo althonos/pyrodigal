@@ -6,7 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha4...HEAD
+
+
+## [v3.0.0-alpha4] - 2023-09-16
+[v3.0.0-alpha4]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha3...v3.0.0-alpha4
+
+### Added
+- `Sequence.unknown` property exposing the number of unknown nucleotides in the sequence.
+- `Sequence.start_probability` and `Sequence.stop_probability` to estimate the probability of encountering a start and a stop codon based on the GC%.
+
+### Changed
+- Cache intermediate log-odds in `Nodes._raw_coding_score` to reduce calls to `pow` and `log` functions.
+- Inline connection scoring functions to reduce function call overhead.
+- Reorganize `struct _node` fields to reduce size in memory.
+- Make `GeneFinder.find_genes` and `GeneFinder.train` reserve memory for the `Nodes` based on the GC% of the input sequence.
+- Avoid storing temporary results in the generic implementation of `ConnectionScorer.compute_skippable`.
 
 
 ## [v3.0.0-alpha3] - 2023-09-11
