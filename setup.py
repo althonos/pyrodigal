@@ -367,6 +367,8 @@ class build_ext(_build_ext):
             )
             ext.depends.append(libfile)
             ext.extra_objects.append(libfile)
+        # add include path to patched headers
+        ext.include_dirs.append(os.path.join(self._clib_cmd.build_src, "vendor", "Prodigal"))
         # build platform-specific code
         self.build_simd_code(ext)
         # build the rest of the extension as normal
@@ -380,8 +382,6 @@ class build_ext(_build_ext):
         # compile the C library if not done already
         if not self.distribution.have_run.get("build_clib", False):
             self._clib_cmd.run()
-            for ext in self.distribution.ext_modules:
-                ext.include_dirs.append(os.path.join(self._clib_cmd.build_src, "vendor", "Prodigal"))
 
         # use debug directives with Cython if building in debug mode
         cython_args = {
