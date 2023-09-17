@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0...HEAD
 
 
-## [v3.0.0] - 2023-09-16
+## [v3.0.0] - 2023-09-17
 [v3.0.0]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0
 
 ### Added
@@ -48,34 +48,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Removed
 - **BREAKING**: `metagenomic_bin` attribute of `TrainingInfo`.
-
-
-## [v3.0.0-alpha3] - 2023-09-11
-[v3.0.0-alpha3]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...v3.0.0-alpha3
-
-
-
-### Changed
-
-
-
-## [v3.0.0-alpha2] - 2023-09-11
-[v3.0.0-alpha2]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha1...v3.0.0-alpha2
-
-### Fixed
-
-### Changed
-
-
-
-## [v3.0.0-alpha1] - 2023-09-07
-[v3.0.0-alpha1]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0-alpha1
-
-
-### Changed
-
-
-
 
 
 ## [v2.3.0] - 2023-07-20
