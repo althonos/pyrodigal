@@ -6,54 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha4...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0...HEAD
 
 
-## [v3.0.0-alpha4] - 2023-09-16
-[v3.0.0-alpha4]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha3...v3.0.0-alpha4
-
-### Added
-- `Sequence.unknown` property exposing the number of unknown nucleotides in the sequence.
-- `Sequence.start_probability` and `Sequence.stop_probability` to estimate the probability of encountering a start and a stop codon based on the GC%.
-
-### Changed
-- Cache intermediate log-odds in `Nodes._raw_coding_score` to reduce calls to `pow` and `log` functions.
-- Inline connection scoring functions to reduce function call overhead.
-- Reorganize `struct _node` fields to reduce size in memory.
-- Make `GeneFinder.find_genes` and `GeneFinder.train` reserve memory for the `Nodes` based on the GC% of the input sequence.
-- Avoid storing temporary results in the generic implementation of `ConnectionScorer.compute_skippable`.
-
-
-## [v3.0.0-alpha3] - 2023-09-11
-[v3.0.0-alpha3]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...v3.0.0-alpha3
-
-### Fixed
-- Merge several `nogil` sections in `Sequence` constructor.
-- Several Cython functions missing a `noexcept` qualifier.
-
-### Changed
-- Use Cython `freelist` for allocating `Node`, `Gene`, `MetagenomicBin` and `Mask`.
-- Increase minimum allocation for `Genes` and `Nodes` to reduce early reallocations.
-
-
-## [v3.0.0-alpha2] - 2023-09-11
-[v3.0.0-alpha2]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha1...v3.0.0-alpha2
-
-### Added
-- `Genes.write_genbank` method to write a GenBank record with all predicted genes from a sequence.
-- `include_stop` flag to `Gene.translate` and `Genes.write_translations` to allow excluding the stop codon from the translated sequence.
-- `include_translation_table` flag to `Genes.write_gff` to include the translation table to the GFF attributes of each gene.
-- `gbk` output format to the Pyrodigal CLI.
-
-### Fixed
-- `Genes.write_gff` not properly reporting the number of bytes written.
-
-### Changed
-- Use `typing.Literal` for allowed translation table values in `pyrodigal.lib` annotations
-
-
-## [v3.0.0-alpha1] - 2023-09-07
-[v3.0.0-alpha1]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0-alpha1
+## [v3.0.0] - 2023-09-16
+[v3.0.0]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0
 
 ### Added
 - `MetagenomicBins` collection to store a dense array of `MetagenomicBin` objects.
@@ -63,15 +20,62 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Setters for all remaining `TrainingInfo` properties.
 - Proper `TrainingInfo` constructor with configuration option for all attributes.
 - `TrainingInfo.to_dict` method to extract all parameters from a `TrainingInfo`.
+- `Genes.write_genbank` method to write a GenBank record with all predicted genes from a sequence.
+- `include_stop` flag to `Gene.translate` and `Genes.write_translations` to allow excluding the stop codon from the translated sequence.
+- `include_translation_table` flag to `Genes.write_gff` to include the translation table to the GFF attributes of each gene.
+- `gbk` output format to the Pyrodigal CLI.
+- `Sequence.unknown` property exposing the number of unknown nucleotides in the sequence.
+- `Sequence.start_probability` and `Sequence.stop_probability` to estimate the probability of encountering a start and a stop codon based on the GC%.
+
+### Fixed
+- `Genes.write_gff` not properly reporting the number of bytes written.
+- Merge several `nogil` sections in `Sequence` constructor.
+- Several Cython functions missing a `noexcept` qualifier.
 
 ### Changed
 - **BREAKING**: Rename `OrfFinder` to `GeneFinder` for consistency.
+- **BREAKING**: Use `memoryview` to expose all `TrainingInfo` attributes instead manually building lists or tuples.
 - Reorganize memory management of the built-in metagenomic models.
 - Make the internal Cython model public (`pyrodigal.lib`) to allow importing the underlying classes in other Cython projects.
-- **BREAKING**: Use `memoryview` to expose all `TrainingInfo` attributes instead manually building lists or tuples.
+- Use `typing.Literal` for allowed translation table values in `pyrodigal.lib` annotations
+- Cache intermediate log-odds in `Nodes._raw_coding_score` to reduce calls to `pow` and `log` functions.
+- Inline connection scoring functions to reduce function call overhead.
+- Reorganize `struct _node` fields to reduce size in memory.
+- Make `GeneFinder.find_genes` and `GeneFinder.train` reserve memory for the `Nodes` based on the GC% of the input sequence.
+- Avoid storing temporary results in the generic implementation of `ConnectionScorer.compute_skippable`.
+- Use Cython `freelist` for allocating `Node`, `Gene`, `MetagenomicBin` and `Mask`.
+- Increase minimum allocation for `Genes` and `Nodes` to reduce early reallocations.
 
 ### Removed
 - **BREAKING**: `metagenomic_bin` attribute of `TrainingInfo`.
+
+
+## [v3.0.0-alpha3] - 2023-09-11
+[v3.0.0-alpha3]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha2...v3.0.0-alpha3
+
+
+
+### Changed
+
+
+
+## [v3.0.0-alpha2] - 2023-09-11
+[v3.0.0-alpha2]: https://github.com/althonos/pyrodigal/compare/v3.0.0-alpha1...v3.0.0-alpha2
+
+### Fixed
+
+### Changed
+
+
+
+## [v3.0.0-alpha1] - 2023-09-07
+[v3.0.0-alpha1]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0-alpha1
+
+
+### Changed
+
+
+
 
 
 ## [v2.3.0] - 2023-07-20
