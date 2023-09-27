@@ -8,7 +8,7 @@ import sys
 import unittest
 import pickle
 
-from .. import GeneFinder, METAGENOMIC_BINS
+from .. import GeneFinder, Genes, METAGENOMIC_BINS
 from . import data
 
 
@@ -106,23 +106,28 @@ class _TestWrite(object):
         cls.p = GeneFinder(meta=True)
         cls.genes = cls.p.find_genes(str(cls.record.seq))
     
-    def _write(self, buffer, **kwargs):
+    def _write(self, genes, buffer, **kwargs):
         raise NotImplementedError
+
+    def test_empty(self):
+        genes = self.p.find_genes("")
+        buffer = io.StringIO()
+        self._write(genes, buffer)
 
     def test_reported_bytes(self):
         buffer = io.StringIO()
-        n = self._write(buffer)
+        n = self._write(self.genes, buffer)
         self.assertEqual(n, buffer.tell())
 
 
 class TestWriteGFF(_TestWrite, unittest.TestCase):
     
-    def _write(self, buffer, **kwargs):
-        return self.genes.write_gff(buffer, self.record.id, **kwargs)
+    def _write(self, genes, buffer, **kwargs):
+        return genes.write_gff(buffer, self.record.id, **kwargs)
 
     def test_example(self):
         buffer = io.StringIO()
-        self._write(buffer)
+        self._write(self.genes, buffer)
         actual = buffer.getvalue().splitlines()
         expected = data.load_text("SRR492066.meta.gff").splitlines()
 
@@ -148,23 +153,23 @@ class TestWriteGFF(_TestWrite, unittest.TestCase):
 
     def test_header(self):
         buffer = io.StringIO()
-        self._write(buffer, header=True)
+        self._write(self.genes, buffer, header=True)
         actual = buffer.getvalue().splitlines()
         self.assertEqual(actual[0], "##gff-version  3")
         buffer = io.StringIO()
-        self._write(buffer, header=False)
+        self._write(self.genes, buffer, header=False)
         actual = buffer.getvalue().splitlines()
         self.assertNotEqual(actual[0], "##gff-version  3")
 
 
 class TestWriteTranslation(_TestWrite, unittest.TestCase):
 
-    def _write(self, buffer, **kwargs):
-        return self.genes.write_translations(buffer, self.record.id, **kwargs)
+    def _write(self, genes, buffer, **kwargs):
+        return genes.write_translations(buffer, self.record.id, **kwargs)
 
     def test_example(self):
         buffer = io.StringIO()
-        self._write(buffer)
+        self._write(self.genes, buffer)
         actual = buffer.getvalue()
         expected = data.load_text("SRR492066.meta.faa.gz")
         self.assertEqual(actual, expected)
@@ -172,12 +177,12 @@ class TestWriteTranslation(_TestWrite, unittest.TestCase):
 
 class TestWriteGenes(_TestWrite, unittest.TestCase):
 
-    def _write(self, buffer, **kwargs):
-        return self.genes.write_genes(buffer, self.record.id, **kwargs)
+    def _write(self, genes, buffer, **kwargs):
+        return genes.write_genes(buffer, self.record.id, **kwargs)
 
     def test_example(self):
         buffer = io.StringIO()
-        self._write(buffer)
+        self._write(self.genes, buffer)
         actual = buffer.getvalue()
         expected = data.load_text("SRR492066.meta.fna.gz")
         self.assertEqual(actual, expected)
@@ -185,5 +190,5 @@ class TestWriteGenes(_TestWrite, unittest.TestCase):
 
 class TestWriteGenbank(_TestWrite, unittest.TestCase):
 
-    def _write(self, buffer, **kwargs):
-        return self.genes.write_genbank(buffer, self.record.id, **kwargs)
+    def _write(self, genes, buffer, **kwargs):
+        return genes.write_genbank(buffer, self.record.id, **kwargs)
