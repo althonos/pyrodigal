@@ -1736,7 +1736,7 @@ cdef class Nodes:
         cdef void*  old_nodes_raw = self.nodes_raw
         cdef _node* old_nodes     = self.nodes
 
-        # allocate new array        
+        # allocate new array
         self.capacity = capacity
         self.nodes_raw = PyMem_Malloc(self.capacity * sizeof(_node) + 0x7f)
         self.nodes = <_node*> ((<uintptr_t> self.nodes_raw + 0x7f) & (~0x7f))
@@ -3187,7 +3187,7 @@ cdef class Genes:
         # recover metagenomic bin and training info
         if self.meta:
             self.metagenomic_bin = state["metagenomic_bin"]
-            self.training_info = self.metagenomic_bin.training_info
+            self.training_info = None if self.metagenomic_bin is None else self.metagenomic_bin.training_info
         else:
             self.metagenomic_bin = None
             self.training_info = state["training_info"]
@@ -3543,9 +3543,23 @@ cdef class Genes:
         """
         cdef Gene           gene
         cdef int            i
+        cdef str            desc
         cdef ssize_t        n    = 0
         cdef str            run  = "Metagenomic" if self.meta else "Single"
-        cdef str            desc = self.metagenomic_bin.description if self.meta else "Ab initio"
+        cdef MetagenomicBin meta = self.metagenomic_bin
+        cdef TrainingInfo   tinf = self.training_info
+
+        if self.meta:
+            # NB: by default, Prodigal will use model #5 when writing
+            #     GFF for empty genes (which is the case here if no
+            #     genes were found while in meta mode)
+            if meta is None:
+                meta = METAGENOMIC_BINS[5]
+            if tinf is None:
+                tinf = meta.training_info
+            desc = meta.description
+        else:
+            desc = "Ab initio"
 
         if header:
             n += file.write("##gff-version  3\n")
@@ -3560,9 +3574,9 @@ cdef class Genes:
             f"version=pyrodigal.v{__version__};"
             f"run_type={run};"
             f'model="{desc}";'
-            f"gc_cont={self.training_info.gc*100:.2f};"
-            f"transl_table={self.training_info.translation_table};"
-            f"uses_sd={int(self.training_info.uses_sd)}\n"
+            f"gc_cont={tinf.gc*100:.2f};"
+            f"transl_table={tinf.translation_table};"
+            f"uses_sd={int(tinf.uses_sd)}\n"
         )
 
         for i, gene in enumerate(self):
@@ -3586,7 +3600,7 @@ cdef class Genes:
             n += file.write(gene._gene_data(sequence_id))
             n += file.write(";")
             if include_translation_table:
-                n += file.write("transl_table={}".format(self.training_info.translation_table))
+                n += file.write("transl_table={}".format(tinf.translation_table))
                 n += file.write(";")
             n += file.write(gene._score_data())
             n += file.write("\n")
@@ -3731,11 +3745,16 @@ cdef class Genes:
         cdef ssize_t    n           = 0
         cdef int        prev_stop   = -1
         cdef int        prev_strand = 0
-        cdef _training* tinf        = self.training_info.tinf
+        cdef _training* tinf        = NULL
 
         cdef char      qt[10]
         cdef double    rbs1
         cdef double    rbs2
+
+        if self.meta and self.training_info is None:
+            tinf = (<TrainingInfo> METAGENOMIC_BINS[5].training_info).tinf
+        else:
+            tinf = self.training_info.tinf
 
         try:
             # Sort and groupd nodes by STOP codon position
