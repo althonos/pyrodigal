@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0...HEAD
 
 
+## [v3.0.1] - 2023-09-27
+[v3.0.1]: https://github.com/althonos/pyrodigal/compare/v3.0.0...v3.0.1
+
+### Fixed
+- `Genes.write_scores` and `Genes.write_gff` crashing on empty `Genes` ([#44](https://github.com/althonos/pyrodigal/issues/44)).
+
+
 ## [v3.0.0] - 2023-09-17
 [v3.0.0]: https://github.com/althonos/pyrodigal/compare/v2.3.0...v3.0.0
 
