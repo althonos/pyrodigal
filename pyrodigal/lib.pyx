@@ -5155,14 +5155,14 @@ cdef class GeneFinder:
 
     # --- C interface --------------------------------------------------------
 
-    cdef void _train(
+    cdef int _train(
         self,
         Sequence sequence,
         Nodes nodes,
         ConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
-    ) except * nogil:
+    ) except -1 nogil:
         cdef int* gc_frame
         cdef int  ipath
         # find all the potential starts and stops
@@ -5198,15 +5198,16 @@ cdef class GeneFinder:
             node.determine_sd_usage(tinf.tinf)
         if not tinf.tinf.uses_sd:
             tinf._train_starts_nonsd(nodes, sequence)
+        return 0
 
-    cdef void _find_genes_single(
+    cdef int _find_genes_single(
         self,
         Sequence sequence,
         TrainingInfo tinf,
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) except * nogil:
+    ) except -1 nogil:
         cdef int ipath
         # find all the potential starts and stops, and sort them
         nodes._extract(
@@ -5233,6 +5234,7 @@ cdef class GeneFinder:
         # NOTE: In the original Prodigal code, the gene data would be
         #       recorded here, but since we build the gene data string
         #       on request we don't have to pre-build them here.
+        return 0
 
     cdef ssize_t _find_genes_meta(
         self,
@@ -5240,7 +5242,7 @@ cdef class GeneFinder:
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) except * nogil:
+    ) except? -1 nogil:
         cdef int          i
         cdef double       low
         cdef double       high

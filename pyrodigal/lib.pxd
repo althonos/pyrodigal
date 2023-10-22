@@ -366,28 +366,28 @@ cdef class GeneFinder:
     cdef readonly int             min_edge_gene
     cdef readonly TrainingInfo    training_info
 
-    cdef void _train(
+    cdef int _train(
         self,
         Sequence sequence,
         Nodes nodes,
         ConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
-    ) except * nogil
-    cdef void _find_genes_single(
+    ) except -1 nogil
+    cdef int _find_genes_single(
         self,
         Sequence sequence,
         TrainingInfo tinf,
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) except * nogil
+    ) except -1 nogil
     cdef ssize_t _find_genes_meta(
         self,
         Sequence sequence,
         ConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
-    ) except * nogil
+    ) except? -1 nogil
 
     cpdef Genes find_genes(self, object sequence)
