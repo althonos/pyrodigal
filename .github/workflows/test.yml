@@ -33,6 +33,9 @@ jobs:
         - python-version: '3.11'
           python-release: v3.11
           python-impl: CPython
+        - python-version: '3.12'
+          python-release: v3.12
+          python-impl: CPython
         - python-version: pypy-3.6
           python-release: v3.6
           python-impl: PyPy
@@ -93,6 +96,9 @@ jobs:
         - python-version: '3.11'
           python-release: v3.11
           python-impl: CPython
+        - python-version: '3.12'
+          python-release: v3.12
+          python-impl: CPython
         - python-version: pypy-3.7
           python-release: v3.7
           python-impl: PyPy
@@ -148,6 +154,9 @@ jobs:
           python-impl: CPython
         - python-version: '3.11'
           python-release: v3.11
+          python-impl: CPython
+        - python-version: '3.12'
+          python-release: v3.12
           python-impl: CPython
         - python-version: pypy-3.7
           python-release: v3.7
