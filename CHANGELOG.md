@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.1.0...HEAD
+
+
+## [v3.1.0] - 2023-10-22
+[v3.1.0]: https://github.com/althonos/pyrodigal/compare/v3.0.1...v3.1.0
+
+### Added
+- Support for Python 3.12.
+- `min_mask` argument to `GeneFinder` to control the minimum lenght of masked regions on `mask=True`.
 
 
 ## [v3.0.1] - 2023-09-27
