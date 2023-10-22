@@ -5023,6 +5023,7 @@ cdef class GeneFinder:
         MetagenomicBins metagenomic_bins=None,
         bint closed=False,
         bint mask=False,
+        int min_mask=MASK_SIZE,
         int min_gene=MIN_GENE,
         int min_edge_gene=MIN_EDGE_GENE,
         int max_overlap=MAX_SAM_OVLP,
@@ -5047,6 +5048,10 @@ cdef class GeneFinder:
                 Defaults to `False`.
             mask (`bool`): Prevent genes from running across regions
                 containing unknown nucleotides. Defaults to `False`.
+            min_mask (`int`): The minimum mask length, when region masking
+                is enabled. Regions shorter than the given length will not
+                be masked, which may be helpful to prevent masking of 
+                single unknown nucleotides.
             min_gene (`int`): The minimum gene length. Defaults to the value
                 used in Prodigal.
             min_edge_gene (`int`): The minimum edge gene length. Defaults to
@@ -5071,6 +5076,9 @@ cdef class GeneFinder:
         .. versionadded:: 3.0.0
            The ``metagenomic_bins`` argument.
 
+        .. versionadded:: 3.0.2
+           The ``min_mask`` argument.
+
         """
         if meta and training_info is not None:
             raise ValueError("cannot use a training info in meta mode.")
@@ -5079,6 +5087,8 @@ cdef class GeneFinder:
             raise ValueError("`min_gene` must be strictly positive")
         if min_edge_gene <= 0:
             raise ValueError("`min_edge_gene` must be strictly positive")
+        if min_mask < 0:
+            raise ValueError("`min_mask` must be positive")
         if max_overlap < 0:
             raise ValueError("`max_overlap` must be positive")
         elif max_overlap > min_gene:
@@ -5089,6 +5099,7 @@ cdef class GeneFinder:
         self.lock = threading.Lock()
         self.mask = mask
         self.training_info = training_info
+        self.min_mask = min_mask
         self.min_gene = min_gene
         self.min_edge_gene = min_edge_gene
         self.max_overlap = max_overlap
@@ -5339,7 +5350,7 @@ cdef class GeneFinder:
             raise RuntimeError("cannot find genes without having trained in single mode")
 
         # convert the input to a `Sequence` object
-        seq = Sequence(sequence, mask=self.mask)
+        seq = Sequence(sequence, mask=self.mask, mask_size=self.min_mask)
 
         # pre-allocate `Nodes` storage based on sequence estimate
         cdef double node_probability = seq.start_probability() + seq.stop_probability()
@@ -5440,15 +5451,15 @@ cdef class GeneFinder:
         if isinstance(sequence, Sequence):
             if sequences:
                 raise NotImplementedError("cannot use more than one `Sequence` object in `GeneFinder.train`")
-            seq = sequence
+            seq = Sequence(sequence, mask=self.mask, mask_size=self.min_mask)
         elif isinstance(sequence, str):
             if sequences:
                 sequence = "TTAATTAATTAA".join(itertools.chain([sequence], sequences, [""]))
-            seq = Sequence(sequence, mask=self.mask)
+            seq = Sequence(sequence, mask=self.mask, mask_size=self.min_mask)
         else:
             if sequences:
                 sequence = b"TTAATTAATTAA".join(itertools.chain([sequence], sequences, [b""]))
-            seq = Sequence(sequence, mask=self.mask)
+            seq = Sequence(sequence, mask=self.mask, mask_size=self.min_mask)
 
         # check sequence length
         if seq.slen < _MIN_SINGLE_GENOME:

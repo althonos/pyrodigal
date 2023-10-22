@@ -384,6 +384,7 @@ class GeneFinder:
         metagenomic_bins: Optional[MetagenomicBins] = None,
         closed: bool = False,
         mask: bool = False,
+        min_mask: int = 50,
         min_gene: int = 90,
         min_edge_gene: int = 60,
         max_overlap: int = 60,
@@ -400,6 +401,8 @@ class GeneFinder:
     def closed(self) -> bool: ...
     @property
     def mask(self) -> bool: ...
+    @property
+    def min_mask(self) -> int: ...
     @property
     def min_gene(self) -> int: ...
     @property

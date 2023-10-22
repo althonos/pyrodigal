@@ -358,6 +358,7 @@ cdef class GeneFinder:
     cdef readonly bint            closed
     cdef readonly object          lock
     cdef readonly bint            mask
+    cdef readonly int             min_mask
     cdef readonly int             max_overlap
     cdef readonly bint            meta
     cdef readonly MetagenomicBins metagenomic_bins
