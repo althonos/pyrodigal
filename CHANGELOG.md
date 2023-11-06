@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.1.1...HEAD
+
+
+## [v3.1.1] - 2023-11-06
+[v3.1.1]: https://github.com/althonos/pyrodigal/compare/v3.1.0...v3.1.1
+
+### Fixed
+- Incorrect unpickling of `GeneFinder` causing crashes with multiprocessing ([#46](https://github.com/althonos/pyrodigal/issues/46)).
 
 
 ## [v3.1.0] - 2023-10-22
