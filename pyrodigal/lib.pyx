@@ -5149,35 +5149,6 @@ cdef class GeneFinder:
         )
         return fn, (self.training_info,)
 
-    # def __getstate__(self):
-    #     return {
-    #         "_num_seq": self._num_seq,
-    #         "backend": self.backend,
-    #         "closed": self.closed,
-    #         "mask": self.mask,
-    #         "min_mask": self.min_mask,
-    #         "max_overlap": self.max_overlap,
-    #         "meta": self.meta,
-    #         "metagenomic_bins": self.metagenomic_bins,
-    #         "min_gene": self.min_gene,
-    #         "min_edge_gene": self.min_edge_gene,
-    #         "training_info": self.training_info,
-    #     }
-
-    # def __setstate__(self, dict state):
-    #     self.lock = threading.Lock()
-    #     self._num_seq = state["_num_seq"]
-    #     self.backend = state["backend"]
-    #     self.closed = state["closed"]
-    #     self.mask = state["mask"]
-    #     self.min_mask = state["min_mask"]
-    #     self.max_overlap = state["max_overlap"]
-    #     self.meta = state["meta"]
-    #     self.metagenomic_bins = state["metagenomic_bins"]
-    #     self.min_gene = state["min_gene"]
-    #     self.min_edge_gene = state["min_edge_gene"]
-    #     self.training_info = state["training_info"]
-
     # --- C interface --------------------------------------------------------
 
     cdef int _train(
