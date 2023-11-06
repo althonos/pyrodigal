@@ -151,6 +151,7 @@ cdef extern from *:
 
 import array
 import datetime
+import functools
 import itertools
 import textwrap
 import threading
@@ -4921,6 +4922,9 @@ cdef class MetagenomicBins:
             raise IndexError("metagenomic bins index out of range")
         return self._objects[i]
 
+    def __reduce__(self):
+        return type(self), (list(self), )
+
     @staticmethod
     cdef MetagenomicBins from_array(_metagenomic_bin* bins, size_t length) except *:
         assert bins != NULL
@@ -5050,7 +5054,7 @@ cdef class GeneFinder:
                 containing unknown nucleotides. Defaults to `False`.
             min_mask (`int`): The minimum mask length, when region masking
                 is enabled. Regions shorter than the given length will not
-                be masked, which may be helpful to prevent masking of 
+                be masked, which may be helpful to prevent masking of
                 single unknown nucleotides.
             min_gene (`int`): The minimum gene length. Defaults to the value
                 used in Prodigal.
@@ -5130,28 +5134,49 @@ cdef class GeneFinder:
         ty = type(self)
         return "{}.{}({})".format(ty.__module__, ty.__name__, ", ".join(template))
 
-    def __getstate__(self):
-        return {
-            "_num_seq": self._num_seq,
-            "closed": self.closed,
-            "meta": self.meta,
-            "mask": self.mask,
-            "min_gene": self.min_gene,
-            "min_edge_gene": self.min_edge_gene,
-            "max_overlap": self.max_overlap,
-            "training_info": self.training_info
-        }
+    def __reduce__(self):
+        fn = functools.partial(
+            type(self),
+            meta=self.meta,
+            metagenomic_bins=self.metagenomic_bins,
+            closed=self.closed,
+            mask=self.mask,
+            min_mask=self.min_mask,
+            min_gene=self.min_gene,
+            min_edge_gene=self.min_edge_gene,
+            max_overlap=self.max_overlap,
+            backend=self.backend
+        )
+        return fn, (self.training_info,)
 
-    def __setstate__(self, dict state):
-        self.lock = threading.Lock()
-        self._num_seq = state["_num_seq"]
-        self.closed = state["closed"]
-        self.meta = state["meta"]
-        self.mask = state["mask"]
-        self.min_gene = state["min_gene"]
-        self.min_edge_gene = state["min_edge_gene"]
-        self.max_overlap = state["max_overlap"]
-        self.training_info = state["training_info"]
+    # def __getstate__(self):
+    #     return {
+    #         "_num_seq": self._num_seq,
+    #         "backend": self.backend,
+    #         "closed": self.closed,
+    #         "mask": self.mask,
+    #         "min_mask": self.min_mask,
+    #         "max_overlap": self.max_overlap,
+    #         "meta": self.meta,
+    #         "metagenomic_bins": self.metagenomic_bins,
+    #         "min_gene": self.min_gene,
+    #         "min_edge_gene": self.min_edge_gene,
+    #         "training_info": self.training_info,
+    #     }
+
+    # def __setstate__(self, dict state):
+    #     self.lock = threading.Lock()
+    #     self._num_seq = state["_num_seq"]
+    #     self.backend = state["backend"]
+    #     self.closed = state["closed"]
+    #     self.mask = state["mask"]
+    #     self.min_mask = state["min_mask"]
+    #     self.max_overlap = state["max_overlap"]
+    #     self.meta = state["meta"]
+    #     self.metagenomic_bins = state["metagenomic_bins"]
+    #     self.min_gene = state["min_gene"]
+    #     self.min_edge_gene = state["min_edge_gene"]
+    #     self.training_info = state["training_info"]
 
     # --- C interface --------------------------------------------------------
 

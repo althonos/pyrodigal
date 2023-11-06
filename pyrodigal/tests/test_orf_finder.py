@@ -323,6 +323,7 @@ class TestMeta(_GeneFinderTestCase, unittest.TestCase):
         self.assertIs(preds.metagenomic_bin, None)
         self.assertIs(preds.training_info, None)
 
+
 class TestSingle(_GeneFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_train_info(self):
