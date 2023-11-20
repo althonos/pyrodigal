@@ -95,6 +95,12 @@ class TestConnectionScorerAVX(_TestConnectionScorerBase, unittest.TestCase):
     backend = "avx"
 
 
+@unittest.skipUnless(lib._AVX512_BUILD_SUPPORT, "extension compiled without AVX512 support")
+@unittest.skipUnless(lib._AVX512_RUNTIME_SUPPORT, "requires machine with AVX512 support")
+class TestConnectionScorerAVX512(_TestConnectionScorerBase, unittest.TestCase):
+    backend = "avx512"
+
+
 @unittest.skipUnless(lib._NEON_BUILD_SUPPORT, "extension compiled without NEON support")
 @unittest.skipUnless(lib._NEON_RUNTIME_SUPPORT, "requires machine with NEON support")
 class TestConnectionScorerNEON(_TestConnectionScorerBase, unittest.TestCase):
