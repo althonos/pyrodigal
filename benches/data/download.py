@@ -27,9 +27,9 @@ SAMPLES = [
     "1189612.SAMN02469969",
     "518637.SAMN00008825",
     "585506.SAMN00139194",
-    "82977.SAMN02928654",
+    "82977.SAMD00224198",
     "1267533.SAMN02440487",
-    "373.SAMN04223557",
+    "373.SAMD00233295",
     "298701.SAMN02471586",
     "1852381.SAMEA4555866",
     "1341181.SAMN02470908",
@@ -43,8 +43,8 @@ SAMPLES = [
     "1909395.SAMN05912833",
     "448385.SAMEA3138271",
     "1343740.SAMN02604192",
-    "48.SAMN03704078",
-    "1391654.SAMN03951129",
+    "888845.SAMN05017598",
+    "1391653.SAMN03951128",
     "1912.SAMN05935554",
     "576784.SAMEA2519540",
     "749414.SAMN02603683",
@@ -66,7 +66,12 @@ for sample in tqdm.tqdm(SAMPLES):
     url = "https://progenomes.embl.de/dumpSequence.cgi?p={}&t=c&a={}".format(
         sample, tax_id
     )
-    with urllib.request.urlopen(url) as res:
-        with gzip.open(res) as src:
-            with open(os.path.join(data_folder, "{}.fna".format(sample)), "wb") as dst:
-                shutil.copyfileobj(src, dst)
+    try:
+        filename = os.path.join(data_folder, "{}.fna".format(sample))
+        with urllib.request.urlopen(url) as res:
+            with gzip.open(res) as src:
+                with open(filename, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+    except Exception as err:
+        os.remove(filename)
+        print(f"Failed to download {sample!r}: {err}")

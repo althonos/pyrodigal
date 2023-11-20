@@ -23,6 +23,8 @@ parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
 
 BACKENDS = ["generic", None]
+if lib._AVX512_RUNTIME_SUPPORT:
+    BACKENDS.append("avx512")
 if lib._AVX2_RUNTIME_SUPPORT:
     BACKENDS.append("avx")
 if lib._MMX_RUNTIME_SUPPORT:
