@@ -22,10 +22,12 @@ except ImportError:
 # --- Globals ----------------------------------------------------------------
 
 _TARGET_CPU: str
+_AVX512_RUNTIME_SUPPORT: bool
 _AVX2_RUNTIME_SUPPORT: bool
 _NEON_RUNTIME_SUPPORT: bool
 _SSE2_RUNTIME_SUPPORT: bool
 _MMX_RUNTIME_SUPPORT: bool
+_AVX512_BUILD_SUPPORT: bool
 _AVX2_BUILD_SUPPORT: bool
 _NEON_BUILD_SUPPORT: bool
 _SSE2_BUILD_SUPPORT: bool

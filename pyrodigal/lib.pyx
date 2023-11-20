@@ -131,6 +131,8 @@ if SSE2_BUILD_SUPPORT:
     from pyrodigal.impl.sse cimport skippable_sse
 if AVX2_BUILD_SUPPORT:
     from pyrodigal.impl.avx cimport skippable_avx
+if AVX512_BUILD_SUPPORT:
+    from pyrodigal.impl.avx512 cimport skippable_avx512
 if NEON_BUILD_SUPPORT:
     from pyrodigal.impl.neon cimport skippable_neon
 
@@ -1094,24 +1096,28 @@ cdef class Sequence:
 
 # --- Connection Scorer ------------------------------------------------------
 
-_TARGET_CPU           = TARGET_CPU
-_HOST_CPU             = archspec.cpu.host()
-_AVX2_RUNTIME_SUPPORT = False
-_NEON_RUNTIME_SUPPORT = False
-_SSE2_RUNTIME_SUPPORT = False
-_MMX_RUNTIME_SUPPORT  = False
-_AVX2_BUILD_SUPPORT   = False
-_NEON_BUILD_SUPPORT   = False
-_SSE2_BUILD_SUPPORT   = False
-_MMX_BUILD_SUPPORT    = False
+_TARGET_CPU             = TARGET_CPU
+_HOST_CPU               = archspec.cpu.host()
+_AVX512_RUNTIME_SUPPORT = False
+_AVX2_RUNTIME_SUPPORT   = False
+_NEON_RUNTIME_SUPPORT   = False
+_SSE2_RUNTIME_SUPPORT   = False
+_MMX_RUNTIME_SUPPORT    = False
+_AVX512_BUILD_SUPPORT   = False
+_AVX2_BUILD_SUPPORT     = False
+_NEON_BUILD_SUPPORT     = False
+_SSE2_BUILD_SUPPORT     = False
+_MMX_BUILD_SUPPORT      = False
 
 if TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
-    _MMX_BUILD_SUPPORT    = MMX_BUILD_SUPPORT
-    _SSE2_BUILD_SUPPORT   = SSE2_BUILD_SUPPORT
-    _AVX2_BUILD_SUPPORT   = AVX2_BUILD_SUPPORT
-    _MMX_RUNTIME_SUPPORT  = "mmx" in _HOST_CPU.features
-    _SSE2_RUNTIME_SUPPORT = "sse2" in _HOST_CPU.features
-    _AVX2_RUNTIME_SUPPORT = "avx2" in _HOST_CPU.features
+    _MMX_BUILD_SUPPORT      = MMX_BUILD_SUPPORT
+    _SSE2_BUILD_SUPPORT     = SSE2_BUILD_SUPPORT
+    _AVX2_BUILD_SUPPORT     = AVX2_BUILD_SUPPORT
+    _AVX512_BUILD_SUPPORT   = AVX512_BUILD_SUPPORT
+    _MMX_RUNTIME_SUPPORT    = "mmx" in _HOST_CPU.features
+    _SSE2_RUNTIME_SUPPORT   = "sse2" in _HOST_CPU.features
+    _AVX2_RUNTIME_SUPPORT   = "avx2" in _HOST_CPU.features
+    _AVX512_RUNTIME_SUPPORT = "avx512f" in _HOST_CPU.features and "avx512bw" in _HOST_CPU.features
 elif TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
     _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT = "neon" in _HOST_CPU.features
@@ -1126,6 +1132,7 @@ cdef enum simd_backend:
     AVX2 = 3
     NEON = 4
     GENERIC = 5
+    AVX512 = 6
 
 cdef class ConnectionScorer:
     """A dedicated class for the fast scoring of nodes.
@@ -1147,7 +1154,8 @@ cdef class ConnectionScorer:
             backend (`str`): The SIMD backend to use for the heuristic filter.
                 Use ``"detect"`` to use the best available one depending on
                 the CPU capabilities of the local machine. Other available
-                values are: ``"generic"``, ``"sse"``, ``"avx"``, ``neon``.
+                values are: ``"generic"``, ``"sse"``, ``"avx"``, ``"avx512"``,
+                ``neon``.
 
         """
         if TARGET_CPU == "x86":
@@ -1159,6 +1167,8 @@ cdef class ConnectionScorer:
                     self.backend = simd_backend.SSE2
                 if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
                     self.backend = simd_backend.AVX2
+                if AVX512_BUILD_SUPPORT and _AVX512_RUNTIME_SUPPORT:
+                    self.backend = simd_backend.AVX512
             elif backend == "mmx":
                 if not MMX_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without MMX support")
@@ -1180,6 +1190,13 @@ cdef class ConnectionScorer:
                     raise RuntimeError("Cannot run AVX2 instructions on this machine")
                 else:
                     self.backend = simd_backend.AVX2
+            elif backend == "avx512":
+                if not AVX512_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without AVX512 support")
+                elif not _AVX512_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run AVX512 instructions on this machine")
+                else:
+                    self.backend = simd_backend.AVX512
             elif backend == "generic":
                 self.backend = simd_backend.GENERIC
             elif backend is None:
@@ -1221,7 +1238,7 @@ cdef class ConnectionScorer:
         PyMem_Free(self.skip_connection_raw)
 
     cpdef size_t __sizeof__(self):
-        return sizeof(self) + (self.capacity * sizeof(uint8_t) + 0x1F) * 4
+        return sizeof(self) + (self.capacity * sizeof(uint8_t) + 0x3F) * 4
 
     # --- C interface --------------------------------------------------------
 
@@ -1234,10 +1251,10 @@ cdef class ConnectionScorer:
         if self.capacity < nodes.length:
             with gil:
                 # reallocate new memory
-                self.skip_connection_raw = <uint8_t*> PyMem_Realloc(self.skip_connection_raw, nodes.length * sizeof(uint8_t) + 0x1F)
-                self.node_types_raw      = <uint8_t*> PyMem_Realloc(self.node_types_raw, nodes.length      * sizeof(uint8_t) + 0x1F)
-                self.node_strands_raw    = <int8_t*>  PyMem_Realloc(self.node_strands_raw, nodes.length    * sizeof(int8_t)  + 0x1F)
-                self.node_frames_raw     = <uint8_t*> PyMem_Realloc(self.node_frames_raw, nodes.length     * sizeof(uint8_t) + 0x1F)
+                self.skip_connection_raw = <uint8_t*> PyMem_Realloc(self.skip_connection_raw, nodes.length * sizeof(uint8_t) + 0x3F)
+                self.node_types_raw      = <uint8_t*> PyMem_Realloc(self.node_types_raw, nodes.length      * sizeof(uint8_t) + 0x3F)
+                self.node_strands_raw    = <int8_t*>  PyMem_Realloc(self.node_strands_raw, nodes.length    * sizeof(int8_t)  + 0x3F)
+                self.node_frames_raw     = <uint8_t*> PyMem_Realloc(self.node_frames_raw, nodes.length     * sizeof(uint8_t) + 0x3F)
                 # check that allocations were successful
                 if self.skip_connection_raw == NULL:
                     raise MemoryError("Failed to allocate memory for scoring bypass index")
@@ -1250,10 +1267,10 @@ cdef class ConnectionScorer:
             # record new capacity
             self.capacity = nodes.length
             # compute pointers to aligned memory
-            self.skip_connection = <uint8_t*> ((<uintptr_t> self.skip_connection_raw + 0x1F) & (~0x1F))
-            self.node_types      = <uint8_t*> ((<uintptr_t> self.node_types_raw      + 0x1F) & (~0x1F))
-            self.node_strands    = <int8_t*>  ((<uintptr_t> self.node_strands_raw    + 0x1F) & (~0x1F))
-            self.node_frames     = <uint8_t*> ((<uintptr_t> self.node_frames_raw     + 0x1F) & (~0x1F))
+            self.skip_connection = <uint8_t*> ((<uintptr_t> self.skip_connection_raw + 0x3F) & (~0x3F))
+            self.node_types      = <uint8_t*> ((<uintptr_t> self.node_types_raw      + 0x3F) & (~0x3F))
+            self.node_strands    = <int8_t*>  ((<uintptr_t> self.node_strands_raw    + 0x3F) & (~0x3F))
+            self.node_frames     = <uint8_t*> ((<uintptr_t> self.node_frames_raw     + 0x3F) & (~0x3F))
         # copy data from the array of nodes
         for i in range(nodes.length):
             self.node_types[i]      = nodes.nodes[i].type
@@ -1268,6 +1285,10 @@ cdef class ConnectionScorer:
         int min,
         int i
     ) noexcept nogil:
+        if AVX512_BUILD_SUPPORT:
+            if self.backend == simd_backend.AVX512:
+                skippable_avx512(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+                return 0
         if AVX2_BUILD_SUPPORT:
             if self.backend == simd_backend.AVX2:
                 skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
