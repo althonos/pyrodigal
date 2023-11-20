@@ -109,6 +109,7 @@ class build_ext(_build_ext):
     # --- Compatibility with `setuptools.Command`
 
     user_options = _build_ext.user_options + [
+        ("disable-avx512", None, "Force compiling the extension without AVX512 instructions"),
         ("disable-avx2", None, "Force compiling the extension without AVX2 instructions"),
         ("disable-sse2", None, "Force compiling the extension without SSE2 instructions"),
         ("disable-mmx", None, "Force compiling the extension without MMX instructions"),
@@ -117,6 +118,7 @@ class build_ext(_build_ext):
 
     def initialize_options(self):
         _build_ext.initialize_options(self)
+        self.disable_avx512 = False
         self.disable_avx2 = False
         self.disable_sse2 = False
         self.disable_neon = False
@@ -132,10 +134,11 @@ class build_ext(_build_ext):
         self.target_system = _detect_target_system(self.plat_name)
         self.target_cpu = _detect_target_cpu(self.plat_name)
         # record SIMD-specific options
-        self._simd_supported = dict(AVX2=False, SSE2=False, NEON=False, MMX=False)
-        self._simd_defines = dict(AVX2=[], SSE2=[], NEON=[], MMX=[])
-        self._simd_flags = dict(AVX2=[], SSE2=[], NEON=[], MMX=[])
+        self._simd_supported = dict(AVX512=False, AVX2=False, SSE2=False, NEON=False, MMX=False)
+        self._simd_defines = dict(AVX512=[], AVX2=[], SSE2=[], NEON=[], MMX=[])
+        self._simd_flags = dict(AVX512=[], AVX2=[], SSE2=[], NEON=[], MMX=[])
         self._simd_disabled = {
+            "AVX512": self.disable_avx512,
             "AVX2": self.disable_avx2,
             "SSE2": self.disable_sse2,
             "NEON": self.disable_neon,
@@ -192,6 +195,27 @@ class build_ext(_build_ext):
                 os.remove(obj)
             if os.path.isfile(binfile):
                 os.remove(binfile)
+
+    def _avx512_flags(self):
+        if self.compiler.compiler_type == "msvc":
+            return ["/arch:AVX512"]
+        return ["-mavx512bw", "-mavx512f"]
+
+    def _check_avx512(self):
+        return self._check_simd_generic(
+            "AVX512",
+            self._avx512_flags(),
+            program="""
+                #include <immintrin.h>
+                int main(int argc, char *argv[]) {{
+                    __m512i   a = _mm512_set1_epi16(-1);
+                    __m512i   b = _mm512_set1_epi16(0);
+                              a = _mm512_abs_epi16(a);
+                    __mmask32 c = _mm512_cmpgt_epi16_mask(a, b);
+                    return (c == 0xFFFFFFFF) ? 0 : 1;
+                }}
+            """,
+        )
 
     def _avx2_flags(self):
         if self.compiler.compiler_type == "msvc":
@@ -335,7 +359,7 @@ class build_ext(_build_ext):
                         )
                     )
                 ext.extra_objects.extend(objects)
-                if simd == "NEON" or simd == "AVX2":
+                if simd == "NEON" or simd == "AVX2" or simd == "AVX512":
                     ext.extra_link_args.extend(self._simd_flags[simd])
 
     def build_extension(self, ext):
@@ -397,6 +421,7 @@ class build_ext(_build_ext):
                 "SYS_VERSION_INFO_MICRO": sys.version_info.micro,
                 "TARGET_CPU": self.target_cpu,
                 "TARGET_SYSTEM": self.target_system,
+                "AVX512_BUILD_SUPPORT": False,
                 "AVX2_BUILD_SUPPORT": False,
                 "NEON_BUILD_SUPPORT": False,
                 "SSE2_BUILD_SUPPORT": False,
@@ -421,6 +446,11 @@ class build_ext(_build_ext):
 
         # check if we can build platform-specific code
         if self.target_cpu == "x86":
+            if not self._simd_disabled["AVX512"] and self._check_avx512():
+                cython_args["compile_time_env"]["AVX512_BUILD_SUPPORT"] = True
+                self._simd_supported["AVX512"] = True
+                self._simd_flags["AVX512"].extend(self._avx512_flags())
+                self._simd_defines["AVX512"].append(("__AVX512__", 1))
             if not self._simd_disabled["AVX2"] and self._check_avx2():
                 cython_args["compile_time_env"]["AVX2_BUILD_SUPPORT"] = True
                 self._simd_supported["AVX2"] = True
@@ -707,6 +737,7 @@ setuptools.setup(
             ],
             platform_sources={
                 "AVX2": ["pyrodigal/impl/avx.c"],
+                "AVX512": ["pyrodigal/impl/avx512.c"],
                 "NEON": ["pyrodigal/impl/neon.c"],
                 "SSE2": ["pyrodigal/impl/sse.c"],
                 "MMX": ["pyrodigal/impl/mmx.c"],
