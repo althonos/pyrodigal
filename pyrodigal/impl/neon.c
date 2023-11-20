@@ -12,10 +12,13 @@
 #define simd_load(m)      vld1q_u8((uint8_t*) (m))
 #define simd_store(x, m)  vst1q_u8((uint8_t*) (m), x)
 #define simd_set1(x)      vdupq_n_u8(x)
-#define simd_or(x, y)     vorrq_u8(x, y)
 #define simd_eq(x, y)     vceqq_u8(x, y)
-#define simd_and(x, y)    vandq_u8(x, y)
-#define simd_andnot(x, y) vbicq_u8(x, y)
+
+#define mask_t            uint8x16_t
+#define mask_or(x, y)     vorrq_u8(x, y)
+#define mask_and(x, y)    vandq_u8(x, y)
+#define mask_andnot(x, y) vbicq_u8(x, y)
+#define mask_convert(x)   (x)
 
 #define SIMD_LANES 16
 #define SIMD_MASK  0xF

@@ -12,10 +12,13 @@
 #define simd_load(m)      (((__m64*) (m))[0])
 #define simd_store(x, m)  (((__m64*) (m))[0] = x)
 #define simd_set1(x)      _mm_set1_pi8(x)
-#define simd_or(x, y)     _mm_or_si64(x, y)
 #define simd_eq(x, y)     _mm_cmpeq_pi8(x, y)
-#define simd_and(x, y)    _mm_and_si64(x, y)
-#define simd_andnot(x, y) _mm_andnot_si64(y, x)
+
+#define mask_t            __m64
+#define mask_or(x, y)     _mm_or_si64(x, y)
+#define mask_and(x, y)    _mm_and_si64(x, y)
+#define mask_andnot(x, y) _mm_andnot_si64(y, x)
+#define mask_convert(x)   (x)
 
 #define SIMD_LANES 8
 #define SIMD_MASK  0x7

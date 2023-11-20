@@ -12,10 +12,13 @@
 #define simd_load(m)      _mm256_load_si256((__m256i*) (m))
 #define simd_store(x, m)  _mm256_store_si256((__m256i*) (m), x)
 #define simd_set1(x)      _mm256_set1_epi8(x)
-#define simd_or(x, y)     _mm256_or_si256(x, y)
 #define simd_eq(x, y)     _mm256_cmpeq_epi8(x, y)
-#define simd_and(x, y)    _mm256_and_si256(x, y)
-#define simd_andnot(x, y) _mm256_andnot_si256(y, x)
+
+#define mask_t            __m256i
+#define mask_or(x, y)     _mm256_or_si256(x, y)
+#define mask_and(x, y)    _mm256_and_si256(x, y)
+#define mask_andnot(x, y) _mm256_andnot_si256(y, x)
+#define mask_convert(x)   (x)
 
 #define SIMD_LANES 32
 #define SIMD_MASK  0x1F
