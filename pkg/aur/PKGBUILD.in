@@ -11,6 +11,9 @@ license=("LGPL3")
 groups=()
 makedepends=('python-setuptools' 'cython' 'python-build' 'python-installer')
 depends=('python' 'python-archspec')
+optdepends=('python-isal: fast gzip decompression support'
+            'python-lz4: lz4 decompression support'
+            'python-zstandard: zstd decompression support')
 source=("https://files.pythonhosted.org/packages/source/${_name::1}/$_name/$_name-$pkgver.tar.gz")
 noextract=()
 sha256sums=(%sha256sum)
