@@ -2,9 +2,9 @@
 
 """The Pyrodigal CLI, emulating the original Prodigal command line.
 """
-
 import argparse
 import contextlib
+import io
 import multiprocessing.pool
 import os
 import sys
@@ -13,6 +13,44 @@ import typing
 from . import __name__, __author__, __version__
 from .lib import TRANSLATION_TABLES, GeneFinder, TrainingInfo
 from .tests.fasta import parse
+
+
+_BZ2_MAGIC = b"BZh"
+_GZIP_MAGIC = b"\x1f\x8b"
+_XZ_MAGIC = b"\xfd7zXZ"
+_LZ4_MAGIC = b"\x04\x22\x4d\x18"
+_ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
+
+@contextlib.contextmanager
+def zopen(path, mode='r', encoding=None, errors=None, newline=None) -> typing.Iterator[typing.BinaryIO]:
+    with contextlib.ExitStack() as ctx:
+        file = ctx.enter_context(open(path, "rb"))
+        peek = file.peek()
+        if peek.startswith(_GZIP_MAGIC):
+            import gzip
+            file = ctx.enter_context(gzip.open(file, mode="rb"))
+        elif peek.startswith(_BZ2_MAGIC):
+            import bz2
+            file = ctx.enter_context(bz2.open(file, mode="rb"))
+        elif peek.startswith(_XZ_MAGIC):
+            import lzma
+            file = ctx.enter_context(lzma.open(file, mode="rb"))
+        elif peek.startswith(_LZ4_MAGIC):
+            try:
+                import lz4.frame
+            except ImportError as err:
+                raise RuntimeError("File compression is LZ4 but lz4 is not installed") from err
+            file = ctx.enter_context(lz4.frame.open(file))
+        elif peek.startswith(_ZSTD_MAGIC):
+            try:
+                import zstandard
+            except ImportError as err:
+                raise RuntimeError("File compression is ZSTD but zstandard is not installed") from err
+            decompressor = zstandard.ZstdDecompressor()
+            file = decompressor.stream_reader(file)
+        if mode == "r":
+            file = io.TextIOWrapper(file, encoding=encoding, errors=errors, newline=newline)
+        yield file
 
 
 def argument_parser() -> argparse.ArgumentParser:
@@ -171,8 +209,11 @@ def main(
             else:
                 training_info = None
 
+            # open input (with support for compressed files)
+            input_file = ctx.enter_context(zopen(args.i))
+
             # initialize the ORF finder
-            orf_finder = gene_finder_factory(
+            gene_finder = gene_finder_factory(
                 meta=args.p == "meta",
                 closed=args.c,
                 mask=args.m,
@@ -185,8 +226,8 @@ def main(
             # pre-train if in training mode
             if args.p == "single":
                 # use the same interleaving logic as Prodigal
-                sequences = list(parse(args.i))
-                training_info = orf_finder.train(
+                sequences = list(parse(input_file))
+                training_info = gene_finder.train(
                     *(seq.seq for seq in sequences),
                     force_nonsd=args.n,
                     translation_table=args.g
@@ -196,7 +237,7 @@ def main(
                     with open(args.t, "wb") as f:
                         training_info.dump(f)
             else:
-                sequences = parse(args.i)
+                sequences = parse(input_file)
 
             # get the number of jobs
             if args.jobs == 0:
@@ -209,7 +250,7 @@ def main(
 
             # find genes in parallel
             def process(sequence):
-                return (sequence.id, orf_finder.find_genes(sequence.seq))
+                return (sequence.id, gene_finder.find_genes(sequence.seq))
 
             for seq_id, preds in parallel_map(process, sequences):
                 # write output in GFF or GBK format

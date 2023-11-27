@@ -10,25 +10,21 @@ try:
 except ImportError:
     files = None  # type: ignore
 
-from ..fasta import parse
+from ..fasta import parse, zopen
 
 @contextlib.contextmanager
-def load(name, mode="rt"):
-     with files(__name__).joinpath(name).open("rb") as src:
-        if name.endswith(".gz"):
-            src = gzip.open(src, mode=mode)
-        elif mode != "rb":
-            src = io.TextIOWrapper(src)
-        yield src 
+def load(name, mode="rb"):
+     with zopen(files(__name__).joinpath(name), mode=mode) as src:
+        yield src
 
 def load_record(name):
-    with load(name) as f:
+    with load(name, mode="r") as f:
         return next(parse(f))
 
 def load_records(name):
-    with load(name) as f:
+    with load(name, mode="r") as f:
         return list(parse(f))
 
 def load_text(name):
-    with load(name) as f:
+    with load(name, mode="r") as f:
         return f.read()
