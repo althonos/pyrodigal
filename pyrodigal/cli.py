@@ -5,16 +5,17 @@
 
 import argparse
 import contextlib
-import sys
-import os
 import multiprocessing.pool
+import os
+import sys
+import typing
 
 from . import __name__, __author__, __version__
 from .lib import TRANSLATION_TABLES, GeneFinder, TrainingInfo
 from .tests.fasta import parse
 
 
-def argument_parser():
+def argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=__name__, add_help=False)
     parser.add_argument(
         "-a",
@@ -133,7 +134,12 @@ def argument_parser():
     return parser
 
 
-def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
+def main(
+    argv: typing.Optional[typing.List[str]] = None, 
+    stdout: typing.BinaryIO = sys.stdout, 
+    stderr: typing.BinaryIO = sys.stderr,
+    gene_finder_factory: typing.Callable[..., GeneFinder] = GeneFinder,
+) -> int:
     parser = argument_parser()
     args = parser.parse_args(argv)
 
@@ -166,7 +172,7 @@ def main(argv=None, stdout=sys.stdout, stderr=sys.stderr):
                 training_info = None
 
             # initialize the ORF finder
-            orf_finder = GeneFinder(
+            orf_finder = gene_finder_factory(
                 meta=args.p == "meta",
                 closed=args.c,
                 mask=args.m,
