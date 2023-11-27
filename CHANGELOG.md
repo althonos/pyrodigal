@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.2.1...HEAD
+
+
+## [v3.2.1] - 2023-11-27
+[v3.2.1]: https://github.com/althonos/pyrodigal/compare/v3.2.0...v3.2.1
+
+### Added
+- Option to change argument parser in `pyrodigal.cli.main`.
 
 
 ## [v3.2.0] - 2023-11-27
