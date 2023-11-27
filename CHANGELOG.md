@@ -6,7 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.1.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.2.0...HEAD
+
+
+## [v3.2.0] - 2023-11-27
+[v3.2.0]: https://github.com/althonos/pyrodigal/compare/v3.1.1...v3.2.0
+
+### Added
+- AVX-512 implementation of the SIMD pre-filter.
+- Additional support for reading `lz4` and `xz` and `zstd`-compressed input in the CLI.
+- Option to change gene finder type in `pyrodigal.cli.main`.
 
 
 ## [v3.1.1] - 2023-11-06
@@ -87,6 +96,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Use [`archspec`](https://pypi.org/project/archspec) instead of `cpu_features` for runtime feature detection.
 
 ### Added
+- Support for reading `gzip` and `bz2`-compressed input in the CLI.
 - CLI flag to run ORF detection in parallel when input contains several contigs.
 
 ### Removed
