@@ -53,8 +53,11 @@ def zopen(path, mode='r', encoding=None, errors=None, newline=None) -> typing.It
         yield file
 
 
-def argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=__name__, add_help=False)
+def argument_parser(
+    prog: str = __name__,
+    version: str = __version__
+) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog=prog, add_help=False)
     parser.add_argument(
         "-a",
         required=False,
@@ -146,7 +149,7 @@ def argument_parser() -> argparse.ArgumentParser:
         "--version",
         help="Show version number and exit.",
         action="version",
-        version="{} v{}".format(__name__, __version__),
+        version="{} v{}".format(prog, version),
     )
     parser.add_argument(
         "--min-gene",
@@ -173,10 +176,12 @@ def argument_parser() -> argparse.ArgumentParser:
 
 
 def main(
-    argv: typing.Optional[typing.List[str]] = None, 
-    stdout: typing.BinaryIO = sys.stdout, 
-    stderr: typing.BinaryIO = sys.stderr,
+    argv: typing.Optional[typing.List[str]] = None,
+    stdout: typing.TextIO = sys.stdout,
+    stderr: typing.TextIO = sys.stderr,
+    *,
     gene_finder_factory: typing.Callable[..., GeneFinder] = GeneFinder,
+    argument_parser: typing.Callable[[], argparse.ArgumentParser] = argument_parser,
 ) -> int:
     parser = argument_parser()
     args = parser.parse_args(argv)
