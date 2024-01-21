@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.2.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.2.2...HEAD
+
+
+## [v3.2.2] - 2024-01-21
+[v3.2.2]: https://github.com/althonos/pyrodigal/compare/v3.2.1...v3.2.2
+
+### Fixed
+- Always mark SSE2 support on x86-64 CPUs independently of `archspec`-detected features ([#49](https://github.com/althonos/pyrodigal/issues/49)).
 
 
 ## [v3.2.1] - 2023-11-27
