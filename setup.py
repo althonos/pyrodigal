@@ -56,7 +56,9 @@ def _detect_target_cpu(platform):
         return "aarch64"
     elif re.match("^arm", machine):
         return "arm"
-    elif re.match("(x86_64)|(x86)|(AMD64|amd64)|(^i.86$)", machine):
+    elif re.match("(x86_64)|AMD64|amd64", machine):
+        return "x86_64"
+    elif re.match("(x86)|(^i.86$)", machine):
         return "x86"
     elif re.match("^(powerpc|ppc)", machine):
         return "ppc"
@@ -445,7 +447,7 @@ class build_ext(_build_ext):
             cython_args["compiler_directives"]["wraparound"] = False
 
         # check if we can build platform-specific code
-        if self.target_cpu == "x86":
+        if self.target_cpu == "x86" or self.target_cpu == "x86_64":
             if not self._simd_disabled["AVX512"] and self._check_avx512():
                 cython_args["compile_time_env"]["AVX512_BUILD_SUPPORT"] = True
                 self._simd_supported["AVX512"] = True

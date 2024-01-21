@@ -159,8 +159,6 @@ import textwrap
 import threading
 import warnings
 
-import archspec.cpu
-
 include "_version.py"
 
 # --- Patch for PyPy 3.9 -----------------------------------------------------
@@ -173,7 +171,6 @@ cdef extern from *:
     }
     #endif
     """
-
 
 # --- Module-level constants -------------------------------------------------
 
@@ -212,9 +209,43 @@ cdef list _NODE_TYPE = [
     "ATG", "GTG", "TTG" , "Edge",
 ]
 
+# --- Allocation helper --------------------------------------------------------
 
 cdef inline size_t new_capacity(size_t capacity) nogil:
     return capacity + (capacity >> 3) + 6
+
+
+# --- Runtime CPU detection ----------------------------------------------------
+
+try:
+    import archspec.cpu
+    _HOST_CPU             = archspec.cpu.host()
+    _HOST_FEATURES        = _HOST_CPU.features
+except ImportError:
+    _HOST_CPU             = None
+    _HOST_FEATURES        = set()
+
+_AVX512_BUILD_SUPPORT   = AVX512_BUILD_SUPPORT
+_AVX2_BUILD_SUPPORT     = AVX2_BUILD_SUPPORT
+_NEON_BUILD_SUPPORT     = NEON_BUILD_SUPPORT
+_SSE2_BUILD_SUPPORT     = SSE2_BUILD_SUPPORT
+_MMX_BUILD_SUPPORT      = MMX_BUILD_SUPPORT
+_AVX512_RUNTIME_SUPPORT = AVX512_BUILD_SUPPORT and "avx512f" in _HOST_FEATURES and "avx512bw" in _HOST_FEATURES
+_AVX2_RUNTIME_SUPPORT   = AVX2_BUILD_SUPPORT and "avx2" in _HOST_FEATURES
+_NEON_RUNTIME_SUPPORT   = NEON_BUILD_SUPPORT and "neon" in _HOST_FEATURES
+_SSE2_RUNTIME_SUPPORT   = SSE2_BUILD_SUPPORT and "sse2" in _HOST_FEATURES
+_MMX_RUNTIME_SUPPORT    = MMX_BUILD_SUPPORT and "mmx" in _HOST_FEATURES
+
+# NOTE(@althonos): NEON is always supported on Aarch64 so we should only check
+#                  that the extension was built with NEON support.
+if TARGET_CPU == "aarch64":
+    _NEON_RUNTIME_SUPPORT = NEON_BUILD_SUPPORT
+
+# NOTE(@althonos): SSE2 is always supported on x86-64 so we should only check
+#                  that the extension was built with SSE2 support.
+if TARGET_CPU == "x86_64":
+    _SSE2_RUNTIME_SUPPORT = SSE2_BUILD_SUPPORT
+
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -1096,35 +1127,6 @@ cdef class Sequence:
 
 # --- Connection Scorer ------------------------------------------------------
 
-_TARGET_CPU             = TARGET_CPU
-_HOST_CPU               = archspec.cpu.host()
-_AVX512_RUNTIME_SUPPORT = False
-_AVX2_RUNTIME_SUPPORT   = False
-_NEON_RUNTIME_SUPPORT   = False
-_SSE2_RUNTIME_SUPPORT   = False
-_MMX_RUNTIME_SUPPORT    = False
-_AVX512_BUILD_SUPPORT   = False
-_AVX2_BUILD_SUPPORT     = False
-_NEON_BUILD_SUPPORT     = False
-_SSE2_BUILD_SUPPORT     = False
-_MMX_BUILD_SUPPORT      = False
-
-if TARGET_CPU == "x86" and TARGET_SYSTEM in ("freebsd", "linux_or_android", "macos", "windows"):
-    _MMX_BUILD_SUPPORT      = MMX_BUILD_SUPPORT
-    _SSE2_BUILD_SUPPORT     = SSE2_BUILD_SUPPORT
-    _AVX2_BUILD_SUPPORT     = AVX2_BUILD_SUPPORT
-    _AVX512_BUILD_SUPPORT   = AVX512_BUILD_SUPPORT
-    _MMX_RUNTIME_SUPPORT    = "mmx" in _HOST_CPU.features
-    _SSE2_RUNTIME_SUPPORT   = "sse2" in _HOST_CPU.features
-    _AVX2_RUNTIME_SUPPORT   = "avx2" in _HOST_CPU.features
-    _AVX512_RUNTIME_SUPPORT = "avx512f" in _HOST_CPU.features and "avx512bw" in _HOST_CPU.features
-elif TARGET_CPU == "arm" and TARGET_SYSTEM == "linux_or_android":
-    _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
-    _NEON_RUNTIME_SUPPORT = "neon" in _HOST_CPU.features
-elif TARGET_CPU == "aarch64":
-    _NEON_BUILD_SUPPORT   = NEON_BUILD_SUPPORT
-    _NEON_RUNTIME_SUPPORT = NEON_BUILD_SUPPORT
-
 cdef enum simd_backend:
     NONE = 0
     MMX = 1
@@ -1158,7 +1160,7 @@ cdef class ConnectionScorer:
                 ``neon``.
 
         """
-        if TARGET_CPU == "x86":
+        if TARGET_CPU == "x86" or TARGET_CPU == "x86_64":
             if backend == "detect":
                 self.backend = simd_backend.NONE
                 if MMX_BUILD_SUPPORT and _MMX_RUNTIME_SUPPORT:
