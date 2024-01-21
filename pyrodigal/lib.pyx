@@ -1339,6 +1339,112 @@ cdef class ConnectionScorer:
                 final
             )
 
+    cdef void _score_all_connections(
+        self,
+        Nodes nodes,
+        const _training* tinf,
+        const bint final
+    ) noexcept nogil:
+        cdef int    i
+        cdef int    j
+        cdef int    min
+        cdef double max_sc  = -1.0
+
+        for i in range(<int> nodes.length):
+            nodes.nodes[i].score = 0
+            nodes.nodes[i].traceb = -1
+            nodes.nodes[i].tracef = -1
+
+        for i in range(<int> nodes.length):
+            # Set up distance constraints for making connections,
+            # but make exceptions for giant ORFS.
+            min = 0 if i < dprog.MAX_NODE_DIST else i - dprog.MAX_NODE_DIST
+            if nodes.nodes[i].strand == -1 and nodes.nodes[i].type != node_type.STOP and nodes.nodes[min].ndx >= nodes.nodes[i].stop_val:
+                if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
+                    min = 0
+            elif nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP and nodes.nodes[min].ndx >= nodes.nodes[i].stop_val:
+                if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
+                    min = 0
+            min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
+            # Check which nodes can be skipped
+            self._compute_skippable(min, i)
+            # Score connections
+            self._score_connections(nodes, min, i, tinf, final)
+
+    cdef int _find_max_index(self, Nodes nodes) noexcept nogil:
+        cdef int i
+        cdef int max_ndx = -1
+        cdef double max_sc  = -1.0
+        for i in reversed(range(<int> nodes.length)):
+            if nodes.nodes[i].strand == 1 and nodes.nodes[i].type != node_type.STOP:
+                continue
+            if nodes.nodes[i].strand == -1 and nodes.nodes[i].type == node_type.STOP:
+                continue
+            if nodes.nodes[i].score > max_sc:
+                max_sc = nodes.nodes[i].score
+                max_ndx = i
+        return max_ndx
+
+    cdef void _disentangle_overlaps(self, Nodes nodes, int max_index) noexcept nogil:
+        cdef int i
+        cdef int    path
+        cdef int    nxt
+        cdef int    tmp
+        # First Pass: untangle the triple overlaps
+        path = max_index
+        while nodes.nodes[path].traceb != -1:
+            nxt = nodes.nodes[path].traceb
+            if nodes.nodes[path].strand == -1 and nodes.nodes[path].type == node_type.STOP and nodes.nodes[nxt].strand == 1 and nodes.nodes[nxt].type == node_type.STOP and nodes.nodes[path].ov_mark != -1 and nodes.nodes[path].ndx > nodes.nodes[nxt].ndx:
+                tmp = nodes.nodes[path].star_ptr[nodes.nodes[path].ov_mark]
+                i = tmp
+                while nodes.nodes[i].ndx != nodes.nodes[tmp].stop_val:
+                    i -= 1
+                nodes.nodes[path].traceb = tmp
+                nodes.nodes[tmp].traceb = i
+                nodes.nodes[i].ov_mark = -1
+                nodes.nodes[i].traceb = nxt
+            path = nodes.nodes[path].traceb
+
+        # Second Pass: Untangle the simple overlaps
+        path = max_index
+        while nodes.nodes[path].traceb != -1:
+            nxt = nodes.nodes[path].traceb
+            if nodes.nodes[path].strand == -1 and nodes.nodes[path].type != node_type.STOP and nodes.nodes[nxt].strand == 1 and nodes.nodes[nxt].type == node_type.STOP:
+                i = path
+                while nodes.nodes[i].ndx != nodes.nodes[path].stop_val:
+                    i -= 1
+                nodes.nodes[path].traceb = i
+                nodes.nodes[i].traceb = nxt
+            if nodes.nodes[path].strand == 1 and nodes.nodes[path].type == node_type.STOP and nodes.nodes[nxt].strand == 1 and nodes.nodes[nxt].type == node_type.STOP:
+                nodes.nodes[path].traceb = nodes.nodes[nxt].star_ptr[nodes.nodes[path].ndx%3]
+                nodes.nodes[nodes.nodes[path].traceb].traceb = nxt
+            if nodes.nodes[path].strand == -1 and nodes.nodes[path].type == node_type.STOP and nodes.nodes[nxt].strand == -1 and nodes.nodes[nxt].type == node_type.STOP:
+                nodes.nodes[path].traceb = nodes.nodes[path].star_ptr[nodes.nodes[nxt].ndx%3]
+                nodes.nodes[nodes.nodes[path].traceb].traceb = nxt
+            path = nodes.nodes[path].traceb
+
+    cdef void _max_forward_pointers(self, Nodes nodes, int max_index) noexcept nogil:
+        cdef int path = max_index
+        while nodes.nodes[path].traceb != -1:
+            nodes.nodes[nodes.nodes[path].traceb].tracef = path
+            path = nodes.nodes[path].traceb
+
+    cdef int _dynamic_programming(
+        self,
+        Nodes nodes,
+        const _training* tinf,
+        const bint final
+    ) noexcept nogil:
+        if nodes.length == 0:
+            return -1
+
+        self._score_all_connections(nodes, tinf, final)
+        max_ndx = self._find_max_index(nodes)
+        self._disentangle_overlaps(nodes, max_ndx)
+        self._max_forward_pointers(nodes, max_ndx)
+
+        return -1 if nodes.nodes[max_ndx].traceb == -1 else max_ndx
+
     # --- Python interface ---------------------------------------------------
 
     def index(self, Nodes nodes not None):
@@ -1865,95 +1971,6 @@ cdef class Nodes:
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.nodes, 0, old_length * sizeof(_node))
-
-    cdef int _dynamic_programming(
-        self,
-        const _training* tinf,
-        ConnectionScorer scorer,
-        const bint final
-    ) noexcept nogil:
-        cdef int    i
-        cdef int    j
-        cdef int    min
-        cdef int    path
-        cdef int    nxt
-        cdef int    tmp
-        cdef int    max_ndx = -1
-        cdef double max_sc  = -1.0
-
-        if self.length == 0:
-            return -1
-
-        for i in range(<int> self.length):
-            self.nodes[i].score = 0
-            self.nodes[i].traceb = -1
-            self.nodes[i].tracef = -1
-
-        for i in range(<int> self.length):
-            # Set up distance constraints for making connections,
-            # but make exceptions for giant ORFS.
-            min = 0 if i < dprog.MAX_NODE_DIST else i - dprog.MAX_NODE_DIST
-            if self.nodes[i].strand == -1 and self.nodes[i].type != node_type.STOP and self.nodes[min].ndx >= self.nodes[i].stop_val:
-                if self.nodes[i].ndx != self.nodes[i].stop_val:
-                    min = 0
-            elif self.nodes[i].strand == 1 and self.nodes[i].type == node_type.STOP and self.nodes[min].ndx >= self.nodes[i].stop_val:
-                if self.nodes[i].ndx != self.nodes[i].stop_val:
-                    min = 0
-            min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
-            # Check which nodes can be skipped
-            scorer._compute_skippable(min, i)
-            # Score connections
-            scorer._score_connections(self, min, i, tinf, final)
-
-        for i in reversed(range(<int> self.length)):
-            if self.nodes[i].strand == 1 and self.nodes[i].type != node_type.STOP:
-                continue
-            if self.nodes[i].strand == -1 and self.nodes[i].type == node_type.STOP:
-                continue
-            if self.nodes[i].score > max_sc:
-                max_sc = self.nodes[i].score
-                max_ndx = i
-
-        # First Pass: untangle the triple overlaps
-        path = max_ndx
-        while self.nodes[path].traceb != -1:
-            nxt = self.nodes[path].traceb
-            if self.nodes[path].strand == -1 and self.nodes[path].type == node_type.STOP and self.nodes[nxt].strand == 1 and self.nodes[nxt].type == node_type.STOP and self.nodes[path].ov_mark != -1 and self.nodes[path].ndx > self.nodes[nxt].ndx:
-                tmp = self.nodes[path].star_ptr[self.nodes[path].ov_mark]
-                i = tmp
-                while self.nodes[i].ndx != self.nodes[tmp].stop_val:
-                    i -= 1
-                self.nodes[path].traceb = tmp
-                self.nodes[tmp].traceb = i
-                self.nodes[i].ov_mark = -1
-                self.nodes[i].traceb = nxt
-            path = self.nodes[path].traceb
-
-        # Second Pass: Untangle the simple overlaps
-        path = max_ndx
-        while self.nodes[path].traceb != -1:
-            nxt = self.nodes[path].traceb
-            if self.nodes[path].strand == -1 and self.nodes[path].type != node_type.STOP and self.nodes[nxt].strand == 1 and self.nodes[nxt].type == node_type.STOP:
-                i = path
-                while self.nodes[i].ndx != self.nodes[path].stop_val:
-                    i -= 1
-                self.nodes[path].traceb = i
-                self.nodes[i].traceb = nxt
-            if self.nodes[path].strand == 1 and self.nodes[path].type == node_type.STOP and self.nodes[nxt].strand == 1 and self.nodes[nxt].type == node_type.STOP:
-                self.nodes[path].traceb = self.nodes[nxt].star_ptr[self.nodes[path].ndx%3]
-                self.nodes[self.nodes[path].traceb].traceb = nxt
-            if self.nodes[path].strand == -1 and self.nodes[path].type == node_type.STOP and self.nodes[nxt].strand == -1 and self.nodes[nxt].type == node_type.STOP:
-                self.nodes[path].traceb = self.nodes[path].star_ptr[self.nodes[nxt].ndx%3]
-                self.nodes[self.nodes[path].traceb].traceb = nxt
-            path = self.nodes[path].traceb
-
-        # Mark forward pointers
-        path = max_ndx
-        while self.nodes[path].traceb != -1:
-            self.nodes[self.nodes[path].traceb].tracef = path
-            path = self.nodes[path].traceb
-
-        return -1 if self.nodes[max_ndx].traceb == -1 else max_ndx
 
     cdef int _extract(
         self,
@@ -5204,7 +5221,7 @@ cdef class GeneFinder:
         # do an initial dynamic programming routine with just the GC frame bias
         # used as a scoring function.
         nodes._record_overlapping_starts(tinf.tinf, False, self.max_overlap)
-        ipath = nodes._dynamic_programming(tinf.tinf, scorer, final=False)
+        ipath = scorer._dynamic_programming(nodes, tinf.tinf, final=False)
         # gather dicodon statistics for the training set
         tinf._calc_dicodon_gene(sequence, nodes.nodes, ipath)
         nodes._raw_coding_score(sequence, tinf.tinf)
@@ -5243,7 +5260,7 @@ cdef class GeneFinder:
         nodes._reset_scores()
         nodes._score(sequence, tinf.tinf, closed=self.closed, is_meta=False)
         nodes._record_overlapping_starts(tinf.tinf, True, self.max_overlap)
-        ipath = nodes._dynamic_programming(tinf.tinf, scorer, final=True)
+        ipath = scorer._dynamic_programming(nodes, tinf.tinf, final=True)
         # eliminate eventual bad genes in the nodes
         if nodes.length > 0:
             dprog.eliminate_bad_genes(nodes.nodes, ipath, tinf.tinf)
@@ -5300,7 +5317,7 @@ cdef class GeneFinder:
             nodes._reset_scores()
             nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
             nodes._record_overlapping_starts(tinf, True, self.max_overlap)
-            ipath = nodes._dynamic_programming(tinf, scorer, final=True)
+            ipath = scorer._dynamic_programming(nodes, tinf, final=True)
             # update genes if the current bin had a better score
             if nodes.length > 0 and ipath >= 0 and nodes.nodes[ipath].score > max_score:
                 # record best phase and score

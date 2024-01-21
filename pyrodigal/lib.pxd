@@ -142,6 +142,7 @@ cdef class ConnectionScorer:
         const int min,
         const int i
     ) noexcept nogil
+    
     cdef void _score_connections(
         self,
         Nodes nodes,
@@ -150,7 +151,32 @@ cdef class ConnectionScorer:
         const _training* tinf,
         const bint final
     ) noexcept nogil
-
+    cdef void _score_all_connections(
+        self,
+        Nodes nodes,
+        const _training* tinf,
+        const bint final
+    ) noexcept nogil
+    cdef int _find_max_index(
+        self, 
+        Nodes nodes
+    ) noexcept nogil
+    cdef void _disentangle_overlaps(
+        self, 
+        Nodes nodes, 
+        int max_index
+    ) noexcept nogil
+    cdef void _max_forward_pointers(
+        self, 
+        Nodes nodes, 
+        int max_index
+    ) noexcept nogil
+    cdef int _dynamic_programming(
+        self,
+        Nodes nodes,
+        const _training* tinf,
+        const bint final
+    ) noexcept nogil
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -196,12 +222,6 @@ cdef class Nodes:
     ) except NULL nogil
     cdef int _calc_orf_gc(self, Sequence seq) except -1 nogil
     cdef int _clear(self) except 1 nogil
-    cdef int _dynamic_programming(
-        self,
-        const _training* tinf,
-        ConnectionScorer scorer,
-        const bint final
-    ) noexcept nogil
     cdef int _extract(
         self,
         Sequence sequence,
