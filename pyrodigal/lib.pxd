@@ -143,7 +143,7 @@ cdef class ConnectionScorer:
         const int i
     ) noexcept nogil
     
-    cdef void _score_connections(
+    cdef void _score_node_connections(
         self,
         Nodes nodes,
         const int min,
@@ -151,7 +151,7 @@ cdef class ConnectionScorer:
         const _training* tinf,
         const bint final
     ) noexcept nogil
-    cdef void _score_all_connections(
+    cdef void _score_connections(
         self,
         Nodes nodes,
         const _training* tinf,

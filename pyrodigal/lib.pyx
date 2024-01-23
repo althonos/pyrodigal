@@ -1312,7 +1312,7 @@ cdef class ConnectionScorer:
             return 0
         return 0
 
-    cdef void _score_connections(
+    cdef void _score_node_connections(
         self,
         Nodes nodes,
         const int min,
@@ -1339,7 +1339,7 @@ cdef class ConnectionScorer:
                 final
             )
 
-    cdef void _score_all_connections(
+    cdef void _score_connections(
         self,
         Nodes nodes,
         const _training* tinf,
@@ -1370,8 +1370,8 @@ cdef class ConnectionScorer:
             min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
             # Check which nodes can be skipped
             self._compute_skippable(min, i)
-            # Score connections
-            self._score_connections(nodes, min, i, tinf, final)
+            # Score connections from previous nodes to node `i`
+            self._score_node_connections(nodes, min, i, tinf, final)
 
     cdef int _find_max_index(self, Nodes nodes) noexcept nogil:
         cdef int i
@@ -1440,7 +1440,7 @@ cdef class ConnectionScorer:
         if nodes.length == 0:
             return -1
 
-        self._score_all_connections(nodes, tinf, final)
+        self._score_connections(nodes, tinf, final)
         max_ndx = self._find_max_index(nodes)
         self._disentangle_overlaps(nodes, max_ndx)
         self._max_forward_pointers(nodes, max_ndx)
@@ -1473,8 +1473,6 @@ cdef class ConnectionScorer:
     def score_connections(
         self,
         Nodes nodes not None,
-        int min,
-        int i,
         TrainingInfo tinf not None,
         bint final=False
     ):
@@ -1492,10 +1490,8 @@ cdef class ConnectionScorer:
 
         """
         assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
-        assert (i < <int> nodes.length) | (self.backend == simd_backend.NONE)
-        assert min <= i
         with nogil:
-            self._score_connections(nodes, min, i, tinf.tinf, final)
+            self._score_connections(nodes, tinf.tinf, final)
 
 
 # --- Nodes ------------------------------------------------------------------

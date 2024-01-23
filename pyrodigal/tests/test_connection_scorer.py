@@ -29,14 +29,8 @@ def scored_nodes(record, final=True, backend=None):
     scorer = ConnectionScorer(backend=backend)
     nodes = extract_nodes(record).copy()
     scorer.index(nodes)
-    # compute scores only for some pseudo-randomly selected positions
-    rng = random.Random(42)
-    for i in rng.sample(range(len(nodes)), 10):
-        # compute boundary (MAX_NODE_DIST = 500)
-        j = 0 if i < 500 else i - 500
-        # score connections without fast-indexing skippable nodes
-        scorer.compute_skippable(j, i)
-        scorer.score_connections(nodes, j, i, tinf, final=final)
+    # compute scores for all positions
+    scorer.score_connections(nodes, tinf, final=final)
     return nodes
 
 
