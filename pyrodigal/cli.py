@@ -172,6 +172,13 @@ def argument_parser(
         type=int,
         default=60,
     )
+    parser.add_argument(
+        "--no-stop-codon",
+        required=False,
+        action="store_false",
+        help="Disables translation of stop codons into star characters (*) for complete genes.",
+        default=True,
+    )
     return parser
 
 
@@ -266,9 +273,9 @@ def main(
                 # if asked, write nucleotide sequences of genes
                 if nuc_file is not None:
                     preds.write_genes(nuc_file, seq_id)
-                # if asked, write amino acide sequences of proteins
+                # if asked, write amino acid sequences of proteins
                 if prot_file is not None:
-                    preds.write_translations(prot_file, seq_id)
+                    preds.write_translations(prot_file, seq_id, include_stop=args.no_stop_codon)
                 # if asked, write scores
                 if scores_file is not None:
                     preds.write_scores(scores_file, seq_id)
