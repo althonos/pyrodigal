@@ -1359,12 +1359,14 @@ cdef class ConnectionScorer:
             # Set up distance constraints for making connections,
             # but make exceptions for giant ORFS.
             min = 0 if i < dprog.MAX_NODE_DIST else i - dprog.MAX_NODE_DIST
-            if nodes.nodes[i].strand == -1 and nodes.nodes[i].type != node_type.STOP and nodes.nodes[min].ndx >= nodes.nodes[i].stop_val:
-                if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
-                    min = 0
-            elif nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP and nodes.nodes[min].ndx >= nodes.nodes[i].stop_val:
-                if nodes.nodes[i].ndx != nodes.nodes[i].stop_val:
-                    min = 0
+            if nodes.nodes[i].strand == -1 and nodes.nodes[i].type != node_type.STOP and nodes.nodes[min].ndx > nodes.nodes[i].stop_val:
+                # Extend minimum until node `min` is before the STOP codon of start node `i`
+                while min > 0 and nodes.nodes[min].ndx != nodes.nodes[i].stop_val:
+                    min -= 1
+            elif nodes.nodes[i].strand == 1 and nodes.nodes[i].type == node_type.STOP and nodes.nodes[min].ndx > nodes.nodes[i].stop_val:
+                # Extend minimum until node `min` is before the START codon of stop node `i`
+                while min > 0 and nodes.nodes[min].ndx != nodes.nodes[i].stop_val:
+                    min -= 1
             min = 0 if min < dprog.MAX_NODE_DIST else min - dprog.MAX_NODE_DIST
             # Check which nodes can be skipped
             self._compute_skippable(min, i)
