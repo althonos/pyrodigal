@@ -1819,14 +1819,9 @@ cdef class Nodes:
         cdef dict   motif
 
         # realloc to the exact number of nodes
-        self.length = self.capacity = len(state)
-        if self.capacity > 0:
-            self.nodes = <_node*> PyMem_Realloc(self.nodes, self.capacity * sizeof(_node))
-            if self.nodes == NULL:
-                raise MemoryError("Failed to reallocate node array")
-        else:
-            PyMem_Free(self.nodes)
-            self.nodes = NULL
+        self.length = len(state)
+        if self.length > 0 and self.length > self.capacity:
+            self._allocate(self.length)
 
         # copy node data from the state dictionary
         for i, node in enumerate(state):
