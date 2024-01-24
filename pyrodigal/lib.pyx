@@ -873,12 +873,13 @@ cdef class Sequence:
 
         # Compare the 6-base region to AGGAGG
         for i in range(limit):
-            if i%3 == 0:
-                if _is_a(self.digits, self.slen, pos+i, strand):
-                    match[i] = 2
-            else:
-                if _is_g(self.digits, self.slen, pos+i, strand):
-                    match[i] = 3
+            if pos + i >= 0 and pos + i < self.slen:
+                if i%3 == 0:
+                    if _is_a(self.digits, self.slen, pos+i, strand):
+                        match[i] = 2
+                else:
+                    if _is_g(self.digits, self.slen, pos+i, strand):
+                        match[i] = 3
 
         # Find the maximally scoring motif
         max_val = 0
@@ -973,10 +974,13 @@ cdef class Sequence:
 
         # Compare the 6-base region to AGGAGG
         for i in range(limit):
-            if i%3 == 0:
-                match[i] = 2 if _is_a(self.digits, self.slen, pos+i, strand) else -3
+            if pos + i >= 0 and pos + i < self.slen:
+                if i%3 == 0:
+                    match[i] = 2 if _is_a(self.digits, self.slen, pos+i, strand) else -3
+                else:
+                    match[i] = 3 if _is_g(self.digits, self.slen, pos+i, strand) else -2
             else:
-                match[i] = 3 if _is_g(self.digits, self.slen, pos+i, strand) else -2
+                match[i] = -3 if i%3 == 0 else -2
 
         # Find the maximally scoring motif
         max_val = 0
@@ -1909,6 +1913,7 @@ cdef class Nodes:
     cdef int _calc_orf_gc(self, Sequence seq) except -1 nogil:
         cdef int i
         cdef int j
+        cdef int k
         cdef int last[3]
         cdef int phase
         cdef double gc[3]
@@ -1921,18 +1926,15 @@ cdef class Nodes:
                 phase = self.nodes[i].ndx %3
                 if self.nodes[i].type == node_type.STOP:
                     last[phase] = j = self.nodes[i].ndx
-                    gc[phase] = (
-                        _is_gc(seq.digits, seq.slen, j,   1)
-                      + _is_gc(seq.digits, seq.slen, j+1, 1)
-                      + _is_gc(seq.digits, seq.slen, j+2, 1)
-                    )
+                    gc[phase] = 0.0
+                    for k in range(j, j+3):
+                        if k >= 0 and k < seq.slen:
+                            gc[phase] += _is_gc(seq.digits, seq.slen, k, 1)
                 else:
                     for j in range(last[phase] - 3, self.nodes[i].ndx - 1, -3):
-                        gc[phase] += (
-                            _is_gc(seq.digits, seq.slen, j,   1)
-                          + _is_gc(seq.digits, seq.slen, j+1, 1)
-                          + _is_gc(seq.digits, seq.slen, j+2, 1)
-                        )
+                        for k in range(j, j+3):
+                            if k >= 0 and k < seq.slen:
+                                gc[phase] += _is_gc(seq.digits, seq.slen, k, 1)
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
@@ -1944,18 +1946,15 @@ cdef class Nodes:
                 phase = self.nodes[i].ndx % 3
                 if self.nodes[i].type == node_type.STOP:
                     last[phase] = j = self.nodes[i].ndx
-                    gc[phase] = (
-                        _is_gc(seq.digits, seq.slen, j,   1)
-                      + _is_gc(seq.digits, seq.slen, j-1, 1)
-                      + _is_gc(seq.digits, seq.slen, j-2, 1)
-                    )
+                    gc[phase] = 0.0
+                    for k in range(j, j - 3, -1):
+                        if k >= 0 and k < seq.slen:
+                            gc[phase] += _is_gc(seq.digits, seq.slen, k, 1)
                 else:
                     for j in range(last[phase] + 3, self.nodes[i].ndx + 1, 3):
-                        gc[phase] += (
-                              _is_gc(seq.digits, seq.slen, j,   1)
-                            + _is_gc(seq.digits, seq.slen, j+1, 1)
-                            + _is_gc(seq.digits, seq.slen, j+2, 1)
-                        )
+                        for k in range(j, j+3):
+                            if k >= 0 and k < seq.slen:
+                                gc[phase] += _is_gc(seq.digits, seq.slen, k, 1)
                     gsize = abs(self.nodes[i].stop_val - self.nodes[i].ndx) + 3.0
                     self.nodes[i].gc_cont = gc[phase] / gsize
                     last[phase] = self.nodes[i].ndx
