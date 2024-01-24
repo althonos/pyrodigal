@@ -37,12 +37,7 @@ if lib._NEON_RUNTIME_SUPPORT:
 
 def score_connections(nodes, scorer, tinf):
     scorer.index(nodes)
-    for i in range(500, len(nodes)):
-        # compute boundary
-        j = 0 if i < 500 else i - 500
-        # score connections without fast-indexing skippable nodes
-        scorer.compute_skippable(j, i)
-        scorer.score_connections(nodes, j, i, tinf, final=True)
+    scorer.score_connections(nodes, tinf, final=True)
 
 
 results = dict(results=[])
