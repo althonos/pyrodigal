@@ -6,7 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.2.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.3.0...HEAD
+
+
+## [v3.3.0] - 2024-01-24
+[v3.3.0]: https://github.com/althonos/pyrodigal/compare/v3.2.2...v3.3.0
+
+# Added
+- CLI option to disable translation of stop codons ([#51](https://github.com/althonos/pyrodigal/pull/51), by [@zclaas](https://github.com/zclaas)).
+
+# Changed
+- `Scorer` internal API to separate connection scoring and overlap disentangling.
+
+# Fixed
+- Bug with computation of minimum node in connection scoring loop ([hyattpd/Prodigal#108](https://github.com/hyattpd/Prodigal/pull/108)).
+- Out-of-bounds sequence access in `_shine_dalgarno_exact` and `_shine_dalgarno_mm` methods of `Sequence`.
+- Memory leak in `Nodes.__setstate__` caused by incorrect reallocation.
 
 
 ## [v3.2.2] - 2024-01-21
