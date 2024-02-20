@@ -116,6 +116,8 @@ class build_ext(_build_ext):
         ("disable-sse2", None, "Force compiling the extension without SSE2 instructions"),
         ("disable-mmx", None, "Force compiling the extension without MMX instructions"),
         ("disable-neon", None, "Force compiling the extension without NEON instructions"),
+        ("profile-generate", None, "generate PGO profiles"),
+        ("profile-use", None, "use PGO profiles"),
     ]
 
     def initialize_options(self):
@@ -128,6 +130,8 @@ class build_ext(_build_ext):
         self.target_machine = None
         self.target_system = None
         self.target_cpu = None
+        self.profile_generate = None
+        self.profile_use = None
 
     def finalize_options(self):
         _build_ext.finalize_options(self)
@@ -159,6 +163,8 @@ class build_ext(_build_ext):
         self._clib_cmd.target_machine = self.target_machine
         self._clib_cmd.target_system = self.target_system
         self._clib_cmd.target_cpu = self.target_cpu
+        self._clib_cmd.profile_generate = self.profile_generate
+        self._clib_cmd.profile_use = self.profile_use
 
     # --- Autotools-like helpers ---
 
@@ -345,8 +351,12 @@ class build_ext(_build_ext):
                     for s in sources
                 ]
                 for source, object in zip(sources, objects):
+                    depends = [source]
+                    gcda = os.path.join(self.build_temp, source.replace(".c", ".gcda"))
+                    if os.path.exists(gcda) and self.profile_use:
+                        depends.append(gcda)
                     self.make_file(
-                        [source],
+                        depends,
                         object,
                         self.compiler.compile,
                         (
@@ -361,12 +371,14 @@ class build_ext(_build_ext):
                         )
                     )
                 ext.extra_objects.extend(objects)
+                ext.depends.extend(objects)
                 if simd == "NEON" or simd == "AVX2" or simd == "AVX512":
                     ext.extra_link_args.extend(self._simd_flags[simd])
 
     def build_extension(self, ext):
         # show the compiler being used
         _eprint("building", ext.name, "for", self.plat_name, "with", self.compiler.compiler_type, "compiler")
+        
         # add debug symbols if we are building in debug mode
         if self.debug:
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
@@ -379,12 +391,28 @@ class build_ext(_build_ext):
             ext.define_macros.append(("CYTHON_WITHOUT_ASSERTIONS", 1))
             if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
                 ext.extra_compile_args.append("-Wno-unused-variable")
+        
+        # add flags for profile-guided optimizations
+        if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
+            if self.profile_generate:
+                ext.extra_compile_args.append("-fprofile-generate")
+                ext.extra_link_args.append("-fprofile-generate")
+            elif self.profile_use:
+                ext.extra_compile_args.append("-fprofile-use")
+                ext.extra_link_args.append("-fprofile-use")
+        for source in ext.sources:
+            gcda = os.path.join(self.build_temp, source.replace(".c", ".gcda"))
+            if os.path.exists(gcda) and self.profile_use:
+                ext.depends.append(gcda)
+        
         # remove universal binary CFLAGS from the compiler if any
         if self.target_system == "macos":
             _patch_osx_compiler(self.compiler, self.target_machine)
+        
         # make sure the PyInterpreterState_GetID() function is available
         if self._check_getid():
             ext.define_macros.append(("HAS_PYINTERPRETERSTATE_GETID", 1))
+        
         # update link and include directories
         for name in ext.libraries:
             lib = self._clib_cmd.get_library(name)
@@ -393,10 +421,13 @@ class build_ext(_build_ext):
             )
             ext.depends.append(libfile)
             ext.extra_objects.append(libfile)
+        
         # add include path to patched headers
         ext.include_dirs.append(os.path.join(self._clib_cmd.build_src, "vendor", "Prodigal"))
+        
         # build platform-specific code
         self.build_simd_code(ext)
+        
         # build the rest of the extension as normal
         _build_ext.build_extension(self, ext)
 
@@ -493,7 +524,9 @@ class build_clib(_build_clib):
 
     user_options = _build_clib.user_options + [
         ("parallel=", "j", "number of parallel build jobs"),
-        ("plat-name=", "p", "platform name to cross-compile for, if supported")
+        ("plat-name=", "p", "platform name to cross-compile for, if supported"),
+        ("profile-generate", None, "generate PGO profiles"),
+        ("profile-use", None, "use PGO profiles"),
     ]
 
     def initialize_options(self):
@@ -504,6 +537,8 @@ class build_clib(_build_clib):
         self.target_system = None
         self.target_cpu = None
         self.build_src = None
+        self.profile_use = None
+        self.profile_generate = None
 
     def finalize_options(self):
         _build_clib.finalize_options(self)
@@ -628,7 +663,7 @@ class build_clib(_build_clib):
         self.mkpath(self.build_clib)
         for library in libraries:
             libname = self.compiler.library_filename(library.name, output_dir=self.build_clib)
-            self.make_file(library.sources, libname, self.build_library, (library,))
+            self.build_library(library)
 
     def build_library(self, library):
         # show the compiler being used
@@ -644,6 +679,15 @@ class build_clib(_build_clib):
                 library.extra_compile_args.append("-g")
             elif self.compiler.compiler_type == "msvc":
                 library.extra_compile_args.append("/Z7")
+
+        # add flags for profile-guided optimizations
+        if self.compiler.compiler_type in {"unix", "cygwin", "mingw32"}:
+            if self.profile_generate:
+                library.extra_compile_args.append("-fprofile-generate")
+                library.extra_link_args.append("-fprofile-generate")
+            elif self.profile_use:
+                library.extra_compile_args.append("-fprofile-use")
+                library.extra_link_args.append("-fprofile-use")
 
         # store compile args
         compile_args = (
@@ -686,12 +730,17 @@ class build_clib(_build_clib):
         )
 
     def _compile_file(self, source, object, compile_args):
+        depends = [source]
+        gcda = os.path.join(self.build_temp, source.replace(".c", ".gcda"))
+        if os.path.exists(gcda) and self.profile_use:
+            depends.append(gcda)
         self.make_file(
-            [source],
+            depends,
             object,
             self.compiler.compile,
             ([source], *compile_args)
         )
+
 
 class clean(_clean):
     """A `clean` that removes intermediate files created by Cython.
