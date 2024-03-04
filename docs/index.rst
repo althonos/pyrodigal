@@ -60,6 +60,9 @@ Pyrodigal |Stars|
 .. |Paper| image:: https://img.shields.io/badge/paper-JOSS-9400ff?style=flat-square&maxAge=86400
    :target: https://doi.org/10.21105/joss.04296
 
+.. |Citations| image:: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbadge.dimensions.ai%2Fdetails%2Fid%2Fpub.1147419140%2Fmetadata.json&query=%24.times_cited&style=flat-square&label=citations&maxAge=86400
+   :target: https://badge.dimensions.ai/details/id/pub.1147419140
+
 
 Overview
 --------
