@@ -80,6 +80,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
     "sphinx.ext.extlinks",
+    "sphinxcontrib.jquery",
     "sphinx_bootstrap_theme",
     "nbsphinx",
     "recommonmark",
