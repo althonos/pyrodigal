@@ -3522,7 +3522,7 @@ cdef class Genes:
             n += file.write("{:21}/inference=\"ab initio prediction:pyrodigal:{}\"\n".format("", __version__))
             n += file.write("{:21}/locus_tag=\"{}_{}\"\n".format("", sequence_id, i+1))
             n += file.write("{:21}/transl_table={}\n".format("", self.training_info.translation_table))
-            translation = "/translation=\"{}\"".format(gene.translate().rstrip("*"))
+            translation = "/translation=\"{}\"".format(gene.translate(include_stop=False))
             for block in textwrap.wrap(translation, 59):
                 n += file.write(" "*21)
                 n += file.write(block)
