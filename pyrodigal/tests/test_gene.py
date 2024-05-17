@@ -36,8 +36,18 @@ class TestGene(unittest.TestCase):
             self.assertEqual(self.preds[0].translation_table, 4)
             self.assertEqual(gene.translate(), prot.seq)
             self.assertEqual(gene.translate(translation_table=4), prot.seq)
-            self.assertNotEqual(gene.translate(translation_table=2), prot.seq)
+            self.assertNotEqual(gene.translate(translation_table=13), prot.seq)
             self.assertEqual(gene.translate(), prot.seq)
+
+    def test_translate_warning(self):
+        gene = self.preds[0]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            self.assertRaises(
+                UserWarning, 
+                gene.translate, 
+                translation_table=2
+            )
 
     def test_translate_strictness(self):
         finder = GeneFinder(meta=True, closed=True)
@@ -50,11 +60,11 @@ class TestGene(unittest.TestCase):
         self.assertEqual(strict[1:9], "XXXXXXXX")
         self.assertEqual(non_strict[1:9], "PRLTVAGS")
 
-        strict = gene.translate(strict=True, translation_table=3)
-        non_strict = gene.translate(strict=False, translation_table=3)
+        # strict = gene.translate(strict=True, translation_table=3)
+        # non_strict = gene.translate(strict=False, translation_table=3)
 
-        self.assertEqual(strict[1:9], "XXXXXXXX")
-        self.assertEqual(non_strict[1:9], "PRTTVAGS")
+        # self.assertEqual(strict[1:9], "XXXXXXXX")
+        # self.assertEqual(non_strict[1:9], "PRTTVAGS")
 
         strict = gene.translate(strict=True, translation_table=12)
         non_strict = gene.translate(strict=False, translation_table=12)

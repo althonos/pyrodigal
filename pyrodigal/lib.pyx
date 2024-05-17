@@ -182,6 +182,35 @@ cdef int    _MIN_SINGLE_GENOME   = 20000
 cdef int    _WINDOW              = 120
 cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
 cdef str    _PRODIGAL_VERSION    = "v2.6.3+c1e2d36"
+cdef dict   _STOP_CODONS         = {
+    1:  ("TAA", "TAG", "TGA"),
+    2:  ("TAA", "TAG", "AGA", "AGG"),
+    3:  ("TAA", "TAG"),
+    4:  ("TAA", "TAG"),
+    5:  ("TAA", "TAG"),
+    6:  ("TAA", "TAG", "TGA"),
+    9:  ("TAA", "TAG"),
+    10: ("TAA", "TAG"),
+    11: ("TAA", "TAG", "TGA"),
+    12: ("TAA", "TAG", "TGA"),
+    13: ("TAA", "TAG"),
+    14: ("TAG"),
+    15: ("TAA", "TGA"),
+    16: ("TAA", "TGA"),
+    21: ("TAA", "TAG"),
+    22: ("TCA", "TAA", "TGA"),
+    23: ("TTA", "TAA", "TGA"),
+    24: ("TAA", "TAG"),
+    25: ("TAA", "TAG"),
+    26: ("TAA", "TAG", "TGA"),
+    27: (),
+    28: (),
+    29: ("TGA"),
+    30: ("TGA"),
+    31: (),
+    32: ("TAA", "TGA"),
+    33: ("TAG"),
+}
 
 IDEAL_SINGLE_GENOME = _IDEAL_SINGLE_GENOME
 MIN_SINGLE_GENOME   = _MIN_SINGLE_GENOME
@@ -3086,14 +3115,20 @@ cdef class Gene:
         cdef int    stop_edge   = self.owner.nodes.nodes[gene.stop_ndx].edge
         cdef int    strand      = self.owner.nodes.nodes[gene.start_ndx].strand
 
-        # HACK: support changing the translation table (without allocating a
-        #       new a training info structure) by manipulating where the
-        #       table would be read from in the fields of the struct
         if translation_table is None:
             tt = self.owner.training_info.tinf.trans_table
         elif translation_table not in _TRANSLATION_TABLES:
             raise ValueError(f"{translation_table} is not a valid translation table index")
         else:
+            owner_table = self.owner.training_info.tinf.trans_table
+            if _STOP_CODONS[translation_table] != _STOP_CODONS[owner_table]:
+                warnings.warn(
+                    f"requested translation table ({translation_table!r}) has different STOP codons "
+                    f"than the one these genes were called with ({owner_table!r}), consider calling "
+                    "genes with the proper translation table instead. This may become an error "
+                    "in the future.",
+                    stacklevel=2,
+                )
             tt = translation_table
 
         # compute the right length to hold the protein
