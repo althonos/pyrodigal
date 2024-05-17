@@ -221,6 +221,7 @@ class Gene:
         translation_table: Optional[_TRANSLATION_TABLE] = None,
         unknown_residue: str = "X",
         include_stop: bool = True,
+        strict: bool = True,
     ) -> str: ...
 
 class Genes(typing.Sequence[Gene]):

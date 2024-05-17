@@ -39,6 +39,29 @@ class TestGene(unittest.TestCase):
             self.assertNotEqual(gene.translate(translation_table=2), prot.seq)
             self.assertEqual(gene.translate(), prot.seq)
 
+    def test_translate_strictness(self):
+        finder = GeneFinder(meta=True, closed=True)
+        seq = "ATG" + ("CCN" + "CGN" + "CTN" + "ACN" + "GTN" + "GCN" + "GGN" +"TCN") * 10 + "TGA"
+        gene = finder.find_genes(seq)[0]
+        
+        strict = gene.translate(strict=True, translation_table=11)
+        non_strict = gene.translate(strict=False, translation_table=11)
+
+        self.assertEqual(strict[1:9], "XXXXXXXX")
+        self.assertEqual(non_strict[1:9], "PRLTVAGS")
+
+        strict = gene.translate(strict=True, translation_table=3)
+        non_strict = gene.translate(strict=False, translation_table=3)
+
+        self.assertEqual(strict[1:9], "XXXXXXXX")
+        self.assertEqual(non_strict[1:9], "PRTTVAGS")
+
+        strict = gene.translate(strict=True, translation_table=12)
+        non_strict = gene.translate(strict=False, translation_table=12)
+
+        self.assertEqual(strict[1:9], "XXXXXXXX")
+        self.assertEqual(non_strict[1:9], "PRXTVAGS")
+
     def test_translate_no_include_stop(self):
         for gene, prot in zip(self.preds, self.proteins):
             self.assertEqual(gene.translate(include_stop=False), prot.seq.rstrip("*"))

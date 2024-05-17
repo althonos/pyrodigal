@@ -756,7 +756,8 @@ cdef class Sequence:
         int tt,
         int strand = 1,
         bint is_init = False,
-        char unknown_residue = b"X"
+        char unknown_residue = b"X",
+        bint strict=True,
     ) noexcept nogil:
         cdef uint8_t x0
         cdef uint8_t x1
@@ -776,12 +777,17 @@ cdef class Sequence:
             x1 = _complement[self.digits[self.slen - 2 - i]]
             x2 = _complement[self.digits[self.slen - 3 - i]]
 
+        if strict and (x0 == nucleotide.N or x1 == nucleotide.N or x2 == nucleotide.N):
+            return unknown_residue
+
         if x0 == nucleotide.T and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"F"
         if x0 == nucleotide.T and x1 == nucleotide.T and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"L"
-        if x0 == nucleotide.T and x1 == nucleotide.C and x2 != nucleotide.N:
+        if x0 == nucleotide.T and x1 == nucleotide.C:
             return b"S"
+        if x0 == nucleotide.T and x1 == nucleotide.A and tt == 29:
+            return b"Y"
         if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.T:
             return b"Y"
         if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.C:
@@ -802,17 +808,22 @@ cdef class Sequence:
             return b"G" if tt == 25 else b"W"
         if x0 == nucleotide.T and x1 == nucleotide.G and x2 == nucleotide.G:
             return b"W"
-        if x0 == nucleotide.C and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C or x2 == nucleotide.A):
-            return b"T" if tt == 3 else b"L"
-        if x0 == nucleotide.C and x1 == nucleotide.T and x2 == nucleotide.G:
-            return b"T" if tt == 3 else b"S" if tt == 12 else b"L"
-        if x0 == nucleotide.C and x1 == nucleotide.C and x2 != nucleotide.N:
+        if x0 == nucleotide.C and x1 == nucleotide.T:
+            if tt == 3:
+                return b"T"
+            elif tt == 12:
+                return b"S" if x2 == nucleotide.G else unknown_residue if x2 == nucleotide.N else b"L"
+            elif tt == 26:
+                return b"A" if x2 == nucleotide.G else unknown_residue if x2 == nucleotide.N else b"L"
+            else:
+                return b"L"
+        if x0 == nucleotide.C and x1 == nucleotide.C:
             return b"P"
         if x0 == nucleotide.C and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"H"
         if x0 == nucleotide.C and x1 == nucleotide.A and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"Q"
-        if x0 == nucleotide.C and x1 == nucleotide.G and x2 != nucleotide.N:
+        if x0 == nucleotide.C and x1 == nucleotide.G:
             return b"R"
         if x0 == nucleotide.A and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"I"
@@ -820,7 +831,7 @@ cdef class Sequence:
             return b"M" if tt == 2 or tt == 3 or tt == 5 or tt == 13 or tt == 22 else b"I"
         if x0 == nucleotide.A and x1 == nucleotide.T and x2 == nucleotide.G:
             return b"M"
-        if x0 == nucleotide.A and x1 == nucleotide.C and x2 != nucleotide.N:
+        if x0 == nucleotide.A and x1 == nucleotide.C:
             return b"T"
         if x0 == nucleotide.A and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"N"
@@ -828,19 +839,26 @@ cdef class Sequence:
             return b"N" if tt == 9 or tt == 14 or tt == 21 else b"K"
         if x0 == nucleotide.A and x1 == nucleotide.A and x2 == nucleotide.G:
             return b"K"
-        if x0 == nucleotide.A and x1 == nucleotide.G and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"S"
-        if x0 == nucleotide.A and x1 == nucleotide.G and (x2 == nucleotide.A or x2 == nucleotide.G):
-            return b"G" if tt == 13 else b"S" if tt == 5 or tt == 9 or tt == 14 or tt == 21 else b"R"
-        if x0 == nucleotide.G and x1 == nucleotide.T and x2 != nucleotide.N:
+        if x0 == nucleotide.A and x1 == nucleotide.G:
+            if tt == 5 or tt == 9 or tt == 15 or tt == 21:
+                return b"S"
+            elif tt == 24 or tt == 3:
+                return b"K" if x2 == nucleotide.G else unknown_residue if x2 == nucleotide.N else b"S"
+            
+            elif tt == 13:
+                return unknown_residue if x2 == nucleotide.N else b"G" if (x2 == nucleotide.A or x2 == nucleotide.G) else b"S"
+            
+            else:
+                return unknown_residue if x2 == nucleotide.N else b"R" if (x2 == nucleotide.A or x2 == nucleotide.G) else b"S" 
+        if x0 == nucleotide.G and x1 == nucleotide.T:
             return b"V"
-        if x0 == nucleotide.G and x1 == nucleotide.C and x2 != nucleotide.N:
+        if x0 == nucleotide.G and x1 == nucleotide.C:
             return b"A"
         if x0 == nucleotide.G and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
             return b"D"
         if x0 == nucleotide.G and x1 == nucleotide.A and (x2 == nucleotide.A or x2 == nucleotide.G):
             return b"E"
-        if x0 == nucleotide.G and x1 == nucleotide.G and x2 != nucleotide.N:
+        if x0 == nucleotide.G and x1 == nucleotide.G:
             return b"G"
 
         return unknown_residue
@@ -3013,6 +3031,7 @@ cdef class Gene:
         object translation_table=None,
         char unknown_residue=b"X",
         bint include_stop=True,
+        bint strict=True,
     ):
         """Translate the predicted gene into a protein sequence.
 
@@ -3028,6 +3047,11 @@ cdef class Gene:
                 `True` keeps the default behaviour of Prodigal, however it
                 often does not play nice with other programs or libraries
                 that will use the protein sequence for downstream processing.
+            strict (`bool`): If `True` (the default), translate codons 
+                containing *any* unknown nucleotide as ``unknown_residue``. 
+                If `False`, attempt to translate some incomplete codons 
+                when there is no ambiguity, taking into account the translation
+                table (e.g. ``CCN``, which always translates to ``Pro``).
 
         Returns:
             `str`: The proteins sequence as a string using the right
@@ -3040,6 +3064,9 @@ cdef class Gene:
 
         .. versionadded:: 3.0.0
             The ``include_stop`` keyword argument.
+
+        .. versionadded:: 3.4.0
+            The `strict` keyword argument.
 
         """
         cdef size_t nucl_length
@@ -3099,7 +3126,8 @@ cdef class Gene:
                 tt,
                 strand=strand,
                 is_init=i==0 and not start_edge,
-                unknown_residue=unknown_residue
+                unknown_residue=unknown_residue,
+                strict=strict,
             )
             PyUnicode_WRITE(kind, data, i, aa)
 

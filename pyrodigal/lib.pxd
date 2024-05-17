@@ -80,7 +80,8 @@ cdef class Sequence:
         int tt,
         int strand=*,
         bint is_init=*,
-        char unknown_residue=*
+        char unknown_residue=*,
+        bint strict=*,
     ) noexcept nogil
     cdef int _shine_dalgarno_exact(
         self,
@@ -281,6 +282,7 @@ cdef class Gene:
         object translation_table=?,
         char unknown_residue=*,
         bint include_stop=*,
+        bint strict=*,
     )
 
 cdef class Genes:
