@@ -251,6 +251,8 @@ class Genes(typing.Sequence[Gene]):
         sequence_id: str,
         str: _DIVISION = "BCT",
         date: Optional[datetime.date] = None,
+        translation_table: typing.Optional[_TRANSLATION_TABLE] = None,
+        strict_translation: bool = True,
     ) -> int: ...
     def write_gff(
         self,
@@ -272,6 +274,7 @@ class Genes(typing.Sequence[Gene]):
         width: typing.Optional[int] = 60,
         translation_table: typing.Optional[_TRANSLATION_TABLE] = None,
         include_stop: bool = True,
+        strict_translation: bool = True,
     ) -> int: ...
     def write_scores(
         self,

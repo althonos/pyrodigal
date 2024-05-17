@@ -3475,6 +3475,8 @@ cdef class Genes:
         str sequence_id,
         str division="BCT",
         object date=None,
+        object translation_table=None,
+        bint strict_translation=True,
     ) except -1:
         """Write predicted genes and sequence to ``file`` in GenBank format.
 
@@ -3488,6 +3490,12 @@ cdef class Genes:
                 sequences) given the scope of Prodigal.
             date (`datetime.date`, optional): The date to write in the
                 GenBank header, or `None` to use `~datetime.date.now`.
+            translation_table (`int` or `None`): A translation table to pass
+                to `Gene.translate`, or `None` to use the translation 
+                table from the `TrainingInfo` these genes were obtained with.
+            strict_translation (`bool`): Whether to handle ambiguous codons
+                in strict mode when translating. See the ``strict`` parameter 
+                of `Gene.translate` for more information.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3503,10 +3511,20 @@ cdef class Genes:
 
         .. versionadded:: 3.0.0
 
+        .. versionadded:: 3.4.0
+           The ``translation_table`` and ``strict_translation`` parameters.
+
         """
         cdef Gene           gene
         cdef ssize_t        i
         cdef ssize_t        n    = 0
+        
+        # use default training info translation table if none provided
+        if translation_table is None:
+            if self.training_info is not None:
+                translation_table = self.training_info.translation_table
+        elif translation_table not in _TRANSLATION_TABLES:
+            raise ValueError(f"{translation_table} is not a valid translation table index")
 
         # use today date if none given
         if date is None:
@@ -3549,8 +3567,14 @@ cdef class Genes:
             n += file.write("{:21}/codon_start=1\n".format(""))
             n += file.write("{:21}/inference=\"ab initio prediction:pyrodigal:{}\"\n".format("", __version__))
             n += file.write("{:21}/locus_tag=\"{}_{}\"\n".format("", sequence_id, i+1))
-            n += file.write("{:21}/transl_table={}\n".format("", self.training_info.translation_table))
-            translation = "/translation=\"{}\"".format(gene.translate(include_stop=False))
+            n += file.write("{:21}/transl_table={}\n".format("", translation_table))
+            translation = "/translation=\"{}\"".format(
+                gene.translate(
+                    translation_table=translation_table, 
+                    include_stop=False, 
+                    strict=strict_translation
+                )
+            )
             for block in textwrap.wrap(translation, 59):
                 n += file.write(" "*21)
                 n += file.write(block)
@@ -3672,7 +3696,7 @@ cdef class Genes:
         self,
         object file,
         str sequence_id,
-        object width=70
+        object width=70,
     ) except -1:
         """Write nucleotide sequences of genes to ``file`` in FASTA format.
 
@@ -3722,6 +3746,7 @@ cdef class Genes:
         object width=60,
         object translation_table=None,
         bint include_stop=True,
+        bint strict_translation=True,
     ) except -1:
         """Write protein sequences of genes to ``file`` in FASTA format.
 
@@ -3740,6 +3765,9 @@ cdef class Genes:
                 `True` keeps the default behaviour of Prodigal, however it
                 often does not play nice with other programs or libraries
                 that will use the FASTA file for downstream processing.
+            strict_translation (`bool`): Whether to handle ambiguous codons
+                in strict mode when translating. See the ``strict`` parameter 
+                of `Gene.translate` for more information.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3749,6 +3777,9 @@ cdef class Genes:
 
         .. versionadded:: 3.0.0
             The ``include_stop`` argument.
+
+        .. versionadded:: 3.4.0
+           The ``strict_translation`` parameters.
 
         """
         cdef ssize_t n     = 0
@@ -3773,7 +3804,7 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
-            trans = gene.translate(translation_table, include_stop=include_stop)
+            trans = gene.translate(translation_table, include_stop=include_stop, strict=strict_translation)
             for line in textwrap.wrap(trans, width=width):
                 n += file.write(line)
                 n += file.write("\n")
