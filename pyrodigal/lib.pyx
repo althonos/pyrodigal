@@ -2106,7 +2106,7 @@ cdef class Nodes:
                     )
                     nn += 1
                 else:
-                    raise RuntimeError("Encountered a STOP codon that is none of ATG/TTG/GTG")
+                    raise RuntimeError("Encountered a start codon that is none of ATG/TTG/GTG")
             elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
                 saw_start[i%3] = True
                 self._add_node(
@@ -2201,7 +2201,7 @@ cdef class Nodes:
                     )
                     nn += 1
                 else:
-                    raise RuntimeError("Encountered a STOP codon that is none of ATG/TTG/GTG")
+                    raise RuntimeError("Encountered a start codon that is none of ATG/TTG/GTG")
             elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
                 saw_start[i%3] = 1
                 node = self._add_node(
