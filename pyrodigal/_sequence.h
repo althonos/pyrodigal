@@ -76,9 +76,6 @@ static inline char _amino(const uint8_t* digits, const int slen, const int i, co
     const char* table = _TT[tt];
     uint_fast32_t x0, x1, x2;
 
-    inline size_t offset(size_t x0, size_t x1, size_t x2) {
-        return (x0 << 4) + (x1 << 2) + x2;
-    }
 
     if (strand == 1) {
         x0 = digits[i];
@@ -91,7 +88,7 @@ static inline char _amino(const uint8_t* digits, const int slen, const int i, co
     }
 
     if ((x0 <= T) && (x1 <= T) && (x2 <= T)) {
-        return _TT[tt][offset(x0, x1, x2)];
+        return _translate_codon(tt, x0, x1, x2);
     }
 
     if (strict) {
@@ -99,18 +96,18 @@ static inline char _amino(const uint8_t* digits, const int slen, const int i, co
     }
 
     if ((x0 <= T) && (x1 <= T) && (x2 > T)) {
-        char aa = _TT[tt][offset(x0, x1, A)];
+        char aa = _translate_codon(tt, x0, x1, A);
         for (x2 = G; x2 <= T; x2++) {
-            if (_TT[tt][offset(x0, x1, x2)] != aa)
+            if (_translate_codon(tt, x0, x1, x2) != aa)
                 return 'X';
         }
         return aa;
     }
 
     if ((x0 <= T) && (x1 > T) && (x2 <= T)) {
-        char aa = _TT[tt][offset(x0, A, x2)];
+        char aa = _translate_codon(tt, x0, A, x2);
         for (x1 = G; x1 <= T; x2++) {
-            if (_TT[tt][offset(x0, x1, x2)] != aa)
+            if (_translate_codon(tt, x0, x1, x2) != aa)
                 return 'X';
         }
         return aa;
