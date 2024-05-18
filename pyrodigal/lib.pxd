@@ -290,6 +290,8 @@ cdef class Genes:
     cdef          _gene*         genes
     cdef          size_t         capacity
     cdef          size_t         length
+    # Dynamic programming path
+    cdef          int            ipath
     # References to source data
     cdef          size_t         _num_seq
     cdef readonly bint           meta

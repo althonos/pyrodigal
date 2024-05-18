@@ -181,7 +181,7 @@ cdef size_t MIN_NODES_ALLOC      = 8 * MIN_GENES_ALLOC
 cdef int    _IDEAL_SINGLE_GENOME = 100000
 cdef int    _MIN_SINGLE_GENOME   = 20000
 cdef int    _WINDOW              = 120
-cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 34))
+cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 27)) | {29, 30} | {32, 33}
 cdef str    _PRODIGAL_VERSION    = "v2.6.3+c1e2d36"
 cdef dict   _STOP_CODONS         = {
     1:  ("TAA", "TAG", "TGA"),
@@ -2985,9 +2985,9 @@ cdef class Gene:
                 `True` keeps the default behaviour of Prodigal, however it
                 often does not play nice with other programs or libraries
                 that will use the protein sequence for downstream processing.
-            strict (`bool`): If `True` (the default), translate codons 
-                containing *any* unknown nucleotide as ``unknown_residue``. 
-                If `False`, attempt to translate some incomplete codons 
+            strict (`bool`): If `True` (the default), translate codons
+                containing *any* unknown nucleotide as ``unknown_residue``.
+                If `False`, attempt to translate some incomplete codons
                 when there is no ambiguity, taking into account the translation
                 table (e.g. ``CCN``, which always translates to ``Pro``).
 
@@ -3114,6 +3114,7 @@ cdef class Genes:
         self.length = 0
         self.meta = False
         self.metagenomic_bin = None
+        self.ipath = -1
 
     def __dealloc__(self):
         PyMem_Free(self.genes)
@@ -3200,6 +3201,23 @@ cdef class Genes:
             self.metagenomic_bin = None
             self.training_info = state["training_info"]
 
+    # --- Properties ---------------------------------------------------------
+
+    @property
+    def score(self):
+        """`float`: The total score of the gene path in the sequence.
+
+        This value can be used to compare the genes obtained on the same
+        sequence with different `TrainingInfo` parameters, and find the
+        best set of parameters for a sequence.
+
+        .. versionadded:: 3.4.0
+
+        """
+        if self.ipath < 0:
+            return 0.0
+        return self.nodes.nodes[self.ipath].score
+
     # --- C interface --------------------------------------------------------
 
     cdef int _allocate(self, size_t capacity) except 1:
@@ -3243,6 +3261,7 @@ cdef class Genes:
         cdef size_t old_length
         old_length, self.length = self.length, 0
         memset(self.genes, 0, old_length * sizeof(_gene))
+        self.ipath = -1
 
     cdef int _extract(self, Nodes nodes, int ipath) except -1 nogil:
         """Extract genes from the dynamic programming nodes.
@@ -3253,6 +3272,8 @@ cdef class Genes:
         cdef int  end       = 0
         cdef int  start_ndx = 0
         cdef int  stop_ndx  = 0
+
+        self.ipath = ipath
 
         if path == -1:
             return 0
@@ -3438,10 +3459,10 @@ cdef class Genes:
             date (`datetime.date`, optional): The date to write in the
                 GenBank header, or `None` to use `~datetime.date.now`.
             translation_table (`int` or `None`): A translation table to pass
-                to `Gene.translate`, or `None` to use the translation 
+                to `Gene.translate`, or `None` to use the translation
                 table from the `TrainingInfo` these genes were obtained with.
             strict_translation (`bool`): Whether to handle ambiguous codons
-                in strict mode when translating. See the ``strict`` parameter 
+                in strict mode when translating. See the ``strict`` parameter
                 of `Gene.translate` for more information.
 
         Returns:
@@ -3465,7 +3486,7 @@ cdef class Genes:
         cdef Gene           gene
         cdef ssize_t        i
         cdef ssize_t        n    = 0
-        
+
         # use default training info translation table if none provided
         if translation_table is None:
             if self.training_info is not None:
@@ -3517,8 +3538,8 @@ cdef class Genes:
             n += file.write("{:21}/transl_table={}\n".format("", translation_table))
             translation = "/translation=\"{}\"".format(
                 gene.translate(
-                    translation_table=translation_table, 
-                    include_stop=False, 
+                    translation_table=translation_table,
+                    include_stop=False,
                     strict=strict_translation
                 )
             )
@@ -3713,7 +3734,7 @@ cdef class Genes:
                 often does not play nice with other programs or libraries
                 that will use the FASTA file for downstream processing.
             strict_translation (`bool`): Whether to handle ambiguous codons
-                in strict mode when translating. See the ``strict`` parameter 
+                in strict mode when translating. See the ``strict`` parameter
                 of `Gene.translate` for more information.
 
         Returns:
@@ -5453,7 +5474,7 @@ cdef class GeneFinder:
                 The default value has been manually selected by the Prodigal
                 authors as an appropriate value for 99% of genomes.
             translation_table (`int`, optional): The translation table to
-                use. Check the `Wikipedia <https://w.wiki/47wo>`_ page
+                use. Check the :wiki:`List_of_genetic_codes`_ page
                 listing all genetic codes for the available values.
 
         Returns:
