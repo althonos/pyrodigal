@@ -83,7 +83,7 @@ class Sequence(typing.Sized):
         self,
         sequence: Union[str, bytes, bytearray, Sequence],
         mask: bool = False,
-        mask_size; int = 50,
+        mask_size: int = 50,
     ) -> None: ...
     def __len__(self) -> int: ...
     def __sizeof__(self) -> int: ...
@@ -264,12 +264,14 @@ class Genes(typing.Sequence[Gene]):
         sequence_id: str,
         header: bool = True,
         include_translation_table: bool = False,
+        full_id: bool = True,
     ) -> int: ...
     def write_genes(
         self,
         file: TextIO,
         sequence_id: str,
-        width: typing.Optional[int] = 70
+        width: typing.Optional[int] = 70,
+        full_id: bool = False,
     ) -> int: ...
     def write_translations(
         self,
@@ -279,6 +281,7 @@ class Genes(typing.Sequence[Gene]):
         translation_table: typing.Optional[_TRANSLATION_TABLE] = None,
         include_stop: bool = True,
         strict_translation: bool = True,
+        full_id: bool = False,
     ) -> int: ...
     def write_scores(
         self,

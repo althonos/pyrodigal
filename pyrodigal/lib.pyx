@@ -3569,6 +3569,7 @@ cdef class Genes:
         str sequence_id,
         bint header=True,
         bint include_translation_table=False,
+        bint full_id=True,
     ) except -1:
         """Write the genes to ``file`` in General Feature Format.
 
@@ -3585,6 +3586,9 @@ cdef class Genes:
                 attributes, `False` otherwise. Useful for genes that were
                 predicted from *meta* mode, since the different metagenomic
                 models have different translation tables.
+            full_id (`bool`): Pass `True` to use the full sequence identifier
+                in the header of each record, or `False` to use the sequence
+                numbering such as the one used in Prodigal.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3594,6 +3598,9 @@ cdef class Genes:
 
         .. versionadded:: 3.0.0
             The ``include_translation_table`` argument.
+
+        .. versionadded:: 3.4.0
+           The ``full_id`` parameter.
 
         """
         cdef Gene           gene
@@ -3652,7 +3659,10 @@ cdef class Genes:
             n += file.write("\t")
             n += file.write("0")
             n += file.write("\t")
-            n += file.write(gene._gene_data(sequence_id))
+            if full_id:
+                n += file.write(gene._gene_data(sequence_id))
+            else:
+                n += file.write(gene._gene_data(self._num_seq))
             n += file.write(";")
             if include_translation_table:
                 n += file.write("transl_table={}".format(tinf.translation_table))
@@ -3667,6 +3677,7 @@ cdef class Genes:
         object file,
         str sequence_id,
         object width=70,
+        bint full_id=False,
     ) except -1:
         """Write nucleotide sequences of genes to ``file`` in FASTA format.
 
@@ -3677,12 +3688,18 @@ cdef class Genes:
                 genes were extracted from.
             width (`int`): The width to use to wrap sequence lines. Prodigal
                 uses 70 for nucleotide sequences.
+            full_id (`bool`): Pass `True` to use the full sequence identifier
+                in the header of each record, or `False` to use the sequence
+                numbering such as the one used in Prodigal.
 
         Returns:
             `int`: The number of bytes written to the file.
 
         .. versionchanged:: 2.0.0
             Replaced optional ``prefix`` argument with ``sequence_id``.
+
+        .. versionadded:: 3.4.0:
+           The `full_id` parameter.
 
         """
         cdef Gene    gene
@@ -3701,7 +3718,10 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(str(gene.strand))
             n += file.write(" # ")
-            n += file.write(gene._gene_data(self._num_seq))
+            if full_id:
+                n += file.write(gene._gene_data(sequence_id))
+            else:
+                n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
             for line in textwrap.wrap(gene.sequence(), width=width):
                 n += file.write(line)
@@ -3717,6 +3737,7 @@ cdef class Genes:
         object translation_table=None,
         bint include_stop=True,
         bint strict_translation=True,
+        bint full_id=False,
     ) except -1:
         """Write protein sequences of genes to ``file`` in FASTA format.
 
@@ -3738,6 +3759,9 @@ cdef class Genes:
             strict_translation (`bool`): Whether to handle ambiguous codons
                 in strict mode when translating. See the ``strict`` parameter
                 of `Gene.translate` for more information.
+            full_id (`bool`): Pass `True` to use the full sequence identifier
+                in the header of each record, or `False` to use the sequence
+                numbering such as the one used in Prodigal.
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3749,7 +3773,7 @@ cdef class Genes:
             The ``include_stop`` argument.
 
         .. versionadded:: 3.4.0
-           The ``strict_translation`` parameters.
+           The ``strict_translation`` and ``full_id`` parameters.
 
         """
         cdef ssize_t n     = 0
@@ -3772,7 +3796,10 @@ cdef class Genes:
             n += file.write(" # ")
             n += file.write(str(gene.strand))
             n += file.write(" # ")
-            n += file.write(gene._gene_data(self._num_seq))
+            if full_id:
+                n += file.write(gene._gene_data(sequence_id))
+            else:
+                n += file.write(gene._gene_data(self._num_seq))
             n += file.write("\n")
             trans = gene.translate(translation_table, include_stop=include_stop, strict=strict_translation)
             for line in textwrap.wrap(trans, width=width):
