@@ -111,7 +111,8 @@ from pyrodigal._sequence cimport (
     _is_start,
     _mer_ndx,
     _letters,
-    _complement
+    _complement,
+    _amino
 )
 from pyrodigal._connection cimport (
     _intergenic_mod_same,
@@ -180,7 +181,7 @@ cdef size_t MIN_NODES_ALLOC      = 8 * MIN_GENES_ALLOC
 cdef int    _IDEAL_SINGLE_GENOME = 100000
 cdef int    _MIN_SINGLE_GENOME   = 20000
 cdef int    _WINDOW              = 120
-cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 26))
+cdef set    _TRANSLATION_TABLES  = set(range(1, 7)) | set(range(9, 17)) | set(range(21, 34))
 cdef str    _PRODIGAL_VERSION    = "v2.6.3+c1e2d36"
 cdef dict   _STOP_CODONS         = {
     1:  ("TAA", "TAG", "TGA"),
@@ -797,100 +798,8 @@ cdef class Sequence:
         if _is_start(self.digits, self.slen, i, tt, strand) and is_init:
             return b"M"
 
-        if strand == 1:
-            x0 = self.digits[i]
-            x1 = self.digits[i+1]
-            x2 = self.digits[i+2]
-        else:
-            x0 = _complement[self.digits[self.slen - 1 - i]]
-            x1 = _complement[self.digits[self.slen - 2 - i]]
-            x2 = _complement[self.digits[self.slen - 3 - i]]
-
-        if strict and (x0 == nucleotide.N or x1 == nucleotide.N or x2 == nucleotide.N):
-            return unknown_residue
-
-        if x0 == nucleotide.T and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"F"
-        if x0 == nucleotide.T and x1 == nucleotide.T and (x2 == nucleotide.A or x2 == nucleotide.G):
-            return b"L"
-        if x0 == nucleotide.T and x1 == nucleotide.C:
-            return b"S"
-        if x0 == nucleotide.T and x1 == nucleotide.A and tt == 29:
-            return b"Y"
-        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.T:
-            return b"Y"
-        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.C:
-            return b"Y"
-        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.A:
-            if tt == 6:
-                return b"Q"
-            elif tt == 14:
-                return b"Y"
-        if x0 == nucleotide.T and x1 == nucleotide.A and x2 == nucleotide.G:
-            if tt == 6 or tt == 15:
-                return b"Q"
-            elif tt == 22:
-                return b"L"
-        if x0 == nucleotide.T and x1 == nucleotide.G and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"C"
-        if x0 == nucleotide.T and x1 == nucleotide.G and x2 == nucleotide.A:
-            return b"G" if tt == 25 else b"W"
-        if x0 == nucleotide.T and x1 == nucleotide.G and x2 == nucleotide.G:
-            return b"W"
-        if x0 == nucleotide.C and x1 == nucleotide.T:
-            if tt == 3:
-                return b"T"
-            elif tt == 12:
-                return b"S" if x2 == nucleotide.G else unknown_residue if x2 == nucleotide.N else b"L"
-            elif tt == 26:
-                return b"A" if x2 == nucleotide.G else unknown_residue if x2 == nucleotide.N else b"L"
-            else:
-                return b"L"
-        if x0 == nucleotide.C and x1 == nucleotide.C:
-            return b"P"
-        if x0 == nucleotide.C and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"H"
-        if x0 == nucleotide.C and x1 == nucleotide.A and (x2 == nucleotide.A or x2 == nucleotide.G):
-            return b"Q"
-        if x0 == nucleotide.C and x1 == nucleotide.G:
-            return b"R"
-        if x0 == nucleotide.A and x1 == nucleotide.T and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"I"
-        if x0 == nucleotide.A and x1 == nucleotide.T and x2 == nucleotide.A:
-            return b"M" if tt == 2 or tt == 3 or tt == 5 or tt == 13 or tt == 22 else b"I"
-        if x0 == nucleotide.A and x1 == nucleotide.T and x2 == nucleotide.G:
-            return b"M"
-        if x0 == nucleotide.A and x1 == nucleotide.C:
-            return b"T"
-        if x0 == nucleotide.A and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"N"
-        if x0 == nucleotide.A and x1 == nucleotide.A and x2 == nucleotide.A:
-            return b"N" if tt == 9 or tt == 14 or tt == 21 else b"K"
-        if x0 == nucleotide.A and x1 == nucleotide.A and x2 == nucleotide.G:
-            return b"K"
-        if x0 == nucleotide.A and x1 == nucleotide.G:
-            if tt == 5 or tt == 9 or tt == 15 or tt == 21:
-                return b"S"
-            elif tt == 24 or tt == 3:
-                return b"K" if x2 == nucleotide.G else unknown_residue if x2 == nucleotide.N else b"S"
-            
-            elif tt == 13:
-                return unknown_residue if x2 == nucleotide.N else b"G" if (x2 == nucleotide.A or x2 == nucleotide.G) else b"S"
-            
-            else:
-                return unknown_residue if x2 == nucleotide.N else b"R" if (x2 == nucleotide.A or x2 == nucleotide.G) else b"S" 
-        if x0 == nucleotide.G and x1 == nucleotide.T:
-            return b"V"
-        if x0 == nucleotide.G and x1 == nucleotide.C:
-            return b"A"
-        if x0 == nucleotide.G and x1 == nucleotide.A and (x2 == nucleotide.T or x2 == nucleotide.C):
-            return b"D"
-        if x0 == nucleotide.G and x1 == nucleotide.A and (x2 == nucleotide.A or x2 == nucleotide.G):
-            return b"E"
-        if x0 == nucleotide.G and x1 == nucleotide.G:
-            return b"G"
-
-        return unknown_residue
+        c = _amino(self.digits, self.slen, i, tt, strand, strict)
+        return unknown_residue if c == b'X' else c
 
     cdef int _shine_dalgarno_exact(
         self,
@@ -3096,6 +3005,9 @@ cdef class Gene:
 
         .. versionadded:: 3.4.0
             The `strict` keyword argument.
+
+        .. versionchanged:: 3.4.0
+           Added support for additional translation tables 26 to 33.
 
         """
         cdef size_t nucl_length

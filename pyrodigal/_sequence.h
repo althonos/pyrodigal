@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "_translation.h"
+
 enum nucleotide {
     A = 0b000,
     G = 0b001,
@@ -70,7 +72,59 @@ static inline int _is_start(const uint8_t* digits, const int slen, const int i, 
     return 0;
 }
 
+static inline char _amino(const uint8_t* digits, const int slen, const int i, const int tt, const int strand, const bool strict) {
+    const char* table = _TT[tt];
+    uint_fast32_t x0, x1, x2;
+
+    inline size_t offset(size_t x0, size_t x1, size_t x2) {
+        return (x0 << 4) + (x1 << 2) + x2;
+    }
+
+    if (strand == 1) {
+        x0 = digits[i];
+        x1 = digits[i+1];
+        x2 = digits[i+2];
+    } else {
+        x0 = digits[slen - 1 - i] ^ 0b11;
+        x1 = digits[slen - 2 - i] ^ 0b11;
+        x2 = digits[slen - 3 - i] ^ 0b11;
+    }
+
+    if ((x0 <= T) && (x1 <= T) && (x2 <= T)) {
+        return _TT[tt][offset(x0, x1, x2)];
+    }
+
+    if (strict) {
+        return 'X';
+    }
+
+    if ((x0 <= T) && (x1 <= T) && (x2 > T)) {
+        char aa = _TT[tt][offset(x0, x1, A)];
+        for (x2 = G; x2 <= T; x2++) {
+            if (_TT[tt][offset(x0, x1, x2)] != aa)
+                return 'X';
+        }
+        return aa;
+    }
+
+    if ((x0 <= T) && (x1 > T) && (x2 <= T)) {
+        char aa = _TT[tt][offset(x0, A, x2)];
+        for (x1 = G; x1 <= T; x2++) {
+            if (_TT[tt][offset(x0, x1, x2)] != aa)
+                return 'X';
+        }
+        return aa;
+    }
+
+    return 'X';
+}
+
 static inline int _is_stop(const uint8_t* digits, const int slen, const int i, const int tt, const int strand) {
+                                  // 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33
+    const uint8_t _TAA_STOP[34] = {  0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0  };
+    const uint8_t _TAG_STOP[34] = {  0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1  };
+    const uint8_t _TGA_STOP[34] = {  0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0  };
+
     uint_fast8_t x0, x1, x2;
 
     if (strand == 1) {
@@ -85,17 +139,13 @@ static inline int _is_stop(const uint8_t* digits, const int slen, const int i, c
 
     // TAG
     if ((x0 == T) && (x1 == A) && (x2 == G))
-        return !((tt == 6) || (tt == 15) || (tt == 16) || (tt == 22));
+        return _TAG_STOP[tt];
     // TGA
     if ((x0 == T) && (x1 == G) && (x2 == A))
-        return !(
-                (tt ==  2) || (tt ==  3) || (tt ==  4) || (tt ==  5)
-             || (tt ==  9) || (tt == 10) || (tt == 13) || (tt == 14)
-             || (tt == 21) || (tt == 25)
-        );
+        return _TGA_STOP[tt];
     // TAA
     if ((x0 == T) && (x1 == A) && (x2 == A))
-        return !((tt == 6) || (tt == 14));
+        return _TAA_STOP[tt];
 
     // Code 2: AGA / AGG
     if (tt == 2)

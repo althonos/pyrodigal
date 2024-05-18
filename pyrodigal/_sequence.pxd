@@ -26,3 +26,5 @@ cdef extern from "_sequence.h" nogil:
     cdef bint _is_ttg(const uint8_t* digits, const int slen, const int i, const int strand) noexcept
 
     cdef int _mer_ndx(const uint8_t* digits, const int slen, const int i, const int length, const int strand) noexcept
+
+    cdef char _amino(const uint8_t* digits, const int slen, const int i, const int tt, const int strand, const bint strict) noexcept

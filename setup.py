@@ -786,6 +786,9 @@ setuptools.setup(
                 "pyrodigal/lib.pyx",
                 "pyrodigal/impl/generic.c"
             ],
+            depends=[
+                "pyrodigal/_translation.h",
+            ],
             platform_sources={
                 "AVX2": ["pyrodigal/impl/avx.c"],
                 "AVX512": ["pyrodigal/impl/avx512.c"],
