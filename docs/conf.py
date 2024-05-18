@@ -220,8 +220,9 @@ nbsphinx_execute_arguments = [
 # -- Options for extlinks extension ------------------------------------------
 
 extlinks = {
-    'doi': ('https://doi.org/%s', 'doi:'),
-    'pmid': ('https://pubmed.ncbi.nlm.nih.gov/%s', 'PMID:'),
+    'doi': ('https://doi.org/%s', 'doi:%s'),
+    'pmid': ('https://pubmed.ncbi.nlm.nih.gov/%s', 'PMID:%s'),
     'pmc': ('https://www.ncbi.nlm.nih.gov/pmc/articles/PMC%s', 'PMC'),
     'isbn': ('https://www.worldcat.org/isbn/%s', 'ISBN:'),
+    'wiki': ('https://en.wikipedia.org/wiki/%s', '%s'),
 }
