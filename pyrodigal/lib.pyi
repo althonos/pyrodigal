@@ -40,7 +40,8 @@ IDEAL_SINGLE_GENOME: int
 PRODIGAL_VERSION: str
 
 _TRANSLATION_TABLE = Literal[
-    1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25
+    1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25,
+    26, 29, 30, 32, 33
 ]
 _DIVISION = Literal[
     "PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN",
