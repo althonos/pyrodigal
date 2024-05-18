@@ -23,6 +23,7 @@ jobs:
         - pp37-manylinux_aarch64
         - pp38-manylinux_aarch64
         - pp39-manylinux_aarch64
+        - pp310-manylinux_aarch64
     steps:
     - uses: actions/checkout@v4
       with:
@@ -64,6 +65,7 @@ jobs:
         - pp37-manylinux_x86_64
         - pp38-manylinux_x86_64
         - pp39-manylinux_x86_64
+        - pp310-manylinux_x86_64
     steps:
     - uses: actions/checkout@v4
       with:
@@ -100,6 +102,7 @@ jobs:
         - pp37-macosx_x86_64
         - pp38-macosx_x86_64
         - pp39-macosx_x86_64
+        - pp310-macosx_x86_64
     steps:
     - uses: actions/checkout@v4
       with:
@@ -167,6 +170,7 @@ jobs:
         - pp37-win_amd64
         - pp38-win_amd64
         - pp39-win_amd64
+        - pp310-win_amd64
     steps:
     - uses: actions/checkout@v4
       with:
