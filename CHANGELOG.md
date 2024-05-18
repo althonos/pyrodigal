@@ -6,7 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.3.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.4.0...HEAD
+
+
+## [v3.4.0] - 2024-05-19
+[v3.4.0]: https://github.com/althonos/pyrodigal/compare/v3.3.0...v3.4.0
+
+### Added
+- `strict` argument to `Gene.translate` to control translation of ambiguous codons with unambiguous translation ([#54](https://github.com/althonos/pyrodigal/issues/54)).
+- `strict_translation` argument to `Genes.write_genbank` and `Genes.write_translation`.
+- Support for translation tables 26 to 33 in `Gene.translate`.
+- Support for translation tables 26, 29, 30, 32 and 33 in `GeneFinder.train`.
+- `Genes.score` property to count the total score of all extracted genes.
+- `full_id` parameter to `Genes.write_gff`, `Genes.write_translation` and `Genes.write_genes` to control the `ID` field written for each gene ([#53](https://github.com/althonos/pyrodigal/issues/53)).
+
+### Changed
+- `Gene.translate` now raises a warning when called with a translation table incompatible with the training info.
+
+### Fixed
+- Bug in code for masking trailing nucleotides ([#55](https://github.com/althonos/pyrodigal/issues/55)).
 
 
 ## [v3.3.0] - 2024-01-24
