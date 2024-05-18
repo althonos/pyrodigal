@@ -70,7 +70,7 @@ jobs:
 
   test_osx:
     name: Test (OSX)
-    runs-on: macos-latest
+    runs-on: macos-11
     env:
       OS: OSX
       _PYTHON_HOST_PLATFORM: macosx-10.9-x86_64
