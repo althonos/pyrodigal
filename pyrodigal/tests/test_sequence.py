@@ -73,3 +73,7 @@ class TestSequence(unittest.TestCase):
             # AGGxGG if i == 0 else None
             expected = 19 if i == 0 else 0
             self.assertEqual(seq.shine_dalgarno(i, 15, tinf, exact=False), expected, i)
+
+    def test_mask_trailing(self):
+        seq = Sequence("AGCGGGCTACTGNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", mask=True, mask_size=10)
+        self.assertEqual(len(seq.masks), 1)

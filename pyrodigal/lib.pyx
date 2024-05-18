@@ -723,6 +723,8 @@ cdef class Sequence:
                     if i >= mask_size + mask_begin:
                         self.masks._add_mask(mask_begin, i)
                     mask_begin = -1
+        if mask_begin != -1:
+            self.masks._add_mask(mask_begin, self.slen)
         return 0
 
     cdef int _allocate(self, int slen) except 1:

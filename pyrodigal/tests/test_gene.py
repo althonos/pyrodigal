@@ -60,12 +60,6 @@ class TestGene(unittest.TestCase):
         self.assertEqual(strict[1:9], "XXXXXXXX")
         self.assertEqual(non_strict[1:9], "PRLTVAGS")
 
-        # strict = gene.translate(strict=True, translation_table=3)
-        # non_strict = gene.translate(strict=False, translation_table=3)
-
-        # self.assertEqual(strict[1:9], "XXXXXXXX")
-        # self.assertEqual(non_strict[1:9], "PRTTVAGS")
-
         strict = gene.translate(strict=True, translation_table=12)
         non_strict = gene.translate(strict=False, translation_table=12)
 

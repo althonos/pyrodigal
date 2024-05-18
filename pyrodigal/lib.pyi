@@ -82,7 +82,8 @@ class Sequence(typing.Sized):
     def __init__(
         self,
         sequence: Union[str, bytes, bytearray, Sequence],
-        mask: bool = False
+        mask: bool = False,
+        mask_size; int = 50,
     ) -> None: ...
     def __len__(self) -> int: ...
     def __sizeof__(self) -> int: ...
