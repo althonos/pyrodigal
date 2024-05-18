@@ -3029,7 +3029,7 @@ cdef class Gene:
 
         if translation_table is None:
             tt = self.owner.training_info.tinf.trans_table
-        elif translation_table not in _TRANSLATION_TABLES:
+        elif translation_table not in _STOP_CODONS:
             raise ValueError(f"{translation_table} is not a valid translation table index")
         else:
             owner_table = self.owner.training_info.tinf.trans_table
