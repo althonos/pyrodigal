@@ -15,6 +15,7 @@
 #define simd_eq(x, y)     _mm512_cmpeq_epi8_mask(x, y)
 
 #define mask_t            __mmask64
+#define mask_eq(x, y)     _kxnor_mask64(x, y)
 #define mask_or(x, y)     _kor_mask64(x, y)
 #define mask_and(x, y)    _kand_mask64(x, y)
 #define mask_andnot(x, y) _kandn_mask64(y, x)

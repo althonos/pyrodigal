@@ -15,6 +15,7 @@
 #define simd_eq(x, y)     _mm256_cmpeq_epi8(x, y)
 
 #define mask_t            __m256i
+#define mask_eq(x,y)      _mm256_cmpeq_epi8(x, y)
 #define mask_or(x, y)     _mm256_or_si256(x, y)
 #define mask_and(x, y)    _mm256_and_si256(x, y)
 #define mask_andnot(x, y) _mm256_andnot_si256(y, x)

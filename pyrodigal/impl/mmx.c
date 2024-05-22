@@ -15,6 +15,7 @@
 #define simd_eq(x, y)     _mm_cmpeq_pi8(x, y)
 
 #define mask_t            __m64
+#define mask_eq(x, y)     _mm_cmpeq_pi8(x, y)
 #define mask_or(x, y)     _mm_or_si64(x, y)
 #define mask_and(x, y)    _mm_and_si64(x, y)
 #define mask_andnot(x, y) _mm_andnot_si64(y, x)

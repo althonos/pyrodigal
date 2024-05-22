@@ -15,6 +15,7 @@
 #define simd_eq(x, y)     vceqq_u8(x, y)
 
 #define mask_t            uint8x16_t
+#define mask_eq(x, y)     vceqq_u8(x, y)
 #define mask_or(x, y)     vorrq_u8(x, y)
 #define mask_and(x, y)    vandq_u8(x, y)
 #define mask_andnot(x, y) vbicq_u8(x, y)
