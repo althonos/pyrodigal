@@ -73,9 +73,7 @@ static inline int _is_start(const uint8_t* digits, const int slen, const int i, 
 }
 
 static inline char _amino(const uint8_t* digits, const int slen, const int i, const int tt, const int strand, const bool strict) {
-    const char* table = _TT[tt];
     uint_fast32_t x0, x1, x2;
-
 
     if (strand == 1) {
         x0 = digits[i];

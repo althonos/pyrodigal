@@ -5052,7 +5052,7 @@ cdef class MetagenomicBins:
         void (*initializer)(_metagenomic_bin*),
         size_t length,
     ) except *:
-        cdef ssize_t _i
+        cdef size_t _i
         cdef _training*        metagenomic_training_info = NULL
         cdef _metagenomic_bin* metagenomic_bins          = NULL
         try:
@@ -5327,7 +5327,7 @@ cdef class GeneFinder:
         Nodes nodes,
         Genes genes,
     ) except? -1 nogil:
-        cdef int          i
+        cdef size_t       i
         cdef double       low
         cdef double       high
         cdef int          ipath
