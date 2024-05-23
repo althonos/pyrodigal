@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.4.0...HEAD
 
 
+## [v3.4.1] - 2024-05-23
+[v3.4.1]: https://github.com/althonos/pyrodigal/compare/v3.4.0...v3.4.1
+
+### Changed
+- Refactor SIMD code to reduce number of required registers, and improve SSE2 performance.
+- Refactor Prodigal initialization functions into sparse initializer code to reduce library size.
+
+
 ## [v3.4.0] - 2024-05-19
 [v3.4.0]: https://github.com/althonos/pyrodigal/compare/v3.3.0...v3.4.0
 
