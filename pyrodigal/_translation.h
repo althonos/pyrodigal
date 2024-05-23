@@ -36,7 +36,7 @@ const char* _TT[34] = {
     _TT30, _TT31, _TT32, _TT33
 };
 
-static inline size_t _translate_codon(size_t tt, size_t x0, size_t x1, size_t x2) {
+static inline char _translate_codon(size_t tt, size_t x0, size_t x1, size_t x2) {
     size_t offset = (x0 << 4) + (x1 << 2) + x2;
     return _TT[tt][offset];
 }

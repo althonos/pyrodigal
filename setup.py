@@ -229,7 +229,7 @@ class build_ext(_build_ext):
 
     def _avx2_flags(self):
         if self.compiler.compiler_type == "msvc":
-            return ["/arch:AVX2"]
+            return ["/arch:AVX", "/arch:AVX2"]
         return ["-mavx", "-mavx2"]
 
     def _check_avx2(self):
