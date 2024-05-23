@@ -1,6 +1,8 @@
+import collections
 import configparser
 import functools
 import glob
+import itertools
 import multiprocessing.pool
 import os
 import platform
@@ -520,6 +522,23 @@ class build_clib(_build_clib):
     """A custom `build_clib` that splits the `training.c` file from Prodigal.
     """
 
+    _TrainingInfo = collections.namedtuple(
+        "_TrainingInfo",
+        [
+            "gc",
+            "tt",
+            "st_wt",
+            "bias",
+            "type_wt",
+            "uses_sd",
+            "rbs_wt",
+            "ups_comp",
+            "mot_wt",
+            "no_mot",
+            "gene_dc"
+        ]
+    )
+
     # --- Compatibility with `setuptools.Command`
 
     user_options = _build_clib.user_options + [
@@ -610,13 +629,65 @@ class build_clib(_build_clib):
 
     # --- Build code ---
 
-    def _write_source_split(self, training_temp, index, lines):
-        filename = os.path.join(training_temp, "training{:02}.c".format(index))
+    def _write_header(self, training_temp, index, lines):
+        filename = os.path.join(training_temp, "training_header.c".format(index))
         with open(filename, "wb") as dst:
-            if index != 0:
-                dst.write(b'#include "training.h"\n')
             dst.writelines(lines)
         lines.clear()
+
+    def _write_source_split(self, training_temp, index, lines):
+        filename = os.path.join(training_temp, "training{:02}.c".format(index))
+
+        tinf = self._TrainingInfo(*eval(
+            b"[" 
+            + b''.join(lines[2:-4])
+                .replace(b"{", b"[")
+                .replace(b"}", b"]")
+                .rstrip(b";")
+                .strip() 
+            + b"]"
+        ))
+        lines.clear()
+
+        counts = collections.Counter()
+        for i,j,k in itertools.product(range(4), range(4), range(4096)):
+            counts[ tinf.mot_wt[i][j][k] ] += 1
+        background = counts.most_common(1)[0][0]
+
+        with open(filename, "w") as dst:
+            dst.write('#include "training.h"\n')
+
+            dst.write(f"void initialize_metagenome_{index}(struct _training *tptr) {{\n")
+            dst.write(f"    tptr->gc = {tinf.gc};\n")
+            dst.write(f"    tptr->trans_table = {tinf.tt};\n")
+            dst.write(f"    tptr->st_wt = {tinf.st_wt};")
+            for i,b in enumerate(tinf.bias):
+                dst.write(f"    tptr->bias[{i}] = {b};\n")
+            for i,w in enumerate(tinf.type_wt):
+                dst.write(f"    tptr->type_wt[{i}] = {w};\n")
+            dst.write(f"    tptr->uses_sd = {tinf.uses_sd};\n")
+
+            dst.write(f"    double rbs_wt[28] = {{ {', '.join(map(str, tinf.rbs_wt))} }};\n")
+            dst.write(f"    memcpy(tptr->rbs_wt, rbs_wt, 28 * sizeof(double));\n")
+
+            for i,x in enumerate(tinf.ups_comp):
+                for j,y in enumerate(x):
+                    dst.write(f"    tptr->ups_comp[{i}][{j}] = {y};\n")
+
+            dst.write(f"    tptr->no_mot = {tinf.no_mot};\n")
+            dst.write(f"    double gene_dc[4096] = {{ {', '.join(map(str, tinf.gene_dc))} }};\n")
+            dst.write(f"    memcpy(tptr->gene_dc, gene_dc, 4096 * sizeof(double));\n")
+
+            dst.write(f"    for (size_t i = 0; i < 4; i++)\n")
+            dst.write(f"        for (size_t j = 0; j < 4; j++)\n")
+            dst.write(f"            for (size_t k = 0; k < 4096; k++)\n")
+            dst.write(f"                tptr->mot_wt[i][j][k] = {background};\n")
+
+            for i,j,k in itertools.product(range(4), range(4), range(4096)):
+                wt = tinf.mot_wt[i][j][k]
+                if wt != background:
+                    dst.write(f"    tptr->mot_wt[{i}][{j}][{k}] = {wt};\n")
+            dst.write("}\n")
 
     def _split_training_source(self, training_file, training_temp):
         self.mkpath(training_temp)
@@ -625,10 +696,13 @@ class build_clib(_build_clib):
             index = 0
             for line in src:
                 if line.startswith(b"void initialize_metagenome"):
-                    self._write_source_split(training_temp, index, lines)
-                    index += 1
-                if line.lstrip().startswith(b"struct _training"):
-                    line = line.replace(b"struct _training", b"static const struct _training")
+                    if line.startswith(b"void initialize_metagenome_0"):
+                        self._write_header(training_temp, index, lines)
+                    else:
+                        self._write_source_split(training_temp, index, lines)
+                        index += 1
+                # if line.lstrip().startswith(b"struct _training"):
+                #     line = line.replace(b"struct _training", b"static const struct _training")
                 lines.append(line)
             self._write_source_split(training_temp, index, lines)
 
@@ -705,6 +779,7 @@ class build_clib(_build_clib):
         if library.name == "prodigal":
             sources.remove(self.training_file)
             sources.extend(sorted(glob.iglob(os.path.join(self.training_temp, "*.c"))))
+            # sources.append("build/src/training.c")
         objects = [
             os.path.join(self.build_temp, s.replace(".c", self.compiler.obj_extension))
             for s in sources
