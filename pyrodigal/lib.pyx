@@ -3929,7 +3929,7 @@ cdef class TrainingInfo:
     .. versionadded:: 0.5.0
 
     .. versionadded:: 3.0.0
-       Propert constructor and setters to all properties.
+       Proper constructor and setters to all properties.
 
     """
 
