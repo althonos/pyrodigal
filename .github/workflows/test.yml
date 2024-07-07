@@ -67,7 +67,7 @@ jobs:
     - name: Install test requirements
       run: python -m pip install -r pyrodigal/tests/requirements.txt
     - name: Build C extension in debug mode
-      run: python setup.py build_ext --inplace --debug
+      run: python -m pip install --no-build-isolation --editable . -vv
     - name: Test without coverage
       run: python -m unittest discover -vv
 
@@ -130,7 +130,7 @@ jobs:
     - name: Install test requirements
       run: python -m pip install -r pyrodigal/tests/requirements.txt
     - name: Build C extension in debug mode
-      run: python setup.py build_ext --inplace --debug --plat-name macos-x86_64
+      run: python -m pip install --no-build-isolation --editable . -vv
     - name: Test without coverage
       run: python -m unittest discover -vv
 
@@ -193,7 +193,7 @@ jobs:
     - name: Install test requirements
       run: python -m pip install -r pyrodigal/tests/requirements.txt
     - name: Build C extension
-      run: python setup.py build_ext --inplace
+      run: python -m pip install --no-build-isolation --editable . -vv
     - name: Test without coverage
       run: python -m unittest discover -vv
 
@@ -230,7 +230,7 @@ jobs:
     - name: Build Prodigal with optimizations
       run: python setup.py build_clib
     - name: Build Cython extension in debug mode
-      run: python setup.py build_ext --inplace --debug
+      run: python -m pip install --no-build-isolation --editable . -vv --config-settings setup-args="-Dbuildtype=debug"
     - name: Test with coverage
       run: python -m coverage run -m unittest discover -vv
     - name: Report coverage
