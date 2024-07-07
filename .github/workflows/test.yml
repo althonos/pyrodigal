@@ -65,11 +65,11 @@ jobs:
     - name: Test without coverage
       run: python -m unittest discover -vv
 
-  test_osx:
-    name: Test (OSX)
-    runs-on: macos-11
+  test_macos:
+    name: Test (MacOS)
+    runs-on: macos-12
     env:
-      OS: OSX
+      OS: MacOS
       _PYTHON_HOST_PLATFORM: macosx-10.9-x86_64
     strategy:
       fail-fast: false
