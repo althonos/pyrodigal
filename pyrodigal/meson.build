@@ -7,7 +7,18 @@ python_sources = [
     'lib.pyi',
 ]
 
-python.install_sources(python_sources, subdir : 'pyrodigal')
+c_headers = [
+    '_connection.h',
+    '_sequence.h',
+    '_translation.h',
+]
+
+cython_headers = [
+    '_connection.pxd',
+]
+
+sources = python_sources + c_headers + cython_headers
+python.install_sources(sources, subdir : 'pyrodigal')
 
 subdir('impl')
 subdir('tests')
@@ -64,6 +75,7 @@ python.extension_module('lib',
     subdir : 'pyrodigal',
     cython_args : cython_args,
     c_args : c_args,
+    extra_files : sources,
 )
 
 
