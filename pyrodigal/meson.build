@@ -3,8 +3,8 @@ python_sources = [
     '__main__.py',
     '_version.py',
     'cli.py',
-    'lib.pxd',
     'lib.pyi',
+    'py.typed',
 ]
 
 c_headers = [
@@ -15,13 +15,20 @@ c_headers = [
 
 cython_headers = [
     '_connection.pxd',
+    '_sequence.pxd',
+    'lib.pxd',
 ]
 
 sources = python_sources + c_headers + cython_headers
 python.install_sources(sources, subdir : 'pyrodigal')
 
+# --- Compute kernel -----------------------------------------------------------
+
 subdir('impl')
 subdir('tests')
+subdir('prodigal')
+
+# --- Python extension ---------------------------------------------------------
 
 sys_version_info_major = run_command([python, '-c', 'import sys; print(sys.version_info[0])' ], check : true).stdout().strip()
 sys_version_info_minor = run_command([python, '-c', 'import sys; print(sys.version_info[1])' ], check : true).stdout().strip()
@@ -70,12 +77,11 @@ python.extension_module('lib',
     ['lib.pyx'],
     include_directories: prodigal_inc,
     dependencies : py_dep,
-    link_with : [prodigal, impl],
+    link_with : [prodigal, prodigal_training, impl],
     install: true,
     subdir : 'pyrodigal',
     cython_args : cython_args,
     c_args : c_args,
-    extra_files : sources,
+    extra_files : cython_headers,
 )
-
 

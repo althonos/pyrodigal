@@ -57,3 +57,22 @@ if neon_supported
     )
 endif
 
+impl_sources = [
+    'avx.h',
+    'avx512.h',
+    'generic.h',
+    'mmx.h',
+    'sse.h',
+    'template.h',
+    '__init__.pxd',
+    'avx.pxd',
+    'avx512.pxd',
+    'generic.pxd',
+    'mmx.pxd',
+    'sse.pxd',
+]
+
+python.install_sources(
+    impl_sources, 
+    subdir : 'pyrodigal' / 'impl'
+)

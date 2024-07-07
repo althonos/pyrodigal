@@ -5,6 +5,9 @@ project(
   # default_options : ['warning_level=0']
 )
 
+# load filesystem module
+fs = import('fs')
+
 # Load C compiler and check if `-lm` is needed
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
@@ -23,10 +26,9 @@ mmx_code = (
   '''
   #include <mmintrin.h>
   int main(int argc, char *argv[]) {
-      __m128i a = _mm_set1_epi16(-1);
-              a = _mm_and_si128(a, a);
-      short   x = _mm_extract_epi16(a, 1);
-      return (x == -1) ? 0 : 1;
+      __m64 a = _mm_set1_pi16(1);
+      short x = (short) _m_to_int(a);
+      return (x == 1) ? 0 : 1;
   }
   '''
 )
@@ -153,18 +155,32 @@ prodigal_sources = [
     'vendor/Prodigal/metagenomic.c',
     'vendor/Prodigal/node.c',
     'vendor/Prodigal/sequence.c',
-    training.to_list()
 ]
+
+# copy files out of source so that includes don't have locality precedence
+prodigal_files = []
+foreach p : prodigal_sources
+  prodigal_files += configure_file(
+    input : p, 
+    output : fs.name(p), 
+    copy : true,
+  )
+endforeach
 
 prodigal_inc = include_directories(
   'pyrodigal/prodigal',
-  'vendor/Prodigal'
+  'vendor/Prodigal',
 )
 
 prodigal = static_library('prodigal',
-    prodigal_sources,
+    prodigal_files,
     dependencies: m_dep,
     include_directories : prodigal_inc,
+)
+
+prodigal_training = static_library('training',
+    training,
+    include_directories : prodigal_inc
 )
 
 # --- Pyrodigal ----------------------------------------------------------------

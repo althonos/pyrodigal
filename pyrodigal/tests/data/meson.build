@@ -1,8 +1,8 @@
-python_sources = [
+data_sources = [
     '__init__.py',
 ]
 
-data_sources = [
+data_sources += [
     'KK037166.meta.fna.gz',
     'MIIJ01000039.fna.gz',
     'MIIJ01000039.single.fna.gz',
@@ -29,4 +29,7 @@ data_sources = [
     'SRR492066.meta.tsv',
 ]
 
-python.install_sources(python_sources, data_sources, subdir : 'pyrodigal/tests/data')
+python.install_sources(
+    data_sources, 
+    subdir : 'pyrodigal' / 'tests' / 'data'
+)

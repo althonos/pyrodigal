@@ -1,4 +1,4 @@
-python_sources = [
+test_sources = [
     '__init__.py',
     'fasta.py',
     'requirements.txt',
@@ -13,6 +13,9 @@ python_sources = [
     'test_training_info.py',
 ]
 
-python.install_sources(python_sources, subdir : 'pyrodigal/tests')
+python.install_sources(
+    test_sources, 
+    subdir : 'pyrodigal' / 'tests'
+)
 
 subdir('data')
