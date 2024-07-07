@@ -75,7 +75,7 @@ endif
 
 python.extension_module('lib',
     ['lib.pyx'],
-    include_directories: prodigal_inc,
+    include_directories: inc,
     dependencies : py_dep,
     link_with : [prodigal, prodigal_training, impl],
     install: true,

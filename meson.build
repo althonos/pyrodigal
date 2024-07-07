@@ -17,6 +17,8 @@ py_mod = import('python')
 python = py_mod.find_installation(pure: false)
 py_dep = python.dependency()
 
+# setup include dir with patched `node.h`
+inc = include_directories('pyrodigal/prodigal')
 
 # --- SIMD detection -----------------------------------------------------------
 
@@ -124,7 +126,6 @@ if not neon_supported
   endif
 endif
 
-
 # --- Prodigal -----------------------------------------------------------------
 
 training_splits = ['training_header.c']
@@ -167,20 +168,15 @@ foreach p : prodigal_sources
   )
 endforeach
 
-prodigal_inc = include_directories(
-  'pyrodigal/prodigal',
-  'vendor/Prodigal',
-)
-
 prodigal = static_library('prodigal',
     prodigal_files,
     dependencies: m_dep,
-    include_directories : prodigal_inc,
+    include_directories : inc,
 )
 
 prodigal_training = static_library('training',
     training,
-    include_directories : prodigal_inc
+    include_directories : inc
 )
 
 # --- Pyrodigal ----------------------------------------------------------------
