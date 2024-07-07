@@ -149,5 +149,25 @@ py_mod = import('python')
 python = py_mod.find_installation(pure: false)
 py_dep = python.dependency()
 
+# check if `PyInterpreterState_GetID` is available
+getid_code = (
+  '''
+  #include <stdint.h>
+  #include <stdlib.h>
+  #include <Python.h>
+
+  int main(int argc, char *argv[]) {
+      PyInterpreterState_GetID(NULL);
+      return 0;
+  }
+  '''
+)
+has_getid = cc.compiles(
+  getid_code, 
+  dependencies : py_dep,
+  name :  'PyInterpreterState_GetID',
+  args : ['-Werror=implicit-function-declaration'],
+)
+
 subdir('pyrodigal')
 

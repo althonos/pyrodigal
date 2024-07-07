@@ -49,6 +49,12 @@ else
     ]
 endif
 
+if has_getid
+    c_args = ['-DHAS_PYINTERPRETERSTATE_GETID']
+else
+    c_args = []
+endif
+
 python.extension_module('lib',
     ['lib.pyx'],
     include_directories: prodigal_inc,
@@ -57,6 +63,7 @@ python.extension_module('lib',
     install: true,
     subdir : 'pyrodigal',
     cython_args : cython_args,
+    c_args : c_args,
 )
 
 
