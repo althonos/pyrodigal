@@ -2,7 +2,7 @@
 #include "avx512.h"
 #include "generic.h"
 
-#ifdef __AVX2__
+#ifdef __AVX512F__
 
 #include <immintrin.h>
 
