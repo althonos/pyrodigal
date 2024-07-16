@@ -9,7 +9,7 @@ jobs:
 
   wheel-linux-aarch64:
     name: Build Linux wheels (Aarch64)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-tag:
@@ -51,7 +51,7 @@ jobs:
 
   wheel-linux-x86_64:
     name: Build Linux wheels (x86-64)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-tag:
@@ -88,7 +88,7 @@ jobs:
 
   wheel-macos-x86_64:
     name: Build MacOS wheels (x86-64)
-    runs-on: macOS-11
+    runs-on: macOS-12
     strategy:
       matrix:
         python-tag:
@@ -125,7 +125,7 @@ jobs:
 
   wheel-macos-aarch64:
     name: Build MacOS wheels (Aarch64)
-    runs-on: macOS-11
+    runs-on: macOS-12
     strategy:
       matrix:
         python-tag:
