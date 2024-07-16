@@ -81,8 +81,8 @@ Check the `piwheels documentation <https://www.piwheels.org/faq.html>`_ for
 more information.
 
 
-FreshPorts
-^^^^^^^^^^
+FreeBSD Port
+^^^^^^^^^^^^
 
 On BSD systems, Pyrodigal is available as a *port* and can be installed as 
 a compiled package with one of the following commands:

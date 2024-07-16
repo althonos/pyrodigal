@@ -13,7 +13,6 @@ import sys
 import re
 import shutil
 import semantic_version
-import sphinx_bootstrap_theme
 
 # -- Path setup --------------------------------------------------------------
 
@@ -78,7 +77,6 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx_design",
     "sphinxcontrib.jquery",
-    "sphinx_bootstrap_theme",
     "nbsphinx",
     "recommonmark",
     "IPython.sphinxext.ipython_console_highlighting",
@@ -110,9 +108,6 @@ default_role = "py:obj"
 # a list of builtin themes.
 #
 html_theme = 'pydata_sphinx_theme'
-
-# Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
