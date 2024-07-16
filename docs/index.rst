@@ -3,9 +3,11 @@
 
 .. |Logo| image:: /_images/logo.png
    :scale: 40%
+   :class: dark-light
 
 .. |Stars| image:: https://img.shields.io/github/stars/althonos/pyrodigal.svg?style=social&maxAge=3600&label=Star
    :target: https://github.com/althonos/pyrodigal/stargazers
+   :class: dark-light
 
 *Cython bindings and Python interface to* `Prodigal <https://github.com/hyattpd/Prodigal/>`_,
 *an ORF finder for genomes and metagenomes*. **Now with SIMD!**
@@ -74,28 +76,38 @@ Pyrodigal is a Python module that provides bindings to Prodigal using
 `Cython <https://cython.org/>`_. It directly interacts with the Prodigal
 internals, which has the following advantages:
 
-- **single dependency**: Pyrodigal is distributed as a Python package, so you
-  can add it as a dependency to your project, and stop worrying about the
-  Prodigal binary being present on the end-user machine.
-- **no intermediate files**: Everything happens in memory, in a Python object
-  you fully control, so you don't have to invoke the Prodigal CLI using a
-  sub-process and temporary files. Sequences can be passed directly as
-  strings or bytes, which avoids the overhead of formatting your input to
-  FASTA for Prodigal.
-- **lower memory usage**: Pyrodigal is slightly more conservative when it comes
-  to using memory, which can help process very large sequences. It also lets
-  you save some more memory when running several *meta*-mode analyses
-- **better performance**: Pyrodigal uses *SIMD* instructions to compute which
-  dynamic programming nodes can be ignored when scoring connections. This can
-  save from a third to half the runtime depending on the sequence. The 
-  :doc:`Benchmarks <guide/benchmarks>` 
-  page of the documentation contains comprehensive comparisons. See the 
-  `JOSS paper <https://doi.org/10.21105/joss.04296>`_ for details about how 
-  this is achieved.
-- **same results**: Pyrodigal is tested to make sure it produces 
-  exactly the same results as Prodigal ``v2.6.3+31b300a``. This was verified 
-  extensively by `Julian Hahnfeld <https://github.com/jhahnfeld>`_ and can be 
-  checked with his `comparison repository <https://github.com/jhahnfeld/prodigal-pyrodigal-comparison>`_.
+
+.. grid:: 1 2 3 3
+   :gutter: 1
+
+   .. grid-item-card:: :fas:`battery-full` Batteries-included
+
+      Just add ``pyrodigal`` as a ``pip`` or ``conda`` dependency, no need
+      for the Prodigal binary or any external dependency.
+
+   .. grid-item-card:: :fas:`screwdriver-wrench` Flexible I/O
+
+      Directly pass sequences to process as Python `str` objects, no 
+      need for intermediate files.
+
+   .. grid-item-card:: :fas:`memory` Memory-efficient
+
+      Benefit from conservative memory allocation for candidate node 
+      scoring, and a reworked data layout.
+
+   .. grid-item-card:: :fas:`microchip` Faster computation
+
+      Use the full power of your CPU with *SIMD* instructions to 
+      filter out candidate genes prior to the scoring stage.
+
+   .. grid-item-card:: :fas:`check` Consistent results 
+
+      Get the same results as Pyrodigal ``v2.6.3+31b300a``, with additional
+      bug fixes compared to the latest stable Prodigal version.
+
+   .. grid-item-card:: :fas:`toolbox` Feature-complete
+
+      Access all the features of the original CLI through the Python API.
 
 
 Features
