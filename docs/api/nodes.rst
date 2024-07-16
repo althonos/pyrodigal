@@ -5,7 +5,7 @@ Nodes
 
 
 .. autoclass:: pyrodigal.Nodes
-   :special-members: __init__
+   :special-members: __init__, __len__
    :members:
 
 .. autoclass:: pyrodigal.Node

@@ -10,5 +10,5 @@ Metagenomic Bin
 
 
 .. autoclass:: pyrodigal.MetagenomicBins
-   :special-members: __init__
+   :special-members: __init__, __len__, __getitem__
    :members:

@@ -296,6 +296,11 @@ cdef class Mask:
     # --- Magic methods ------------------------------------------------------
 
     def __init__(self, int begin, int end):
+        """__init__(self, begin, end)\n--\n
+
+        Create a new mask with the given coordinates.
+
+        """
         self.owner = None
         self.mask = &self._data
         self.mask.begin = begin
@@ -392,6 +397,11 @@ cdef class Masks:
         self.length = 0
 
     def __init__(self):
+        """__init__(self)\n--\n
+
+        Create a new empty list of masks.
+
+        """
         self._clear()
 
     def __dealloc__(self):
@@ -539,7 +549,9 @@ cdef class Sequence:
         self.masks = Masks.__new__(Masks)
 
     def __init__(self, object sequence, bint mask = False, size_t mask_size = MASK_SIZE):
-        """Create a new `Sequence` object from a nucleotide sequence.
+        """__init__(self, sequence, mask=False, mask_size=50)\n--\n
+
+        Create a new `Sequence` object from a nucleotide sequence.
 
         Arguments:
             sequence (`str`, `bytes` or `Sequence`): The sequence to read
@@ -1112,7 +1124,9 @@ cdef class ConnectionScorer:
         self.node_frames     = self.node_frames_raw     = NULL
 
     def __init__(self, str backend="detect"):
-        """Create a new connection score.
+        """__init__(self, backend="detect")\n--\n
+
+        Create a new connection score.
 
         Arguments:
             backend (`str`): The SIMD backend to use for the heuristic filter.
@@ -1700,6 +1714,11 @@ cdef class Nodes:
         self.length = 0
 
     def __init__(self):
+        """__init__(self)\n--\n
+
+        Create a new empty list of nodes.
+
+        """
         self._clear()
 
     def __dealloc__(self):
@@ -4000,6 +4019,11 @@ cdef class TrainingInfo:
         double missing_motif_weight=0.0,
         object coding_statistics=None,
     ):
+        """__init__(self, gc, *, translation_table=11, start_weight=4.35, bias=None, type_weights=None, uses_sd=True, rbs_weights=None, upstream_compositions=None, motif_weights=None, missing_motif_weight=0.0, coding_statistics=None)\n--\n
+
+        Create a new training info from the given parameters.
+
+        """
         if self.tinf != NULL:
             raise RuntimeError("TrainingInfo.__init__ called more than once")
         # reallocate the training info memory, if needed
@@ -4927,6 +4951,11 @@ cdef class MetagenomicBin:
         self.training_info = None
 
     def __init__(self, TrainingInfo training_info not None, str description not None):
+        """__init__(self, training_info, description)\n--\n
+
+        Create a new metagenomic bin.
+
+        """
         assert self.bin == NULL
 
         cdef bytes desc = description.encode('ascii')
@@ -4978,6 +5007,11 @@ cdef class MetagenomicBins:
         self._objects = None
 
     def __init__(self, object iterable = ()):
+        """__init__(self, iterable=())\n--\n
+
+        Create a new list of metagenomic bins from an iterable.
+
+        """
         assert self.bins == NULL
 
         cdef size_t         i
@@ -5092,10 +5126,12 @@ cdef class GeneFinder:
         mask (`bool`): Prevent genes from running across regions containing
             unknown nucleotides.
         training_info (`~pyrodigal.TrainingInfo`): The object storing the
-            training information, or `None` if the object is in metagenomic
-            mode or hasn't been trained yet.
-        min_gene (`int`): The minimum gene length.
-        min_edge_gene (`int`): The minimum edge gene length.
+            training information, or `None` if the gene finder either is in
+            metagenomic mode or hasn't been trained yet.
+        min_gene (`int`): The minimum length for genes to be reported
+            by Prodigal.
+        min_edge_gene (`int`): The minimum length for genes located
+            on contig edges.
         max_overlap (`int`): The maximum number of nucleotides that can
             overlap between two genes on the same strand.
 
@@ -5121,7 +5157,9 @@ cdef class GeneFinder:
         int max_overlap=MAX_SAM_OVLP,
         str backend="detect",
     ):
-        """Instantiate and configure a new ORF finder.
+        """__init__(self, training_info=None, *, meta=False, metagenomic_bins=None, closed=False, mask=False, min_mask=50, min_gene=90, min_edge_gene=60, max_overlap=60, backend='detect')\n--\n
+
+        Instantiate and configure a new gene finder.
 
         Arguments:
             training_info (`~pyrodigal.TrainingInfo`, optional): A training
@@ -5512,13 +5550,14 @@ cdef class GeneFinder:
             `~pyrodigal.GeneFinder` instance.
 
         Raises:
-            `MemoryError`: When allocation of an internal buffers fails.
             `RuntimeError`: When calling this method while in *metagenomic*
                 mode.
             `TypeError`: When ``sequence`` does not implement the buffer
                 protocol.
             `ValueError`: When ``translation_table`` is not a valid genetic
                 code number, or when ``sequence`` is too short to train.
+            `MemoryError`: When allocation of an internal buffer with the
+                system allocator fails.
 
         """
         cdef Sequence         seq
