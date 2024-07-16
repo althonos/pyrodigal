@@ -117,7 +117,8 @@ The library now features everything from the original Prodigal CLI:
   compatible with the Prodigal binary, including the protein translations
   in FASTA format (``prodigal -a``), the gene sequences in FASTA format
   (``prodigal -d``), or the potential gene scores in tabular format
-  (``prodigal -s``).
+  (``prodigal -s``). See the :doc:`Output Formats <guide/outputs>` section 
+  for supported formats.
 - **training data persistence**: Getting training data from a sequence and
   using it for other sequences is supported; in addition, a training data
   file can be saved and loaded transparently (``prodigal -t``).
