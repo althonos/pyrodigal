@@ -5206,7 +5206,7 @@ cdef class GeneFinder:
         .. versionadded:: 3.0.0
            The ``metagenomic_bins`` argument.
 
-        .. versionadded:: 3.0.2
+        .. versionadded:: 3.1.0
            The ``min_mask`` argument.
 
         """
