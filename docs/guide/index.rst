@@ -8,8 +8,8 @@ This section contains guides and documents about Pyrodigal usage.
    :caption: Getting Started
 
     Installation <install>
-    Publications <publications>
     Output Formats <outputs>
+    Publications <publications>
 
 .. toctree::
    :maxdepth: 1

@@ -5503,7 +5503,7 @@ cdef class GeneFinder:
                 The default value has been manually selected by the Prodigal
                 authors as an appropriate value for 99% of genomes.
             translation_table (`int`, optional): The translation table to
-                use. Check the :wiki:`List_of_genetic_codes`_ page
+                use. Check the :wiki:`List of genetic codes` page
                 listing all genetic codes for the available values.
 
         Returns:

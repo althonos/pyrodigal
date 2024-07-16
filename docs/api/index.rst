@@ -3,7 +3,7 @@ API Reference
 
 .. currentmodule:: pyrodigal
 
-This section contains a complete reference of the ``pyrodigal`` API.
+This section contains a complete reference of the ``pyrodigal`` module API.
 
 Gene Finder
 -----------
