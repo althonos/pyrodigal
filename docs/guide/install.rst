@@ -81,6 +81,21 @@ Check the `piwheels documentation <https://www.piwheels.org/faq.html>`_ for
 more information.
 
 
+FreshPorts
+^^^^^^^^^^
+
+On BSD systems, Pyrodigal is available as a *port* and can be installed as 
+a compiled package with one of the following commands:
+
+.. code:: console
+
+    $ pkg install biology/py-pyrodigal
+    $ pkg install py39-pyrodigal
+
+See the `FreshPorts page <https://www.freshports.org/biology/py-pyrodigal/>`_
+for more information.
+
+
 GitHub + ``pip``
 ^^^^^^^^^^^^^^^^
 
