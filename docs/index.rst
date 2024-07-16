@@ -1,5 +1,8 @@
-Pyrodigal |Stars|
-=================
+|Logo| Pyrodigal |Stars|
+========================
+
+.. |Logo| image:: /_images/logo.png
+   :scale: 40%
 
 .. |Stars| image:: https://img.shields.io/github/stars/althonos/pyrodigal.svg?style=social&maxAge=3600&label=Star
    :target: https://github.com/althonos/pyrodigal/stargazers
@@ -85,7 +88,7 @@ internals, which has the following advantages:
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
   save from a third to half the runtime depending on the sequence. The 
-  `Benchmarks <https://pyrodigal.readthedocs.io/en/stable/benchmarks.html>`_ 
+  :doc:`Benchmarks <guide/benchmarks>` 
   page of the documentation contains comprehensive comparisons. See the 
   `JOSS paper <https://doi.org/10.21105/joss.04296>`_ for details about how 
   this is achieved.
@@ -145,7 +148,7 @@ Setup
 
 Run ``pip install pyrodigal`` in a shell to download the latest release and all
 its dependencies from PyPi, or have a look at the
-:doc:`Installation page <install>` to find other ways to install ``pyrodigal``.
+:doc:`Installation page <guide/install>` to find other ways to install ``pyrodigal``.
 
 
 Citation
@@ -154,32 +157,137 @@ Citation
 Pyrodigal is scientific software, with a
 `published paper <https://doi.org/10.21105/joss.04296>`_
 in the `Journal of Open-Source Software <https://joss.theoj.org/>`_. Check the 
-:doc:`Publications page <publications>` to see how to cite Pyrodigal properly.
+:doc:`Publications page <guide/publications>` to see how to cite Pyrodigal properly.
 
 
 Library
 -------
 
+Check the following pages of the user guide or the API reference for more
+in-depth reference about library setup, usage, and rationale:
+
 .. toctree::
    :maxdepth: 2
 
-   Installation <install>
-   Output Formats <outputs>
-   Contributing <contributing>
-   Publications <publications>
-   Benchmarks <benchmarks>
+   User Guide <guide/index>
    API Reference <api/index>
-   Changelog <changes>
 
+
+Related Projects
+----------------
+
+The following Python libraries may be of interest for bioinformaticians.
+
+.. grid:: 1 3 5 5
+   :gutter: 1
+
+   .. grid-item-card:: :fas:`diamond` PyHMMER
+      :link: https://pyhmmer.readthedocs.io
+
+      Profile Hidden Markov Models (with HMMER).
+
+   .. grid-item-card:: :fas:`fire` Pyrodigal
+      :link: https://pyrodigal.readthedocs.io
+
+      Prokaryotic Gene Finding (with Prodigal).
+
+   .. grid-item-card:: :fas:`virus-covid` Pyrodigal-gv
+      :link: https://github.com/althonos/pyrodigal-gv
+
+      Pyrodigal for Giant Viruses.
+
+   .. grid-item-card:: :fas:`align-center` PyFAMSA
+      :link: https://pyfamsa.readthedocs.io
+
+      Multiple Sequence Alignment (with FAMSA).
+
+   .. grid-item-card:: :fas:`scissors` PytrimAl
+      :link: https://pytrimal.readthedocs.io
+
+      Alignment Trimming (with trimAl).
+
+   .. grid-item-card:: :fas:`music` LightMotif
+      :link: https://lightmotif.readthedocs.io
+
+      Platform-accelerated motif scoring.
+
+   .. grid-item-card:: :fas:`knife;fa-custom` Diced
+      :link: https://diced.readthedocs.io
+
+      CRISPR Detection (with MinCED).
+
+   .. grid-item-card:: :fas:`table-cells` Scoring Matrices
+      :link: https://scoring-matrices.readthedocs.io
+
+      Scoring matrices for Cython.
+
+   .. grid-item-card:: :fas:`chain` Pyskani
+      :link: https://pyskani.readthedocs.io
+
+      Average Nucleotide Identity (with skani).
+
+   .. grid-item-card:: :fas:`forward-fast` PyFastANI
+      :link: https://pyfastani.readthedocs.io
+
+      Average Nucleotide Identity (with FastANI).
+
+   .. grid-item-card:: :fas:`magnifying-glass` PyJess
+      :link: https://pyjess.readthedocs.io
+
+      Geometric Template Matching (with Jess).
+
+   .. grid-item-card:: :fas:`repeat` PyTantan
+      :link: https://pytantan.readthedocs.io
+
+      Tandem Repeat Masking (with Tantan).
+
+   .. grid-item-card:: :fas:`gem` PyOpal
+      :link: https://pyopal.readthedocs.io
+
+      Query/Database Aligner (with Opal).
+
+   .. grid-item-card:: :fas:`sword;fa-custom` PySWRD
+      :link: https://pyswrd.readthedocs.io
+
+      Database Heuristic Filtering (with SWORD).
+
+   .. grid-item-card:: :fas:`rocket` Mini3di
+      :link: https://github.com/althonos/mini3di
+
+      Protein structure to 3di in pure Python.
+
+   .. grid-item-card:: :fas:`calculator` ``peptides.py``
+      :link: https://peptides.readthedocs.io
+
+      Peptide descriptors for Python.
+
+   .. grid-item-card:: :fas:`diagram-project` Pronto
+      :link: https://pronto.readthedocs.io
+
+      Open Biomedical Ontologies for Python.
+
+   .. grid-item-card:: :fas:`box` NAFcodec
+      :link: https://nafcodec.readthedocs.io
+
+      Nucleotide Archival Format for Python.
+
+   .. grid-item-card:: :fas:`bank` ``gb-io.py``
+      :link: https://gb-io.readthedocs.io
+
+      Fast GenBank parser for Python (with ``gb-io``).
 
 License
 -------
 
 This library is provided under the `GNU General Public License v3.0 <https://choosealicense.com/licenses/gpl-3.0/>`_.
 The Prodigal code was written by `Doug Hyatt <https://github.com/hyattpd>`_ and is distributed under the
-terms of the GPLv3 as well. 
+terms of the GPLv3 as well. See the :doc:`Copyright Notice <guide/copyright>` section
+for the full GPLv3 license.
 
 *This project is in no way not affiliated, sponsored, or otherwise endorsed by
 the original* `Prodigal`_ *authors. It was developed by* `Martin Larralde <https://github.com/althonos>`_ *during his
 PhD project at the* `European Molecular Biology Laboratory <https://www.embl.de/>`_
 *in the* `Zeller team <https://github.com/zellerlab>`_.
+
+The project icon was derived from `UXWing <https://uxwing.com/>`_ and is re-used
+under `their permissive license <https://uxwing.com/license/>`_.

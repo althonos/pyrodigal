@@ -13,7 +13,7 @@ Profiling with Valgrind reveals that it represent two-thirds of
 the total cycle count used for finding genes with the original Prodigal code
 (647M cycles out of 965M on an example sequence), as seen below:
 
-.. image:: _images/qcachegrind.prodigal.png
+.. image:: /_images/qcachegrind.prodigal.png
 
 In Pyrodigal, the connection scoring step is being accelerated with a
 pre-filtering step so that invalid connections can be skipped. This pre-filtering
@@ -45,12 +45,12 @@ the generic pre-filter (`Generic`) or no pre-filter at all (`None`).
 x86-64
 ^^^^^^
 
-.. image:: _images/connection-scoring-x86.svg
+.. image:: /_images/connection-scoring-x86.svg
 
 Arm
 ^^^
 
-.. image:: _images/connection-scoring-arm.svg
+.. image:: /_images/connection-scoring-arm.svg
 
 
 
@@ -65,4 +65,4 @@ no pre-filter at all (`None`); or the time taken by Prodigal (`Prodigal`).
 x86-64
 ^^^^^^
 
-.. image:: _images/run-single-x86.svg
+.. image:: /_images/run-single-x86.svg

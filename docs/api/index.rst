@@ -1,80 +1,113 @@
 API Reference
 =============
 
-.. toctree::
-   :hidden:
-
-   gene_finder <gene_finder>
-   training_info <training_info>
-   metagenomic_bin <metagenomic_bin>
-   genes <genes>
-   nodes <nodes>
-   sequence <sequence>
-   masks <masks>
-
-
 .. currentmodule:: pyrodigal
 
-.. only:: html
+Gene Finder
+-----------
 
-    GeneFinder
-    ----------
+.. autosummary::
+   :nosignatures:
 
-    .. autosummary::
-        :nosignatures:
+   pyrodigal.GeneFinder
 
-        pyrodigal.GeneFinder
+.. toctree::
+    :maxdepth: 1
+    :hidden:
 
-
-    TrainingInfo
-    ------------
-
-    .. autosummary::
-       :nosignatures:
-
-       pyrodigal.TrainingInfo
-
-    MetagenomicBin
-    --------------
-
-    .. autosummary::
-       :nosignatures:
-
-       pyrodigal.MetagenomicBin
-       pyrodigal.MetagenomicBins
+    gene_finder
 
 
-    Genes
-    -----
+Training Info
+-------------
 
-    .. autosummary::
-       :nosignatures:
+.. autosummary::
+   :nosignatures:
 
-       pyrodigal.Genes
-       pyrodigal.Gene
+   pyrodigal.TrainingInfo
 
-    Nodes
-    -----
+.. toctree::
+    :maxdepth: 1
+    :hidden:
 
-    .. autosummary::
-       :nosignatures:
+    training_info
 
-       pyrodigal.Nodes
-       pyrodigal.Node
 
-    Sequence
-    --------
+Metagenomic Bin
+---------------
 
-    .. autosummary::
-       :nosignatures:
+.. autosummary::
+   :nosignatures:
 
-       pyrodigal.Sequence
+   pyrodigal.MetagenomicBin
+   pyrodigal.MetagenomicBins
 
-    Masks
-    -----
+.. toctree::
+    :maxdepth: 1
+    :hidden:
 
-    .. autosummary::
-       :nosignatures:
+    metagenomic_bin
 
-       pyrodigal.Masks
-       pyrodigal.Mask
+
+Genes
+-----
+
+.. autosummary::
+   :nosignatures:
+
+   pyrodigal.Genes
+   pyrodigal.Gene
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    genes
+
+
+Nodes
+-----
+
+.. autosummary::
+   :nosignatures:
+
+   pyrodigal.Nodes
+   pyrodigal.Node
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    nodes
+
+
+Sequence
+--------
+
+.. autosummary::
+   :nosignatures:
+
+   pyrodigal.Sequence
+
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    sequence
+
+
+Masks
+-----
+
+.. autosummary::
+   :nosignatures:
+
+   pyrodigal.Masks
+   pyrodigal.Mask
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    masks

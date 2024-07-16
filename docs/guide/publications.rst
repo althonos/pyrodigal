@@ -6,12 +6,13 @@ Citation
 
 When citing Pyrodigal, please additionally cite the original Prodigal paper,
 which developed the actual method. You can for instance cite both papers as:
-*Pyrodigal (Larralde, 2022), a Python library binding to Prodigal (Hyatt et al., 2010).*
+
+    Pyrodigal (Larralde, 2022), a Python library binding to Prodigal (Hyatt et al., 2010).
 
 Use the following for the bibliography:
 
-- `Hyatt, D., Chen, GL., LoCascio, P.F. et al. Prodigal: prokaryotic gene recognition and translation initiation site identification. BMC Bioinformatics 11, 119 (2010). doi:10.1186/1471-2105-11-119 <https://doi.org/10.1186/1471-2105-11-119>`_.
-- `Larralde, M., (2022). Pyrodigal: Python bindings and interface to Prodigal, an efficient method for gene prediction in prokaryotes. Journal of Open Source Software, 7(72), 4296. doi:10.21105/joss.04296 <https://doi.org/10.21105/joss.04296>`_.
+- Hyatt, D., Chen, GL., LoCascio, P.F. et al. Prodigal: prokaryotic gene recognition and translation initiation site identification. BMC Bioinformatics 11, 119 (2010). :doi:`10.1186/1471-2105-11-119`.
+- Larralde, M., (2022). Pyrodigal: Python bindings and interface to Prodigal, an efficient method for gene prediction in prokaryotes. Journal of Open Source Software, 7(72), 4296. :doi:`10.21105/joss.04296`.
 
 Or just grab the `BibTex file <_static/bibtex/citation.bib>`_ with these two papers.
 
