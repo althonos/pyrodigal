@@ -9,7 +9,7 @@ jobs:
 
   wheel-linux-aarch64:
     name: Build Linux wheels (Aarch64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-tag:
@@ -34,7 +34,7 @@ jobs:
       with:
         platforms: all
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.18.0
+      uses: pypa/cibuildwheel@v2.19.2
       env:
         CIBW_ARCHS: aarch64
         CIBW_BUILD: ${{ matrix.python-tag }}
@@ -51,7 +51,7 @@ jobs:
 
   wheel-linux-x86_64:
     name: Build Linux wheels (x86-64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-tag:
@@ -71,7 +71,7 @@ jobs:
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.18.0
+      uses: pypa/cibuildwheel@v2.19.2
       env:
         CIBW_ARCHS: x86_64
         CIBW_BUILD: ${{ matrix.python-tag }}
@@ -108,7 +108,7 @@ jobs:
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.18.0
+      uses: pypa/cibuildwheel@v2.19.2
       env:
         CIBW_ARCHS: x86_64
         CIBW_BUILD: ${{ matrix.python-tag }}
@@ -139,7 +139,7 @@ jobs:
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.18.0
+      uses: pypa/cibuildwheel@v2.19.2
       env:
         CIBW_ARCHS: arm64
         CIBW_BUILD: ${{ matrix.python-tag }}
@@ -176,7 +176,7 @@ jobs:
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.18.0
+      uses: pypa/cibuildwheel@v2.19.2
       env:
         CIBW_ARCHS: AMD64
         CIBW_BUILD: ${{ matrix.python-tag }}
@@ -259,6 +259,7 @@ jobs:
   release:
     environment: GitHub Releases
     runs-on: ubuntu-latest
+    permissions: write-all
     if: "!contains(github.ref, 'rc')"
     name: Release
     needs: upload
