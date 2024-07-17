@@ -146,9 +146,14 @@ html_theme_options = {
         "image_light": "_images/logo.png",
         "image_dark": "_images/logo.png",
     },
+    "navbar_start": ["navbar-logo", "version-switcher"],
     "navbar_align": "left",
     "footer_start": ["copyright"],
     "footer_center": ["sphinx-version"],
+    "switcher": {
+        "json_url": "https://pyrodigal.readthedocs.io/en/latest/_static/switcher.json",
+        "version_match": version,
+    }
 }
 
 html_context = {
@@ -193,7 +198,6 @@ autosummary_generate = []
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
-    "biopython": ("https://biopython.org/docs/latest/api/", None),
 }
 
 # -- Options for recommonmark extension --------------------------------------
