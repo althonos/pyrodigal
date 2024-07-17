@@ -10,6 +10,7 @@ This section contains guides and documents about Pyrodigal usage.
     Installation <install>
     Output Formats <outputs>
     Command Line Interface <cli>
+    Parallelism <parallel>
     Publications <publications>
 
 .. toctree::
