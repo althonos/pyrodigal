@@ -4,13 +4,20 @@
 """
 import argparse
 import contextlib
+import functools
 import io
-import multiprocessing.pool
+import itertools
 import os
+import operator
 import sys
 import typing
 
-from . import __name__, __author__, __version__
+try:
+    import multiprocessing.pool
+except ImportError:  # multiprocessing.pool may be missing, e.g. on AWS
+    multiprocessing = None
+
+from . import __name__ as prog, __author__, __version__
 from .lib import TRANSLATION_TABLES, GeneFinder, TrainingInfo
 from .tests.fasta import parse
 
@@ -54,7 +61,7 @@ def zopen(path, mode='r', encoding=None, errors=None, newline=None) -> typing.It
 
 
 def argument_parser(
-    prog: str = __name__,
+    prog: str = prog,
     version: str = __version__,
     input_required: bool = True,
     formatter_class: argparse.HelpFormatter = argparse.ArgumentDefaultsHelpFormatter,
@@ -188,7 +195,18 @@ def argument_parser(
         help="Disables translation of stop codons into star characters (*) for complete genes.",
         default=True,
     )
+    parser.add_argument(
+        "--pool",
+        action="store",
+        choices=("thread", "process"),
+        default="thread",
+        help="The sort of pool to use to process genomes in parallel. Processes may be faster than threads on some machines, refer to documentation."
+    )
     return parser
+
+
+def _process(gene_finder, sequence):
+    return sequence.id, gene_finder.find_genes(sequence.seq)
 
 
 def main(
@@ -265,31 +283,34 @@ def main(
             # get the number of jobs
             if args.jobs == 0:
                 args.jobs = os.cpu_count() or 1
-            if args.jobs > 1:
-                pool = ctx.enter_context(multiprocessing.pool.ThreadPool(args.jobs))
+            if args.jobs > 1 and multiprocessing is not None:
+                if args.pool == "thread":
+                    pool = ctx.enter_context(multiprocessing.pool.ThreadPool(args.jobs))
+                elif args.pool == "process":
+                    pool = ctx.enter_context(multiprocessing.pool.Pool(args.jobs))
+                else:
+                    raise ValueError(f"invalid pool type: {pool}")
                 parallel_map = pool.map
             else:
                 parallel_map = map
 
-            # find genes in parallel
-            def process(sequence):
-                return (sequence.id, gene_finder.find_genes(sequence.seq))
-
-            for seq_id, preds in parallel_map(process, sequences):
+            # process sequence in parallel if possible
+            process = functools.partial(_process, gene_finder)
+            for seq, preds in parallel_map(process, sequences):
                 # write output in GFF or GBK format
                 if args.f == "gff":
-                    preds.write_gff(out_file, seq_id)
+                    preds.write_gff(out_file, seq.id)
                 elif args.f == "gbk":
-                    preds.write_genbank(out_file, seq_id)
+                    preds.write_genbank(out_file, seq.id)
                 # if asked, write nucleotide sequences of genes
                 if nuc_file is not None:
-                    preds.write_genes(nuc_file, seq_id)
+                    preds.write_genes(nuc_file, seq.id)
                 # if asked, write amino acid sequences of proteins
                 if prot_file is not None:
-                    preds.write_translations(prot_file, seq_id, include_stop=args.no_stop_codon)
+                    preds.write_translations(prot_file, seq.id, include_stop=args.no_stop_codon)
                 # if asked, write scores
                 if scores_file is not None:
-                    preds.write_scores(scores_file, seq_id)
+                    preds.write_scores(scores_file, seq.id)
 
         except Exception as err:
             print("Error: {}".format(err))
