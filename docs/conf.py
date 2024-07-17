@@ -112,7 +112,7 @@ html_theme = 'pydata_sphinx_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static/js', '_static/bibtex', '_static/css']
+html_static_path = ['_static/js', '_static/bibtex', '_static/css', '_static/json']
 html_js_files = ["custom-icon.js"]
 html_css_files = ["custom.css"]
 

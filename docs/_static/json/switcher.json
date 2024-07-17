@@ -1,0 +1,37 @@
+[
+    {
+        "name": "v3.4 (stable)",
+        "version": "3.4.1",
+        "url": "https://pyrodigal.readthedocs.io/en/v3.4.1/"
+    },
+    {
+        "name": "v3.3",
+        "version": "3.3.0",
+        "url": "https://pyrodigal.readthedocs.io/en/v3.3.0/"
+    },
+    {
+        "name": "v3.2",
+        "version": "3.2.2",
+        "url": "https://pyrodigal.readthedocs.io/en/v3.2.2/"
+    },
+    {
+        "name": "v3.1",
+        "version": "3.1.1",
+        "url": "https://pyrodigal.readthedocs.io/en/v3.1.1/"
+    },
+    {
+        "name": "v3.0",
+        "version": "3.0.1",
+        "url": "https://pyrodigal.readthedocs.io/en/v3.0.1/"
+    },
+    {
+        "name": "v2.3",
+        "version": "2.3.0",
+        "url": "https://pyrodigal.readthedocs.io/en/v2.3.0/"
+    },
+    {
+        "name": "v1.1",
+        "version": "1.1.2",
+        "url": "https://pyrodigal.readthedocs.io/en/v1.1.2/"
+    }
+]
