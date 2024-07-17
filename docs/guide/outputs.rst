@@ -24,7 +24,7 @@ Genes
 -----
 
 Use `Genes.write_genes` to write the nucleotide sequences of all the genes
-found by Pyrodigal to a file or a file-like object:
+found by Pyrodigal to a file or a file-like object, similar to ``prodigal -d``:
 
 .. code:: python
 
@@ -46,7 +46,7 @@ Translations
 ------------
 
 Use `Genes.write_translations` to write the protein sequences of all the
-genes found by Pyrodigal to a file or file-object:
+genes found by Pyrodigal to a file or file-object, similar to ``prodigal -a``:
 
 .. code:: python
 
@@ -68,7 +68,7 @@ GFF
 ---
 
 Use `Genes.write_gff` to write the genes to a file or file-like object in GFF
-format:
+format, similar to ``prodigal -f gff -o``:
 
 .. code:: python
 
@@ -96,7 +96,7 @@ Genbank
 
 Use `Genes.write_genbank` to write the genes to a file or file-like object
 in `GenBank <https://www.insdc.org/submitting-standards/feature-table/#3.1>`_
-format:
+format, similar to ``prodigal -f gbk -o``:
 
 .. code:: python
 
@@ -118,7 +118,7 @@ Scores
 ------
 
 Use `Genes.write_scores` to write the scores of all potential genes in a format
-proprietary to Prodigal:
+proprietary to Prodigal, similar to ``prodigal -s``:
 
 .. code:: python
 
