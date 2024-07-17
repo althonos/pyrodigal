@@ -57,8 +57,13 @@ def argument_parser(
     prog: str = __name__,
     version: str = __version__,
     input_required: bool = True,
+    formatter_class: argparse.HelpFormatter = argparse.ArgumentDefaultsHelpFormatter,
 ) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=prog, add_help=False)
+    parser = argparse.ArgumentParser(
+        prog=prog, 
+        add_help=False,
+        formatter_class=formatter_class
+    )
     parser.add_argument(
         "-a",
         required=False,
@@ -194,8 +199,9 @@ def main(
     *,
     gene_finder_factory: typing.Callable[..., GeneFinder] = GeneFinder,
     argument_parser: typing.Callable[[], argparse.ArgumentParser] = argument_parser,
+    formatter_class: argparse.HelpFormatter = argparse.ArgumentDefaultsHelpFormatter,
 ) -> int:
-    parser = argument_parser(input_required=stdin.isatty())
+    parser = argument_parser(input_required=stdin.isatty(), formatter_class=formatter_class)
     args = parser.parse_args(argv)
 
     with contextlib.ExitStack() as ctx:
