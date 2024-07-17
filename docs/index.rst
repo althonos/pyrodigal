@@ -120,12 +120,13 @@ internals, which has the following advantages:
 
    .. grid-item-card:: :fas:`check` Consistent results 
 
-      Get the same results as Pyrodigal ``v2.6.3+31b300a``, with additional
+      Get the same results as Prodigal ``v2.6.3+31b300a``, with additional
       bug fixes compared to the latest stable Prodigal version.
 
    .. grid-item-card:: :fas:`toolbox` Feature-complete
 
-      Access all the features of the original CLI through the Python API.
+      Access all the features of the original CLI through the :doc:`Python API <api/index>` 
+      or a :doc:`drop-in CLI replacement <guide/cli>`.
 
 
 Features
