@@ -1,5 +1,10 @@
 [
     {
+        "name": "v3.5 (stable)",
+        "version": "3.5.0",
+        "url": "https://pyrodigal.readthedocs.io/en/v3.5.0/"
+    },
+    {
         "name": "v3.4 (stable)",
         "version": "3.4.1",
         "url": "https://pyrodigal.readthedocs.io/en/v3.4.1/"

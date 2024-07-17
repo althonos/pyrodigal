@@ -6,7 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.5.0...HEAD
+
+
+## [v3.5.0] - 2024-07-17
+[v3.5.0]: https://github.com/althonos/pyrodigal/compare/v3.4.1...v3.5.0
+
+### Added
+- Support for reading from `stdin` in CLI ([#35](https://github.com/althonos/pyrodigal/issues/35)).
+- Flag for changing parallel computation to use `Pool` instead of `ThreadPool` ([#57](https://github.com/althonos/pyrodigal/issues/57)).
+- Better documentation of command line interface ([#56](https://github.com/althonos/pyrodigal/issues/56)).
+- Allow changing the formatter class in `pyrodigal.cli.argument_parser`.
+
+### Changed
+- Migrate documentation to `pydata-sphinx-theme`.
+
+### Fixed
+- Cython warnings with unused `except *` statements in `MetagenomicBins`.
+- Signatures of `__init__` methods missing from all Cython types after the `v3.0` update.
+- Small typos in documentation.
 
 
 ## [v3.4.1] - 2024-05-23
