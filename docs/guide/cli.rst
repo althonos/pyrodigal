@@ -15,6 +15,8 @@ exceptions:
 
 - The input file for Pyrodigal can only be in FASTA format, GenBank is not 
   supported.
+- Pyrodigal supports getting the input sequences through a pipe to *stdin*, 
+  however the stream cannot be compressed.
 - The GenBank output of Pyrodigal is a full GenBank record including the 
   input sequence, unlike Prodigal which only outputs the features section.
 

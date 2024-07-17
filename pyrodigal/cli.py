@@ -55,7 +55,8 @@ def zopen(path, mode='r', encoding=None, errors=None, newline=None) -> typing.It
 
 def argument_parser(
     prog: str = __name__,
-    version: str = __version__
+    version: str = __version__,
+    input_required: bool = True,
 ) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=prog, add_help=False)
     parser.add_argument(
@@ -95,7 +96,10 @@ def argument_parser(
         default=11,
     )
     parser.add_argument(
-        "-i", metavar="input_file", required=True, help="Specify FASTA input file."
+        "-i", 
+        metavar="input_file", 
+        required=input_required, 
+        help="Specify FASTA input file.",
     )
     parser.add_argument(
         "-m",
@@ -186,11 +190,12 @@ def main(
     argv: typing.Optional[typing.List[str]] = None,
     stdout: typing.TextIO = sys.stdout,
     stderr: typing.TextIO = sys.stderr,
+    stdin: typing.TextIO = sys.stdin, 
     *,
     gene_finder_factory: typing.Callable[..., GeneFinder] = GeneFinder,
     argument_parser: typing.Callable[[], argparse.ArgumentParser] = argument_parser,
 ) -> int:
-    parser = argument_parser()
+    parser = argument_parser(input_required=stdin.isatty())
     args = parser.parse_args(argv)
 
     with contextlib.ExitStack() as ctx:
@@ -222,7 +227,7 @@ def main(
                 training_info = None
 
             # open input (with support for compressed files)
-            input_file = ctx.enter_context(zopen(args.i))
+            input_file = stdin if args.i is None else ctx.enter_context(zopen(args.i))
 
             # initialize the ORF finder
             gene_finder = gene_finder_factory(
