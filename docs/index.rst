@@ -54,11 +54,11 @@
    :target: https://choosealicense.com/licenses/mit/
    :class: dark-light
 
-.. |Source| image:: https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square
+.. |Source| image:: https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=3600&style=flat-square
    :target: https://github.com/althonos/pyrodigal/
    :class: dark-light
 
-.. |Mirror| image:: https://img.shields.io/badge/mirror-EMBL-009f4d?style=flat-square&maxAge=2678400
+.. |Mirror| image:: https://img.shields.io/badge/mirror-EMBL-009f4d?style=flat-square&maxAge=3600
    :target: https://git.embl.de/larralde/pyrodigal/
    :class: dark-light
 
@@ -70,7 +70,7 @@
    :target: http://pyrodigal.readthedocs.io/en/stable/?badge=stable
    :class: dark-light
 
-.. |Changelog| image:: https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square
+.. |Changelog| image:: https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=3600&style=flat-square
    :target: https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md
    :class: dark-light
 

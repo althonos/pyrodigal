@@ -7,8 +7,8 @@ API is recommended to get the most out of Pyrodigal, the CLI can be useful
 to benefit from performance enhancements of Pyrodigal inside workflows or 
 shell scripts.
 
-Behaviour
----------
+Changes from Prodigal
+---------------------
 
 The Pyrodigal CLI behaves mostly like the Prodigal CLI, with the following
 exceptions:
@@ -51,3 +51,14 @@ of Pyrodigal, such as multi-threading or smaller gene prediction:
     --max-overlap MAX_OVERLAP      The maximum number of nucleotides that can overlap between two genes on the same strand.
                                    This must be lower or equal to the minimum gene length.
     --no-stop-codon                Disables translation of stop codons into star characters (*) for complete genes.
+
+Piping
+------
+
+Pyrodigal supports reading the input through a pipe:
+
+.. code-block:: console
+
+  $ wget 'https://example.com/genome.fna' -O- | pyrodigal -a proteins.faa
+
+If an input is given with the `-i` flag, it takes priority over the pipe.
