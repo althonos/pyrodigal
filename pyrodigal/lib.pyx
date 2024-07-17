@@ -2913,8 +2913,11 @@ cdef class Gene:
     cpdef str sequence(self):
         """Build the nucleotide sequence of this predicted gene.
 
-        This function takes care of reverse-complementing the sequence
-        if it is on the reverse strand.
+        This function takes care of reverse-complementing the gene 
+        sequence if the gene is located on the reverse strand.
+
+        Returns:
+            `str`: The nucleotide sequence of the predicted gene.
 
         Note:
             Since Pyrodigal uses a generic symbol for unknown nucleotides,
@@ -3613,7 +3616,7 @@ cdef class Genes:
             `int`: The number of bytes written to the file.
 
         .. versionchanged:: 2.0.0
-            Replaced optional``prefix`` argument with ``sequence_id``.
+            Replaced optional ``prefix`` argument with ``sequence_id``.
 
         .. versionadded:: 3.0.0
             The ``include_translation_table`` argument.
@@ -3786,7 +3789,7 @@ cdef class Genes:
             `int`: The number of bytes written to the file.
 
         .. versionchanged:: 2.0.0
-            Replaced optional``prefix`` argument with ``sequence_id``.
+            Replaced optional ``prefix`` argument with ``sequence_id``.
 
         .. versionadded:: 3.0.0
             The ``include_stop`` argument.
@@ -4069,20 +4072,7 @@ cdef class TrainingInfo:
         return sizeof(_training) + sizeof(self)
 
     def __getstate__(self):
-        assert self.tinf != NULL
-        return {
-            "gc": self.gc,
-            "translation_table": self.translation_table,
-            "start_weight": self.start_weight,
-            "bias": self.bias.tolist(),
-            "type_weights": self.type_weights.tolist(),
-            "uses_sd": self.uses_sd,
-            "rbs_weights": self.rbs_weights.tolist(),
-            "upstream_compositions": self.upstream_compositions.tolist(),
-            "motif_weights": self.motif_weights.tolist(),
-            "missing_motif_weight": self.missing_motif_weight,
-            "coding_statistics": self.coding_statistics.tolist(),
-        }
+        return self.to_dict()
 
     def __setstate__(self, dict state):
         cdef int i
@@ -4907,7 +4897,20 @@ cdef class TrainingInfo:
                 [2.312, 0.463, 0.226]
 
         """
-        return self.__getstate__()
+        assert self.tinf != NULL
+        return {
+            "gc": self.gc,
+            "translation_table": self.translation_table,
+            "start_weight": self.start_weight,
+            "bias": self.bias.tolist(),
+            "type_weights": self.type_weights.tolist(),
+            "uses_sd": self.uses_sd,
+            "rbs_weights": self.rbs_weights.tolist(),
+            "upstream_compositions": self.upstream_compositions.tolist(),
+            "motif_weights": self.motif_weights.tolist(),
+            "missing_motif_weight": self.missing_motif_weight,
+            "coding_statistics": self.coding_statistics.tolist(),
+        }
 
     cpdef object dump(self, fp):
         """Write a training info to a file-like handle.
