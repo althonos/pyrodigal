@@ -110,12 +110,12 @@ internals, which has the following advantages:
 
    .. grid-item-card:: :fas:`memory` Memory-efficient
 
-      Benefit from conservative memory allocation for candidate node 
-      scoring, and a reworked data layout.
+      Benefit from conservative memory allocation and a reworked data layout 
+      for candidate nodes.
 
    .. grid-item-card:: :fas:`microchip` Faster computation
 
-      Use the full power of your CPU with *SIMD* instructions to 
+      Use the full power of your CPU with :wiki:`SIMD` instructions to 
       filter out candidate genes prior to the scoring stage.
 
    .. grid-item-card:: :fas:`check` Consistent results 
