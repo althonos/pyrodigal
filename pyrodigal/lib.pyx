@@ -5051,7 +5051,10 @@ cdef class MetagenomicBins:
         return type(self), (list(self), )
 
     @staticmethod
-    cdef MetagenomicBins from_array(_metagenomic_bin* bins, size_t length) except *:
+    cdef MetagenomicBins from_array(
+        _metagenomic_bin* bins, 
+        size_t length
+    ):
         assert bins != NULL
 
         cdef MetagenomicBins output = MetagenomicBins.__new__(MetagenomicBins)
@@ -5088,7 +5091,7 @@ cdef class MetagenomicBins:
     cdef MetagenomicBins from_initializer(
         void (*initializer)(_metagenomic_bin*),
         size_t length,
-    ) except *:
+    ):
         cdef size_t _i
         cdef _training*        metagenomic_training_info = NULL
         cdef _metagenomic_bin* metagenomic_bins          = NULL
