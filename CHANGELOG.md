@@ -6,10 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.5.1...HEAD
 
 
-## [v3.5.0] - 2024-07-17
+## [v3.5.1] - 2024-07-17
+[v3.5.1]: https://github.com/althonos/pyrodigal/compare/v3.5.0...v3.5.1
+
+### Fixed
+- Outdated code in `pyrodigal.cli` breaking the CLI.
+
+
+## [v3.5.0] - 2024-07-17 - YANKED
 [v3.5.0]: https://github.com/althonos/pyrodigal/compare/v3.4.1...v3.5.0
 
 ### Added

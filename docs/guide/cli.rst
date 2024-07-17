@@ -51,7 +51,7 @@ of Pyrodigal, such as multi-threading or smaller gene prediction:
     --max-overlap MAX_OVERLAP      The maximum number of nucleotides that can overlap between two genes on the same strand.
                                    This must be lower or equal to the minimum gene length.
     --no-stop-codon                Disables translation of stop codons into star characters (*) for complete genes.
-      --pool {thread,process}      The sort of pool to use to process genomes in parallel. Processes may be faster than
+    --pool {thread,process}        The sort of pool to use to process genomes in parallel. Processes may be faster than
                                    threads on some machines, refer to documentation. (default: thread)
 
 Piping
