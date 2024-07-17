@@ -16,57 +16,75 @@
 
 .. |Actions| image:: https://img.shields.io/github/actions/workflow/status/althonos/pyrodigal/test.yml?branch=main&logo=github&style=flat-square&maxAge=300
    :target: https://github.com/althonos/pyrodigal/actions
+   :class: dark-light
 
 .. |GitLabCI| image:: https://img.shields.io/gitlab/pipeline/larralde/pyrodigal/main?gitlab_url=https%3A%2F%2Fgit.embl.de&logo=gitlab&style=flat-square&maxAge=600
    :target: https://git.embl.de/larralde/pyrodigal/-/pipelines
+   :class: dark-light
 
 .. |Coverage| image:: https://img.shields.io/codecov/c/gh/althonos/pyrodigal?style=flat-square&maxAge=600
    :target: https://codecov.io/gh/althonos/pyrodigal/
+   :class: dark-light
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/pyrodigal.svg?style=flat-square&maxAge=3600
    :target: https://pypi.python.org/pypi/pyrodigal
+   :class: dark-light
 
 .. |Bioconda| image:: https://img.shields.io/conda/vn/bioconda/pyrodigal?style=flat-square&maxAge=3600
    :target: https://anaconda.org/bioconda/pyrodigal
+   :class: dark-light
 
 .. |AUR| image:: https://img.shields.io/aur/version/python-pyrodigal?logo=archlinux&style=flat-square&maxAge=3600
    :target: https://aur.archlinux.org/packages/python-pyrodigal
+   :class: dark-light
 
 .. |Wheel| image:: https://img.shields.io/pypi/wheel/pyrodigal?style=flat-square&maxAge=3600
    :target: https://pypi.org/project/pyrodigal/#files
+   :class: dark-light
 
 .. |Versions| image:: https://img.shields.io/pypi/pyversions/pyrodigal.svg?style=flat-square&maxAge=3600
    :target: https://pypi.org/project/pyrodigal/#files
+   :class: dark-light
 
 .. |Implementations| image:: https://img.shields.io/pypi/implementation/pyrodigal.svg?style=flat-square&maxAge=3600&label=impl
    :target: https://pypi.org/project/pyrodigal/#files
+   :class: dark-light
 
 .. |License| image:: https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square&maxAge=3600
    :target: https://choosealicense.com/licenses/mit/
+   :class: dark-light
 
 .. |Source| image:: https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square
    :target: https://github.com/althonos/pyrodigal/
+   :class: dark-light
 
 .. |Mirror| image:: https://img.shields.io/badge/mirror-EMBL-009f4d?style=flat-square&maxAge=2678400
    :target: https://git.embl.de/larralde/pyrodigal/
+   :class: dark-light
 
 .. |Issues| image:: https://img.shields.io/github/issues/althonos/pyrodigal.svg?style=flat-square&maxAge=600
    :target: https://github.com/althonos/pyrodigal/issues
+   :class: dark-light
 
 .. |Docs| image:: https://img.shields.io/readthedocs/pyrodigal?style=flat-square&maxAge=3600
    :target: http://pyrodigal.readthedocs.io/en/stable/?badge=stable
+   :class: dark-light
 
 .. |Changelog| image:: https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square
    :target: https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md
+   :class: dark-light
 
 .. |Downloads| image:: https://img.shields.io/pypi/dm/pyrodigal?style=flat-square&color=303f9f&maxAge=86400&label=downloads
    :target: https://pepy.tech/project/pyrodigal
+   :class: dark-light
 
 .. |Paper| image:: https://img.shields.io/badge/paper-JOSS-9400ff?style=flat-square&maxAge=86400
    :target: https://doi.org/10.21105/joss.04296
+   :class: dark-light
 
 .. |Citations| image:: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbadge.dimensions.ai%2Fdetails%2Fid%2Fpub.1147419140%2Fmetadata.json&query=%24.times_cited&style=flat-square&label=citations&maxAge=86400
    :target: https://badge.dimensions.ai/details/id/pub.1147419140
+   :class: dark-light
 
 
 Overview
