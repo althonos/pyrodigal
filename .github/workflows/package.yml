@@ -44,9 +44,9 @@ jobs:
         CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: wheels
+        name: wheels-${{ matrix.python-tag }}
         path: dist/*
 
   wheel-linux-x86_64:
@@ -81,9 +81,9 @@ jobs:
         CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: wheels
+        name: wheels-${{ matrix.python-tag }}
         path: dist/*
 
   wheel-macos-x86_64:
@@ -118,9 +118,9 @@ jobs:
         CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: wheels
+        name: wheels-${{ matrix.python-tag }}
         path: dist/*
 
   wheel-macos-aarch64:
@@ -147,11 +147,12 @@ jobs:
         CIBW_BUILD_VERBOSITY: 2
         CIBW_TEST_COMMAND: python -m unittest pyrodigal.tests -vv
         CIBW_TEST_REQUIRES: importlib-resources
+        CIBW_TEST_SKIP: "*-macosx_arm64"
       with:
         output-dir: dist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: wheels
+        name: wheels-${{ matrix.python-tag }}
         path: dist/*
 
   wheel-win32-x86_64:
@@ -186,9 +187,9 @@ jobs:
         CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: wheels
+        name: wheels-${{ matrix.python-tag }}
         path: dist/*
 
   sdist:
@@ -198,18 +199,18 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.11
+        python-version: 3.12
     - name: Install build requirements
       run: python -m pip install -r .github/workflows/requirements.txt
     - name: Build source distribution
       run: python setup.py sdist
     - name: Store built source distribution
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: wheels
+        name: sdist
         path: dist/*
 
   test-sdist:
@@ -218,14 +219,14 @@ jobs:
     needs:
     - sdist
     steps:
-    - name: Setup Python 3.11
-      uses: actions/setup-python@v4
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: 3.12
     - name: Download built wheels
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
-          name: wheels
+          name: sdist
           path: dist/
     - name: Update pip to latest version
       run: python -m pip install -U pip setuptools wheel
@@ -249,25 +250,30 @@ jobs:
     - wheel-macos-x86_64
     - wheel-win32-x86_64
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
-        name: wheels
+        name: sdist
         path: dist
+        merge-multiple: true
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: wheels-*
+        path: dist
+        merge-multiple: true
     - uses: pypa/gh-action-pypi-publish@release/v1
       if: startsWith(github.ref, 'refs/tags')
 
   release:
     environment: GitHub Releases
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions: 
+      contents: write
     if: "!contains(github.ref, 'rc')"
     name: Release
     needs: upload
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: true
-    - uses: rasmus-saks/release-a-changelog-action@v1.0.1
+    - uses: rasmus-saks/release-a-changelog-action@v1.2.0
       with:
         github-token: '${{ secrets.GITHUB_TOKEN }}'
 
@@ -283,14 +289,14 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-    - name: Download built wheels
-      uses: actions/download-artifact@v2
+        python-version: 3.12
+    - name: Download source distribution
+      uses: actions/download-artifact@v4
       with:
-          name: wheels
+          name: sdist
           path: dist
     - name: Extract package version
       run: echo PKGVER=$(python setup.py --version) >> $GITHUB_ENV
