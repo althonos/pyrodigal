@@ -49,7 +49,7 @@ dependencies = [
 "PyPI" = "https://pypi.org/project/pyrodigal"
 
 [project.optional-dependencies]
-test = ["importlib-resources ; python_version < '3.7'"]
+test = ["importlib-resources ; python_version < '3.9'"]
 isal = ["isal ~=1.1"]
 lz4 = ["lz4 ~=4.0"]
 zst = ["zstandard ~=0.22"]
