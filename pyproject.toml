@@ -62,6 +62,11 @@ build-dir = "build/{build_type}"
 editable.rebuild = true
 editable.verbose = false
 
+[[tool.scikit-build.generate]]
+path = "src/pyrodigal/_version.py"
+template = '__version__ = "${version}"'
+location = 'source'
+
 [[tool.scikit-build.overrides]]
 if.state = "editable"
 cmake.build-type = "Debug"

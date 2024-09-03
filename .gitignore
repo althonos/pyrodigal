@@ -5,6 +5,7 @@ backup
 src/pyrodigal/lib.c
 src/pyrodigal/lib.h
 src/pyrodigal/*.html
+src/pyrodigal/_version.py
 
 ### Cython ###
 

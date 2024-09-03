@@ -21,6 +21,8 @@ except ImportError:
 
 # --- Globals ----------------------------------------------------------------
 
+__version__: str
+
 _TARGET_CPU: str
 _AVX512_RUNTIME_SUPPORT: bool
 _AVX2_RUNTIME_SUPPORT: bool
