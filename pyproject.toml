@@ -7,7 +7,7 @@ name = "pyrodigal"
 version = "3.5.1"
 description = "Cython bindings and Python interface to Prodigal, an ORF finder for genomes and metagenomes."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 license = { file = "COPYING" }
 authors = [
   { name = "Martin Larralde", email = "martin.larralde@embl.de" },
