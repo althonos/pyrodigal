@@ -10,6 +10,7 @@ import itertools
 import os
 import operator
 import sys
+import warnings
 import typing
 
 try:
@@ -206,6 +207,8 @@ def argument_parser(
 
 
 def _process(gene_finder, sequence):
+    if not sequence.id:
+        warnings.warn("Input file contains a sequence without identifier", stacklevel=2)
     return sequence.id, gene_finder.find_genes(sequence.seq)
 
 
