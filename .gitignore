@@ -1,6 +1,9 @@
 
 # Added manually
 
+backup
+
+
 ### Cython ###
 pyrodigal/lib.c
 pyrodigal/lib.h

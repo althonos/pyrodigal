@@ -140,7 +140,7 @@ if NEON_BUILD_SUPPORT:
 cdef int MVIEW_READ
 cdef int MVIEW_WRITE
 
-if SYS_IMPLEMENTATION_NAME == "pypy":
+if PYPY:
     MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
     MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
 else:
@@ -601,7 +601,7 @@ cdef class Sequence:
     cpdef size_t __sizeof__(self):
         return self.slen * sizeof(uint8_t) + sizeof(self)
 
-    if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+    if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
 
         def __str__(self):
             cdef int     i
@@ -1180,7 +1180,7 @@ cdef class ConnectionScorer:
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
-                raise ValueError(f"Unsupported backend on this architecture: {backend}")
+                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
         elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
             if backend == "detect":
                 self.backend = simd_backend.NONE
@@ -1198,7 +1198,7 @@ cdef class ConnectionScorer:
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
-                raise ValueError(f"Unsupported backend on this architecture: {backend}")
+                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
         else:
             if backend == "detect":
                 self.backend = simd_backend.NONE
@@ -1207,7 +1207,7 @@ cdef class ConnectionScorer:
             elif backend is None:
                 self.backend = simd_backend.NONE
             else:
-                raise ValueError(f"Unsupported backend on this architecture: {backend}")
+                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
 
     def __dealloc__(self):
         PyMem_Free(self.node_types_raw)
@@ -2958,7 +2958,7 @@ cdef class Gene:
         #                doesn't seem to affect `Gene.translate`, so
         #                I'm not sure what's going on, but in that case we
         #                can build an ASCII string and decode afterwards.
-        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
             # create an empty byte buffer that we can write to
             dna = PyBytes_FromStringAndSize(NULL, length)
             data = <void*> PyBytes_AsString(dna)
@@ -2971,19 +2971,19 @@ cdef class Gene:
         if strand == 1:
             for i, j in enumerate(range(begin, end)):
                 nuc = _letters[digits[j]]
-                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
                     (<char*> data)[i] = nuc
                 else:
                     PyUnicode_WRITE(kind, data, i, nuc)
         else:
             for i, j in enumerate(range(begin, end)):
                 nuc = _letters[_complement[digits[slen - 1 - j]]]
-                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
                     (<char*> data)[i] = nuc
                 else:
                     PyUnicode_WRITE(kind, data, i, nuc)
 
-        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and SYS_IMPLEMENTATION_NAME == "pypy":
+        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
             return dna.decode("ascii")
         else:
             return dna
