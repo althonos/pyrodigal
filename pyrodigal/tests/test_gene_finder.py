@@ -38,7 +38,7 @@ class _GeneFinderTestCase(object):
     def assertCoordinatesEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
         for gene, protein in zip(predictions, proteins):
-            id_, start, end, strand, *_ = protein.description.split(" # ")
+            _, start, end, strand, *_ = protein.description.split("#")
             self.assertEqual(gene.begin, int(start))
             self.assertEqual(gene.end, int(end))
             self.assertEqual(gene.strand, int(strand))
@@ -46,8 +46,8 @@ class _GeneFinderTestCase(object):
     def assertRbsMotifsEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(predictions))
         for gene, protein in zip(predictions, proteins):
-            *_, raw_data = protein.description.split(" # ")
-            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            *_, raw_data = protein.description.split("#")
+            data = dict(keyval.split("=") for keyval in raw_data.strip().split(";"))
             if data["rbs_motif"] != "None":
                 self.assertEqual(gene.rbs_motif, data["rbs_motif"])
             else:
@@ -56,14 +56,14 @@ class _GeneFinderTestCase(object):
     def assertStartTypesEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
         for gene, protein in zip(predictions, proteins):
-            *_, raw_data = protein.description.split(" # ")
-            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            *_, raw_data = protein.description.split("#")
+            data = dict(keyval.split("=") for keyval in raw_data.strip().split(";"))
             self.assertEqual(gene.start_type, data["start_type"])
 
     def assertRbsSpacersEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
         for gene, protein in zip(predictions, proteins):
-            *_, raw_data = protein.description.split(" # ")
+            *_, raw_data = protein.description.split("#")
             data = dict(keyval.split("=") for keyval in raw_data.split(";"))
             if data["rbs_spacer"] != "None":
                 self.assertEqual(gene.rbs_spacer, data["rbs_spacer"])
@@ -73,8 +73,8 @@ class _GeneFinderTestCase(object):
     def assertGCContentEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
         for gene, protein in zip(predictions, proteins):
-            *_, raw_data = protein.description.split(" # ")
-            data = dict(keyval.split("=") for keyval in raw_data.split(";"))
+            *_, raw_data = protein.description.split("#")
+            data = dict(keyval.split("=") for keyval in raw_data.strip().split(";"))
             self.assertAlmostEqual(gene.gc_cont, float(data["gc_cont"]), places=2)
 
     def assertGenesEqual(self, predictions, genes):
@@ -85,7 +85,7 @@ class _GeneFinderTestCase(object):
     def assertGeneDataEqual(self, predictions, proteins):
         self.assertEqual(len(predictions), len(proteins))
         for gene, protein in zip(predictions, proteins):
-            *_, gene_data = protein.description.split(" # ")
+            *_, gene_data = protein.description.split("#")
             self.assertEqual(gene._gene_data(1), gene_data.strip())
 
     def assertPredictionsEqual(self, predictions, proteins):

@@ -74,8 +74,9 @@ def parse(path):
             if line.startswith(">"):
                 if id_ is not None:
                     yield Record(id_, "".join(seq), desc)
-                id_ = line[1:].split()[0].strip()
-                desc = " ".join(line[1:].split(maxsplit=1))
+                fields = line[1:].split(maxsplit=1)
+                id_ = fields[0] if len(fields) > 0 else ""
+                desc = fields[1] if len(fields) > 1 else ""
                 seq = []
             elif l:
                 seq.append(l)

@@ -314,6 +314,7 @@ def main(
 
         except Exception as err:
             print("Error: {}".format(err))
-            return getattr(err, "errno", 1)
+            raise
+            # return getattr(err, "errno", 1)
         else:
             return 0
