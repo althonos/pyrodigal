@@ -2,13 +2,11 @@
 # Added manually
 
 backup
-
+src/pyrodigal/lib.c
+src/pyrodigal/lib.h
+src/pyrodigal/*.html
 
 ### Cython ###
-pyrodigal/lib.c
-pyrodigal/lib.h
-pyrodigal/*.html
-pyrodigal/*.BAK
 
 # Created by https://www.gitignore.io/api/python,c
 # Edit at https://www.gitignore.io/?templates=python,c
@@ -101,7 +99,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-pyproject.toml
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

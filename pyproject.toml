@@ -1,0 +1,105 @@
+[build-system]
+requires = ["scikit-build-core", "cython >= 3.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyrodigal"
+version = "3.5.1"
+description = "Cython bindings and Python interface to Prodigal, an ORF finder for genomes and metagenomes."
+readme = "README.md"
+requires-python = ">=3.6"
+license = { file = "COPYING" }
+authors = [
+  { name = "Martin Larralde", email = "martin.larralde@embl.de" },
+]
+platform = "any"
+keywords = ["bioinformatics", "genome", "orf", "gene", "prodigal"]
+classifier = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: C",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Typing :: Typed",
+]
+dependencies = [
+    "archspec ~=0.2.0"
+]
+
+[project.urls]
+"Documentation" = "https://pyrodigal.readthedocs.io/en/stable/"
+"Bug Tracker" = "https://github.com/althonos/pyrodigal/issues"
+"Changelog" = "https://github.com/althonos/pyrodigal/blob/master/CHANGELOG.md"
+"Coverage" = "https://codecov.io/gh/althonos/pyrodigal/"
+"Builds" = "https://github.com/althonos/pyrodigal/actions"
+"Paper" = "https://doi.org/10.21105/joss.04296"
+"PyPI" = "https://pypi.org/project/pyrodigal"
+
+[project.optional-dependencies]
+test = ["importlib-resources ; python_version < '3.7'"]
+isal = ["isal ~=1.1"]
+lz4 = ["lz4 ~=4.0"]
+zst = ["zstandard ~=0.22"]
+
+[project.entry-points.console_scripts]
+pyrodigal = "pyrodigal.cli:main"
+
+[tool.scikit-build]
+build-dir = "build/{build_type}"
+editable.rebuild = true
+editable.verbose = false
+
+[[tool.scikit-build.overrides]]
+if.state = "editable"
+cmake.build-type = "Debug"
+
+[[tool.scikit-build-overrides]]
+if.env.SCCACHE = true
+cmake.define.CMAKE_C_COMPILER_LAUNCHER = "sccache"
+cmake.define.CMAKE_CXX_COMPILER_LAUNCHER = "sccache"
+
+[[tool.scikit-build-overrides]]
+if.env.MOLD = true
+cmake.define.CMAKE_LINKER_TYPE = "mold"
+
+[tool.coverage.run]
+plugins = ["Cython.Coverage"]
+
+[tool.coverage.report]
+include = "pyrodigal/*"
+omit = "pyrodigal/tests/*"
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if typing.TYPE_CHECKING:",
+    "@abc.abstractmethod",
+    "@abc.abstractproperty",
+    "raise NotImplementedError",
+    "return NotImplemented",
+    "raise UnexpectedError",
+    "raise AllocationError",
+]
+
+[tool.mypy]
+disallow_any_decorated = true
+disallow_any_generics = true
+disallow_any_unimported = false
+disallow_subclassing_any = false
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_return_any = true
