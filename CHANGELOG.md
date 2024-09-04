@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.5.1...HEAD
 
 
+## [v3.5.2] - 2024-09-04
+[v3.5.2]: https://github.com/althonos/pyrodigal/compare/v3.5.1...v3.5.2
+
+### Added
+- Warning in CLI when given sequences with empty identifiers.
+
+### Fixed
+- FASTA parser used in CLI crashing on empty header lines ([#61](https://github.com/althonos/pyrodigal/issues/61)).
+
+
 ## [v3.5.1] - 2024-07-17
 [v3.5.1]: https://github.com/althonos/pyrodigal/compare/v3.5.0...v3.5.1
 
