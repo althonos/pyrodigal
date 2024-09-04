@@ -67,8 +67,8 @@ class TestTrainingInfo(unittest.TestCase):
     @unittest.skipUnless(platform.machine() == "x86_64", "Reference training file was created on x86-64")
     @unittest.skipUnless(sys.platform == "linux", "Reference training file was created on Linux")
     def test_train_closed(self):
-        records = data.load_records("GCF_001457455.1_NCTC11397_genomic.fna.gz")
-        with data.load("GCF_001457455.1_NCTC11397_genomic.tinf_closed.bin", "rb") as f:
+        records = data.load_records("GCF_001457455.1_NCTC11397_genomic_100kb.fna.gz")
+        with data.load("GCF_001457455.1_NCTC11397_genomic_100kb.tinf_closed.bin.gz", "rb") as f:
             expected = TrainingInfo.load(f)
         orf_finder = GeneFinder(closed=True)
         actual = orf_finder.train(*(str(r.seq) for r in records))

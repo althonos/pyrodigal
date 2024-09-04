@@ -60,7 +60,7 @@ class _TestConnectionScorerBase:
 
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_score_connections_train(self):
-        record = data.load_record("GCF_001457455.1_NCTC11397_genomic.fna.gz")
+        record = data.load_record("GCF_001457455.1_NCTC11397_genomic_100kb.fna.gz")
         nodes_expected = scored_nodes(record, final=False, backend=None)
         nodes_actual = scored_nodes(record, final=False, backend=self.backend)
         for n1, n2 in zip(nodes_expected, nodes_actual):
