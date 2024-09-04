@@ -12,7 +12,7 @@ foreach(i RANGE 0 49)
   add_custom_command(
     OUTPUT training${i}.c
     COMMENT
-      "Extracting initialize_metagenome_${index} from training.c"
+      "Extracting initialize_metagenome_${i} from training.c"
     COMMAND
       Python::Interpreter ${CMAKE_CURRENT_LIST_DIR}/../scripts/split_training.py 
         -i ${CMAKE_CURRENT_LIST_DIR}/training.c 

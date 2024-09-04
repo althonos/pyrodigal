@@ -52,8 +52,13 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
     -X warn.unused_arg=True
     -X warn.unused_result=True
     -X warn.multiple_declarators=True
-    -X linetrace=true
   )
+  if(NOT Python_INTERPRETER_ID STREQUAL PyPy)
+    set(CYTHON_DIRECTIVES
+      ${CYTHON_DIRECTIVES}
+      -X linetrace=true
+    )
+  endif()
 else()
   set(CYTHON_DIRECTIVES
     ${CYTHON_DIRECTIVES}
@@ -98,7 +103,9 @@ macro(cython_extension _name)
   target_link_libraries(${_target} PUBLIC ${CYTHON_EXTENSION_LINKS})
 
   if(CMAKE_BUILD_TYPE STREQUAL Debug)
-    target_compile_definitions(${_target} PUBLIC CYTHON_TRACE=1)
+    if(NOT Python_INTERPRETER_ID STREQUAL PyPy)
+      target_compile_definitions(${_target} PUBLIC CYTHON_TRACE=1)
+    endif()
   endif()
 
   # Preserve the relative project structure in the install directory
