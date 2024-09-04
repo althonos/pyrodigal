@@ -36,6 +36,8 @@ def _write_source_split(index, lines, dst):
         counts[ tinf.mot_wt[i][j][k] ] += 1
     background = counts.most_common(1)[0][0]
 
+    dst.write("#include <training.h>\n")
+
     dst.write(f"void initialize_metagenome_{index}(struct _training *tptr) {{\n")
     dst.write(f"    tptr->gc = {tinf.gc};\n")
     dst.write(f"    tptr->trans_table = {tinf.tt};\n")
@@ -77,18 +79,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", required=True)
     parser.add_argument("-o", "--output", required=True)
+    parser.add_argument("--index", required=True, type=int)
     args = parser.parse_args()
 
     with open(args.input, "r") as src, open(args.output, "w") as dst:
-
         lines = []
         index = 0
         for line in src:
             if line.startswith("void initialize_metagenome"):
                 if line.startswith("void initialize_metagenome_0"):
-                    _write_header(lines, dst)
-                else:
+                    lines.clear()
+                elif index == args.index:
                     _write_source_split(index, lines, dst)
                     index += 1
+                else:
+                    lines.clear()
+                    index += 1
             lines.append(line)
-        _write_source_split(index, lines, dst)
+        if index == args.index:
+            _write_source_split(index, lines, dst)

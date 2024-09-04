@@ -52,6 +52,7 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
     -X warn.unused_arg=True
     -X warn.unused_result=True
     -X warn.multiple_declarators=True
+    -X linetrace=true
   )
 else()
   set(CYTHON_DIRECTIVES
@@ -95,6 +96,10 @@ macro(cython_extension _name)
   set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${_name} )
   target_include_directories(${_target} AFTER PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})  
   target_link_libraries(${_target} PUBLIC ${CYTHON_EXTENSION_LINKS})
+
+  if(CMAKE_BUILD_TYPE STREQUAL Debug)
+    target_compile_definitions(${_target} PUBLIC CYTHON_TRACE=1)
+  endif()
 
   # Preserve the relative project structure in the install directory
   string(REGEX REPLACE "^${PYTHON_EXTENSIONS_SOURCE_DIR}/?" "" _dest_folder ${CMAKE_CURRENT_SOURCE_DIR})

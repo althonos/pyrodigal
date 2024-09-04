@@ -80,12 +80,12 @@ cmake.define.CMAKE_CXX_COMPILER_LAUNCHER = "sccache"
 if.env.MOLD = true
 cmake.define.CMAKE_LINKER_TYPE = "mold"
 
-[tool.coverage.run]
-plugins = ["Cython.Coverage"]
+#[tool.coverage.run]
+#plugins = ["Cython.Coverage"]
 
 [tool.coverage.report]
-include = "pyrodigal/*"
-omit = "pyrodigal/tests/*"
+include = ["src/pyrodigal/*"]
+omit = ["src/pyrodigal/tests/*"]
 show_missing = true
 exclude_lines = [
     "pragma: no cover",
@@ -96,6 +96,12 @@ exclude_lines = [
     "return NotImplemented",
     "raise UnexpectedError",
     "raise AllocationError",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/pyrodigal/",
+    "build/Debug/src/pyrodigal/",
 ]
 
 [tool.mypy]

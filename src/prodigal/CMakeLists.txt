@@ -1,22 +1,28 @@
-add_custom_command(
-  OUTPUT training.c
-  COMMENT
-    "Rewriting training.c into sparse initializer"
-  COMMAND
-    Python::Interpreter ${CMAKE_CURRENT_LIST_DIR}/../scripts/split_training.py 
-      -i ${CMAKE_CURRENT_LIST_DIR}/training.c 
-      -o ${CMAKE_CURRENT_BINARY_DIR}/training.c
-  MAIN_DEPENDENCY
-    ${CMAKE_CURRENT_LIST_DIR}/training.c 
-  VERBATIM
-)
-
-add_library(prodigal
+set(PRODIGAL_SOURCES
   bitmap.c
   dprog.c
   gene.c
   metagenomic.c
   node.c
   sequence.c
-  ${CMAKE_CURRENT_BINARY_DIR}/training.c
 )
+
+
+foreach(i RANGE 0 49)
+  add_custom_command(
+    OUTPUT training${i}.c
+    COMMENT
+      "Extracting initialize_metagenome_${index} from training.c"
+    COMMAND
+      Python::Interpreter ${CMAKE_CURRENT_LIST_DIR}/../scripts/split_training.py 
+        -i ${CMAKE_CURRENT_LIST_DIR}/training.c 
+        -o ${CMAKE_CURRENT_BINARY_DIR}/training${i}.c
+        --index ${i}
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_LIST_DIR}/training.c 
+    VERBATIM
+  )
+  set(PRODIGAL_SOURCES ${PRODIGAL_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/training${i}.c)
+endforeach()
+
+add_library(prodigal ${PRODIGAL_SOURCES})
