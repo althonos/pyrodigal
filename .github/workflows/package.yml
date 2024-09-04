@@ -298,6 +298,8 @@ jobs:
       with:
           name: sdist
           path: dist
+    - name: Install setuptools
+      run: python -m pip install setuptools
     - name: Extract package version
       run: echo PKGVER=$(python setup.py --version) >> $GITHUB_ENV
     - name: Compute SHA256 of source distribution
