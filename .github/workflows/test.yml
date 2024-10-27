@@ -189,8 +189,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - python-version: 3.11
-          python-release: v3.11
+        - python-version: 3.12
+          python-release: v3.12
           python-impl: CPython
     steps:
     - name: Checkout code
