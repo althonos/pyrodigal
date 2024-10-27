@@ -1,21 +1,11 @@
 #ifndef _PYRODIGAL_IMPL_SSE2_H
 #define _PYRODIGAL_IMPL_SSE2_H
 
-#ifdef WIN32
-#define export __declspec( dllexport )
-#else
-#define export extern
-#endif
-
 #include <stdint.h>
+#include <emmintrin.h>
 
 #include "sequence.h"
 #include "generic.h"
-
-#ifdef __SSE2__
-
-#include <emmintrin.h>
-
 #include "template.h"
 
 #define simd_t            __m128i
@@ -34,7 +24,7 @@
 #define SIMD_LANES 16
 #define SIMD_MASK  0xF
 
-extern void skippable_sse2(
+void skippable_sse2(
     const int8_t*  restrict strands,
     const uint8_t* restrict types,
     const uint8_t* restrict frames,
@@ -45,5 +35,4 @@ extern void skippable_sse2(
     skippable_simd(strands, types, frames, min, i, skip);
 }
 
-#endif
 #endif

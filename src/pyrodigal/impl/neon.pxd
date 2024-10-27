@@ -1,4 +1,7 @@
-from libc.stdint cimport int8_t, uint8_t
+# coding: utf-8
+# cython: language_level=3, linetrace=True, binding=True
 
-cdef extern from "impl/neon.h" nogil:
-    void skippable_neon(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*) noexcept
+from ..lib cimport BaseConnectionScorer
+
+cdef class NEONConnectionScorer(BaseConnectionScorer):
+    pass

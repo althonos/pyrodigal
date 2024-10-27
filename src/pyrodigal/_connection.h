@@ -36,6 +36,9 @@
 #include "node.h"
 #include "training.h"
 
+#ifdef WIN32
+#define restrict
+#endif
 
 static inline double _intergenic_mod_diff(
     const struct _node* n1,

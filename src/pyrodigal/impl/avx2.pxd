@@ -4,8 +4,4 @@
 from ..lib cimport BaseConnectionScorer
 
 cdef class AVX2ConnectionScorer(BaseConnectionScorer):
-    cdef int _compute_skippable(
-        self,
-        const int min,
-        const int i
-    ) except 1 nogil
+    pass
