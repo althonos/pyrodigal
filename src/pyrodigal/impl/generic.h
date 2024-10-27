@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void skippable_generic(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*);
+extern void skippable_generic(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*);
 static inline void skippable_generic_single(
     const int8_t*  restrict strands,
     const uint8_t* restrict types,
