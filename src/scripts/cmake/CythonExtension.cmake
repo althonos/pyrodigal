@@ -62,8 +62,8 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
 else()
   set(CYTHON_DIRECTIVES
     ${CYTHON_DIRECTIVES}
-    -X boundscheck=True
-    -X wraparound=True
+    -X boundscheck=False
+    -X wraparound=False
   )
 endif()
 
