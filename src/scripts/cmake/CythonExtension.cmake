@@ -3,22 +3,11 @@ get_property(PYTHON_EXTENSIONS_SOURCE_DIR GLOBAL PROPERTY PYTHON_EXTENSIONS_SOUR
 
 # --- Detect PyInterpreterState_GetID ------------------------------------------
 
-include(CheckCSourceCompiles)
+include(CheckSymbolExists)
 
 set(SAFE_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
-set(CMAKE_REQUIRED_INCLUDES "${Python_INCLUDE_DIRS}")
-set(PYINTERPRETER_STATE_SOURCE
-"
-#include <stdint.h>
-    #include <stdlib.h>
-    #include <Python.h>
-
-    int main(int argc, char *argv[]) {{
-      PyInterpreterState_GetID(NULL);
-      return 0;
-    }
-")
-check_c_source_compiles("${PYINTERPRETER_STATE_SOURCE}" HAVE_PYINTERPRETERSTATE_GETID)
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${Python_INCLUDE_DIRS})
+check_symbol_exists(PyInterpreterState_GetID "stdint.h;stdlib.h;Python.h" HAVE_PYINTERPRETERSTATE_GETID)
 set(CMAKE_REQUIRED_INCLUDES "${SAFE_CMAKE_REQUIRED_INCLUDES}")
 
 # --- Prepare Cython directives and constants ----------------------------------
@@ -38,7 +27,6 @@ set(CYTHON_DIRECTIVES
     -E TARGET_SYSTEM="linux"
     -E PYPY=$<IF:$<STREQUAL:${Python_INTERPRETER_ID},PyPy>,True,False>
     -E PROJECT_VERSION=${CMAKE_PROJECT_VERSION}
-    -E HAVE_PYINTERPRETERSTATE_GETID=$<IF:$<BOOL:${HAVE_PYINTERPRETERSTATE_GETID}>,True,False>
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -101,11 +89,16 @@ macro(cython_extension _name)
   set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${_name} )
   target_include_directories(${_target} AFTER PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})  
   target_link_libraries(${_target} PUBLIC ${CYTHON_EXTENSION_LINKS})
+  if(HAVE_PYINTERPRETERSTATE_GETID)
+    target_compile_definitions(${_target} PUBLIC HAVE_PYINTERPRETERSTATE_GETID)
+  endif()
 
   if(CMAKE_BUILD_TYPE STREQUAL Debug)
     if(NOT Python_INTERPRETER_ID STREQUAL PyPy)
-      target_compile_definitions(${_target} PUBLIC CYTHON_TRACE=1)
+      target_compile_definitions(${_target} PUBLIC CYTHON_TRACE_NOGIL=1)
     endif()
+  else()
+    target_compile_definitions(${_target} PUBLIC CYTHON_WITHOUT_ASSERTIONS=1)
   endif()
 
   # Preserve the relative project structure in the install directory
