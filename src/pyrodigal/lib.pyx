@@ -159,17 +159,6 @@ import warnings
 
 include "_version.py"
 
-# --- Patch for PyPy 3.9 -----------------------------------------------------
-
-cdef extern from *:
-    """
-    #ifndef HAVE_PYINTERPRETERSTATE_GETID
-    int64_t PyInterpreterState_GetID(PyInterpreterState *interp) {
-        return 0;
-    }
-    #endif
-    """
-
 # --- Module-level constants -------------------------------------------------
 
 cdef size_t MIN_MASKS_ALLOC      = 8
