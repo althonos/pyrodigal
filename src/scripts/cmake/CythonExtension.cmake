@@ -23,12 +23,10 @@ file(WRITE ${PATCH_FILE}
     "
     #ifndef HAVE_PYINTERPRETERSTATE_GETID
     #define HAVE_PYINTERPRETERSTATE_GETID
-    #include <stdint.h>
-    #include <stdlib.h>
     #include <Python.h>
-    int64_t PyInterpreterState_GetID(PyInterpreterState *interp) {
-        return 0;
-    }
+    #ifndef PyInterpreterState_GetID
+    #define PyInterpreterState_GetID(x) (0)
+    #endif
     #endif
     "
 )
