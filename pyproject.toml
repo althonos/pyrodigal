@@ -80,9 +80,6 @@ cmake.define.CMAKE_CXX_COMPILER_LAUNCHER = "sccache"
 if.env.MOLD = true
 cmake.define.CMAKE_LINKER_TYPE = "mold"
 
-[tool.coverage.run]
-plugins = ["Cython.Coverage"]
-
 [tool.cibuildwheel]
 before-build = "pip install scikit-build-core cython"
 build-frontend = { name = "pip", args = ["--no-build-isolation"] }
@@ -90,6 +87,9 @@ build-verbosity = 1
 test-command = "python -m unittest pyrodigal.tests -v"
 test-requires = "importlib-resources"
 free-threaded-support = false
+
+[tool.coverage.run]
+plugins = ["Cython.Coverage"]
 
 [tool.coverage.report]
 include = ["src/pyrodigal/*"]
@@ -104,12 +104,6 @@ exclude_lines = [
     "return NotImplemented",
     "raise UnexpectedError",
     "raise AllocationError",
-]
-
-[tool.coverage.paths]
-source = [
-    "src/pyrodigal/",
-    "build/Debug/src/pyrodigal/",
 ]
 
 [tool.mypy]

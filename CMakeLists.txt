@@ -13,11 +13,6 @@ include("src/scripts/cmake/FindNEON.cmake")
 include("src/scripts/cmake/FindSSE2.cmake")
 include("src/scripts/cmake/CythonExtension.cmake")
 
-# --- Compile Prodigal code ----------------------------------------------------
-
-# include_directories(BEFORE PUBLIC ${CMAKE_CURRENT_LIST_DIR}/pyrodigal/prodigal)
-# include_directories(AFTER  PUBLIC include/prodigal)
-
-# --- Compile Python extension -------------------------------------------------
+# --- Compile code -------------------------------------------------------------
 
 add_subdirectory("src")
