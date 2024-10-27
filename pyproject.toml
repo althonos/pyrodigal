@@ -80,8 +80,8 @@ cmake.define.CMAKE_CXX_COMPILER_LAUNCHER = "sccache"
 if.env.MOLD = true
 cmake.define.CMAKE_LINKER_TYPE = "mold"
 
-#[tool.coverage.run]
-#plugins = ["Cython.Coverage"]
+[tool.coverage.run]
+plugins = ["Cython.Coverage"]
 
 [tool.cibuildwheel]
 before-build = "pip install scikit-build-core cython"
