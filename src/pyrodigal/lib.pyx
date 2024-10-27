@@ -270,7 +270,7 @@ if TARGET_CPU == "aarch64":
 
 # NOTE(@althonos): SSE2 is always supported on x86-64 so we should only check
 #                  that the extension was built with SSE2 support.
-if TARGET_CPU == "x86_64":
+if TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
     _SSE2_RUNTIME_SUPPORT = SSE2_BUILD_SUPPORT
 
 
@@ -1406,7 +1406,7 @@ cdef class BaseConnectionScorer:
 
 cpdef BaseConnectionScorer ConnectionScorer(str backend):
     cdef BaseConnectionScorer scorer
-    if TARGET_CPU == "x86" or TARGET_CPU == "x86_64":
+    if TARGET_CPU == "x86" or TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
         if backend == "detect":
             scorer = BaseConnectionScorer()
             if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
