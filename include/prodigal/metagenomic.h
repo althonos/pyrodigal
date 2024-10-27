@@ -1,1 +1,0 @@
-../../vendor/Prodigal/metagenomic.h

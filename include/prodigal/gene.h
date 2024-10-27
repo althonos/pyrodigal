@@ -1,1 +1,0 @@
-../../vendor/Prodigal/gene.h

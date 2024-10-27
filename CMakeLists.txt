@@ -15,8 +15,8 @@ include("src/scripts/cmake/CythonExtension.cmake")
 
 # --- Compile Prodigal code ----------------------------------------------------
 
-include_directories(BEFORE PUBLIC ${CMAKE_CURRENT_LIST_DIR}/pyrodigal/prodigal)
-include_directories(AFTER  PUBLIC include/prodigal)
+# include_directories(BEFORE PUBLIC ${CMAKE_CURRENT_LIST_DIR}/pyrodigal/prodigal)
+# include_directories(AFTER  PUBLIC include/prodigal)
 
 # --- Compile Python extension -------------------------------------------------
 
