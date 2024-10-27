@@ -117,7 +117,9 @@ cdef class Sequence:
 
 # --- Connection Scorer ------------------------------------------------------
 
-cdef class ConnectionScorer:
+ctypedef void (*skippable_t)(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*) noexcept nogil
+
+cdef class BaseConnectionScorer:
     # which SIMD backend to use
     cdef uint8_t  backend
     # capacity of bypassing buffers
@@ -135,6 +137,10 @@ cdef class ConnectionScorer:
     cdef uint8_t* node_frames
     cdef uint8_t* node_frames_raw
 
+    #
+    cdef skippable_t skippable
+    cdef bint        enabled
+
     cpdef size_t __sizeof__(self)
 
     cdef int _index(self, Nodes nodes) except -1 nogil
@@ -142,7 +148,7 @@ cdef class ConnectionScorer:
         self,
         const int min,
         const int i
-    ) noexcept nogil
+    ) except 1 nogil
     
     cdef void _score_node_connections(
         self,
@@ -178,6 +184,8 @@ cdef class ConnectionScorer:
         const _training* tinf,
         const bint final
     ) noexcept nogil
+
+cpdef BaseConnectionScorer ConnectionScorer(str backend)
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -397,7 +405,7 @@ cdef class GeneFinder:
         self,
         Sequence sequence,
         Nodes nodes,
-        ConnectionScorer scorer,
+        BaseConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
     ) except -1 nogil
@@ -405,14 +413,14 @@ cdef class GeneFinder:
         self,
         Sequence sequence,
         TrainingInfo tinf,
-        ConnectionScorer scorer,
+        BaseConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
     ) except -1 nogil
     cdef ssize_t _find_genes_meta(
         self,
         Sequence sequence,
-        ConnectionScorer scorer,
+        BaseConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
     ) except? -1 nogil

@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "sequence.h"
 #include "dprog.h"
 #include "generic.h"

@@ -58,7 +58,7 @@ endif()
 # --- Declare Cython extension -------------------------------------------------
 
 macro(cython_extension _name)
-  cmake_parse_arguments(CYTHON_EXTENSION "" "" "LINKS" ${ARGN} )
+  cmake_parse_arguments(CYTHON_EXTENSION "" "" "LINKS;EXTRA_SOURCES" ${ARGN} )
 
   # Make sure that the source directory is known
   if(NOT DEFINED PYTHON_EXTENSIONS_SOURCE_DIR)
@@ -74,10 +74,13 @@ macro(cython_extension _name)
       Python::Interpreter -m cython
         "${CMAKE_CURRENT_SOURCE_DIR}/${_name}.pyx"
         --output-file ${_name}.c
+        --depfile
         -I "${CYTHON_HEADERS_DIR}"
         ${CYTHON_DIRECTIVES}
     MAIN_DEPENDENCY
       ${_name}.pyx
+    DEPFILE
+      ${_name}.c.dep
     VERBATIM)
 
   # Build fully-qualified module name as the target name
@@ -85,9 +88,9 @@ macro(cython_extension _name)
   string(REPLACE "/" "." _target ${_dest_folder}.${_name})
 
   # Add Python module
-  python_add_library(${_target} MODULE WITH_SOABI ${_name}.pyx ${_name}.pxd ${_name}.c)
+  python_add_library(${_target} MODULE WITH_SOABI ${_name}.pyx ${_name}.pxd ${_name}.c ${CYTHON_EXTENSION_EXTRA_SOURCES})
   set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${_name} )
-  target_include_directories(${_target} AFTER PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})  
+  target_include_directories(${_target} AFTER PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) 
   target_link_libraries(${_target} PUBLIC ${CYTHON_EXTENSION_LINKS})
   if(HAVE_PYINTERPRETERSTATE_GETID)
     target_compile_definitions(${_target} PUBLIC HAVE_PYINTERPRETERSTATE_GETID)

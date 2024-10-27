@@ -8,8 +8,10 @@
 #endif
 
 #include <stdint.h>
+#include "node.h"
 
-export void skippable_generic(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*);
+// export void skippable_generic(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*);
+
 static inline void skippable_generic_single(
     const int8_t*  restrict strands,
     const uint8_t* restrict types,
@@ -34,6 +36,18 @@ static inline void skippable_generic_single(
         |   (n1_strand == n2_strand && n1_strand == 1  && n1_type != STOP && n2_type == STOP && n1_frame != n2_frame)
         |   (n1_strand == n2_strand && n1_strand == -1 && n1_type == STOP && n2_type != STOP && n1_frame != n2_frame)
     );
+}
+
+extern void skippable_generic(
+    const int8_t*  restrict strands,
+    const uint8_t* restrict types,
+    const uint8_t* restrict frames,
+    const int min,
+    const int i,
+          uint8_t* restrict skip
+) {
+    for (int j = min; j < i; j++)
+      skippable_generic_single(strands, types, frames, j, i, skip);
 }
 
 #endif

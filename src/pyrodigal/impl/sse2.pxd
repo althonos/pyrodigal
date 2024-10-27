@@ -3,5 +3,5 @@
 
 from ..lib cimport BaseConnectionScorer
 
-cdef class GenericConnectionScorer(BaseConnectionScorer):
+cdef class SSE2ConnectionScorer(BaseConnectionScorer):
     pass

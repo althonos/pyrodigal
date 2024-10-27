@@ -124,18 +124,15 @@ from pyrodigal._connection cimport (
     _score_connection_backward_stop,
     _score_connections,
 )
-from pyrodigal.impl.generic cimport skippable_generic
 
-if MMX_BUILD_SUPPORT:
-    from pyrodigal.impl.mmx cimport skippable_mmx
+from .impl.generic cimport GenericConnectionScorer
+
 if SSE2_BUILD_SUPPORT:
-    from pyrodigal.impl.sse cimport skippable_sse
+    from .impl.sse2 cimport SSE2ConnectionScorer
 if AVX2_BUILD_SUPPORT:
-    from pyrodigal.impl.avx cimport skippable_avx
-if AVX512_BUILD_SUPPORT:
-    from pyrodigal.impl.avx512 cimport skippable_avx512
+    from .impl.avx2 cimport AVX2ConnectionScorer
 if NEON_BUILD_SUPPORT:
-    from pyrodigal.impl.neon cimport skippable_neon
+    from .impl.neon cimport NEONConnectionScorer
 
 cdef int MVIEW_READ
 cdef int MVIEW_WRITE
@@ -1110,7 +1107,7 @@ cdef enum simd_backend:
     GENERIC = 5
     AVX512 = 6
 
-cdef class ConnectionScorer:
+cdef class BaseConnectionScorer:
     """A dedicated class for the fast scoring of nodes.
     """
 
@@ -1122,6 +1119,8 @@ cdef class ConnectionScorer:
         self.node_types      = self.node_types_raw      = NULL
         self.node_strands    = self.node_strands_raw    = NULL
         self.node_frames     = self.node_frames_raw     = NULL
+        self.skippable       = NULL
+        self.enabled         = False
 
     def __init__(self, str backend="detect"):
         """__init__(self, backend="detect")\n--\n
@@ -1136,78 +1135,6 @@ cdef class ConnectionScorer:
                 ``neon``.
 
         """
-        if TARGET_CPU == "x86" or TARGET_CPU == "x86_64":
-            if backend == "detect":
-                self.backend = simd_backend.NONE
-                if MMX_BUILD_SUPPORT and _MMX_RUNTIME_SUPPORT:
-                    self.backend = simd_backend.MMX
-                if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
-                    self.backend = simd_backend.SSE2
-                if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
-                    self.backend = simd_backend.AVX2
-                if AVX512_BUILD_SUPPORT and _AVX512_RUNTIME_SUPPORT:
-                    self.backend = simd_backend.AVX512
-            elif backend == "mmx":
-                if not MMX_BUILD_SUPPORT:
-                    raise RuntimeError("Extension was compiled without MMX support")
-                elif not _MMX_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run MMX instructions on this machine")
-                else:
-                    self.backend = simd_backend.MMX
-            elif backend == "sse":
-                if not SSE2_BUILD_SUPPORT:
-                    raise RuntimeError("Extension was compiled without SSE2 support")
-                elif not _SSE2_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run SSE2 instructions on this machine")
-                else:
-                    self.backend = simd_backend.SSE2
-            elif backend == "avx":
-                if not AVX2_BUILD_SUPPORT:
-                    raise RuntimeError("Extension was compiled without AVX2 support")
-                elif not _AVX2_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run AVX2 instructions on this machine")
-                else:
-                    self.backend = simd_backend.AVX2
-            elif backend == "avx512":
-                if not AVX512_BUILD_SUPPORT:
-                    raise RuntimeError("Extension was compiled without AVX512 support")
-                elif not _AVX512_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run AVX512 instructions on this machine")
-                else:
-                    self.backend = simd_backend.AVX512
-            elif backend == "generic":
-                self.backend = simd_backend.GENERIC
-            elif backend is None:
-                self.backend = simd_backend.NONE
-            else:
-                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
-        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
-            if backend == "detect":
-                self.backend = simd_backend.NONE
-                if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
-                    self.backend = simd_backend.NEON
-            elif backend == "neon":
-                if not NEON_BUILD_SUPPORT:
-                    raise RuntimeError("Extension was compiled without NEON support")
-                elif not _NEON_RUNTIME_SUPPORT:
-                    raise RuntimeError("Cannot run NEON instructions on this machine")
-                else:
-                    self.backend = simd_backend.NEON
-            elif backend == "generic":
-                self.backend = simd_backend.GENERIC
-            elif backend is None:
-                self.backend = simd_backend.NONE
-            else:
-                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
-        else:
-            if backend == "detect":
-                self.backend = simd_backend.NONE
-            if backend == "generic":
-                self.backend = simd_backend.GENERIC
-            elif backend is None:
-                self.backend = simd_backend.NONE
-            else:
-                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
 
     def __dealloc__(self):
         PyMem_Free(self.node_types_raw)
@@ -1223,7 +1150,7 @@ cdef class ConnectionScorer:
     cdef int _index(self, Nodes nodes) except -1 nogil:
         cdef size_t i
         # nothing to be done if we are using the Prodigal code
-        if self.backend == simd_backend.NONE:
+        if not self.enabled:
             return 0
         # reallocate if needed
         if self.capacity < nodes.length:
@@ -1262,31 +1189,39 @@ cdef class ConnectionScorer:
         self,
         int min,
         int i
-    ) noexcept nogil:
-        if AVX512_BUILD_SUPPORT:
-            if self.backend == simd_backend.AVX512:
-                skippable_avx512(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-                return 0
-        if AVX2_BUILD_SUPPORT:
-            if self.backend == simd_backend.AVX2:
-                skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-                return 0
-        if SSE2_BUILD_SUPPORT:
-            if self.backend == simd_backend.SSE2:
-                skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-                return 0
-        if MMX_BUILD_SUPPORT:
-            if self.backend == simd_backend.MMX:
-                skippable_mmx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-                return 0
-        if NEON_BUILD_SUPPORT:
-            if self.backend == simd_backend.NEON:
-                skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-                return 0
-        if self.backend == simd_backend.GENERIC:
-            skippable_generic(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-            return 0
+    ) except 1 nogil:
+        if self.enabled:
+            assert self.node_strands != NULL
+            assert self.node_types != NULL
+            assert self.node_frames != NULL
+            assert self.skip_connection != NULL
+            assert self.skippable != NULL
+            self.skippable(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
         return 0
+        # if AVX512_BUILD_SUPPORT:
+        #     if self.backend == simd_backend.AVX512:
+        #         skippable_avx512(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        #         return 0
+        # if AVX2_BUILD_SUPPORT:
+        #     if self.backend == simd_backend.AVX2:
+        #         skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        #         return 0
+        # if SSE2_BUILD_SUPPORT:
+        #     if self.backend == simd_backend.SSE2:
+        #         skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        #         return 0
+        # if MMX_BUILD_SUPPORT:
+        #     if self.backend == simd_backend.MMX:
+        #         skippable_mmx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        #         return 0
+        # if NEON_BUILD_SUPPORT:
+        #     if self.backend == simd_backend.NEON:
+        #         skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        #         return 0
+        # if self.backend == simd_backend.GENERIC:
+        #     skippable_generic(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
+        #     return 0
+        # return 0
 
     cdef void _score_node_connections(
         self,
@@ -1300,7 +1235,7 @@ cdef class ConnectionScorer:
         # NOTE: For comparison / testing purposes, it's still possible to
         #       score connections exactly the way it's done in the original
         #       Prodigal code.
-        if self.backend == simd_backend.NONE:
+        if not self.enabled:
             for j in range(min, i):
                 dprog.score_connection(nodes.nodes, j, i, <_training*> tinf, final)
         else:
@@ -1440,8 +1375,8 @@ cdef class ConnectionScorer:
             i (`int`): The index of the node to score.
 
         """
-        assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
-        assert (i < <int> self.capacity) | (self.backend == simd_backend.NONE)
+        assert (self.skip_connection != NULL) | (not self.enabled)
+        assert (i < <int> self.capacity) | (not self.enabled)
         assert min <= i
         with nogil:
             self._compute_skippable(min, i)
@@ -1465,10 +1400,70 @@ cdef class ConnectionScorer:
                 ``True`` otherwise.
 
         """
-        assert (self.skip_connection != NULL) | (self.backend == simd_backend.NONE)
+        assert (self.skip_connection != NULL) | (not self.enabled)
         with nogil:
             self._score_connections(nodes, tinf.tinf, final)
 
+cpdef BaseConnectionScorer ConnectionScorer(str backend):
+    cdef BaseConnectionScorer scorer
+    if TARGET_CPU == "x86" or TARGET_CPU == "x86_64":
+        if backend == "detect":
+            scorer = BaseConnectionScorer()
+            if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
+                scorer = SSE2ConnectionScorer()
+            if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
+                scorer = AVX2ConnectionScorer()
+        elif backend == "mmx":
+            if not MMX_BUILD_SUPPORT:
+                raise RuntimeError("Extension was compiled without MMX support")
+        elif backend == "sse":
+            if not SSE2_BUILD_SUPPORT:
+                raise RuntimeError("Extension was compiled without SSE2 support")
+            elif not _SSE2_RUNTIME_SUPPORT:
+                raise RuntimeError("Cannot run SSE2 instructions on this machine")
+            else:
+                scorer = SSE2ConnectionScorer()
+        elif backend == "avx":
+            if not AVX2_BUILD_SUPPORT:
+                raise RuntimeError("Extension was compiled without AVX2 support")
+            elif not _AVX2_RUNTIME_SUPPORT:
+                raise RuntimeError("Cannot run AVX2 instructions on this machine")
+            else:
+                scorer = AVX2ConnectionScorer()
+        elif backend == "generic":
+            scorer = GenericConnectionScorer()
+        elif backend is None:
+            scorer = BaseConnectionScorer()
+        else:
+            raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
+    elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+        if backend == "detect":
+            scorer = BaseConnectionScorer()
+            if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
+                scorer = NEONConnectionScorer()
+        elif backend == "neon":
+            if not NEON_BUILD_SUPPORT:
+                raise RuntimeError("Extension was compiled without NEON support")
+            elif not _NEON_RUNTIME_SUPPORT:
+                raise RuntimeError("Cannot run NEON instructions on this machine")
+            else:
+                scorer = NEONConnectionScorer()
+        elif backend == "generic":
+            scorer = GenericConnectionScorer()
+        elif backend is None:
+            scorer = BaseConnectionScorer()
+        else:
+            raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
+    else:
+        if backend == "detect":
+            scorer = BaseConnectionScorer()
+        if backend == "generic":
+            scorer = GenericConnectionScorer()
+        elif backend is None:
+            scorer = BaseConnectionScorer()
+        else:
+            raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
+    return scorer
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -5287,7 +5282,7 @@ cdef class GeneFinder:
         self,
         Sequence sequence,
         Nodes nodes,
-        ConnectionScorer scorer,
+        BaseConnectionScorer scorer,
         TrainingInfo tinf,
         bint force_nonsd,
     ) except -1 nogil:
@@ -5332,7 +5327,7 @@ cdef class GeneFinder:
         self,
         Sequence sequence,
         TrainingInfo tinf,
-        ConnectionScorer scorer,
+        BaseConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
     ) except -1 nogil:
@@ -5367,7 +5362,7 @@ cdef class GeneFinder:
     cdef ssize_t _find_genes_meta(
         self,
         Sequence sequence,
-        ConnectionScorer scorer,
+        BaseConnectionScorer scorer,
         Nodes nodes,
         Genes genes,
     ) except? -1 nogil:
@@ -5473,7 +5468,7 @@ cdef class GeneFinder:
         cdef TrainingInfo     tinf
         cdef Nodes            nodes  = Nodes.__new__(Nodes)
         cdef Genes            genes  = Genes.__new__(Genes)
-        cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
+        cdef BaseConnectionScorer scorer = ConnectionScorer("generic")
 
         # check argument values
         if not self.meta and self.training_info is None:
@@ -5570,7 +5565,7 @@ cdef class GeneFinder:
         cdef int              slen
         cdef TrainingInfo     tinf
         cdef Nodes            nodes  = Nodes.__new__(Nodes)
-        cdef ConnectionScorer scorer = ConnectionScorer(backend=self.backend)
+        cdef BaseConnectionScorer scorer = ConnectionScorer("generic")
 
         # Check arguments
         if self.meta:

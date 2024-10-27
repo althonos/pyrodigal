@@ -1,5 +1,15 @@
+#ifndef _PYRODIGAL_IMPL_AVX2_H
+#define _PYRODIGAL_IMPL_AVX2_H
+
+#ifdef WIN32
+#define export __declspec( dllexport )
+#else
+#define export extern
+#endif
+
+#include <stdint.h>
+
 #include "sequence.h"
-#include "avx.h"
 #include "generic.h"
 
 #ifdef __AVX2__
@@ -24,7 +34,7 @@
 #define SIMD_LANES 32
 #define SIMD_MASK  0x1F
 
-void skippable_avx(
+extern void skippable_avx2(
     const int8_t*  restrict strands,
     const uint8_t* restrict types,
     const uint8_t* restrict frames,
@@ -35,4 +45,5 @@ void skippable_avx(
     skippable_simd(strands, types, frames, min, i, skip);
 }
 
+#endif
 #endif
