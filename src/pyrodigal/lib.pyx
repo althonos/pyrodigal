@@ -587,44 +587,23 @@ cdef class Sequence:
     cpdef size_t __sizeof__(self):
         return self.slen * sizeof(uint8_t) + sizeof(self)
 
-    if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
+    def __str__(self):
+        cdef int     i
+        cdef Py_UCS4 nuc
+        cdef unicode dna
+        cdef int     kind
+        cdef void*   data
 
-        def __str__(self):
-            cdef int     i
-            cdef Py_UCS4 nuc
-            cdef bytes   dna
-            cdef void*   data
+        # create an empty string that we can write to
+        dna  = PyUnicode_New(self.slen, 0x7F)
+        kind = PyUnicode_KIND(dna)
+        data = PyUnicode_DATA(dna)
 
-            # create an empty byte buffer that we can write to
-            dna = PyBytes_FromStringAndSize(NULL, self.slen)
-            data = <void*> PyBytes_AsString(dna)
+        for i in range(self.slen):
+            nuc = _letters[self.digits[i]]
+            PyUnicode_WRITE(kind, data, i, nuc)
 
-            with nogil:
-                for i in range(self.slen):
-                    nuc = _letters[self.digits[i]]
-                    (<char*> data)[i] = nuc
-
-            return dna.decode("ascii")
-
-    else:
-
-        def __str__(self):
-            cdef int     i
-            cdef Py_UCS4 nuc
-            cdef unicode dna
-            cdef int     kind
-            cdef void*   data
-
-            # create an empty string that we can write to
-            dna  = PyUnicode_New(self.slen, 0x7F)
-            kind = PyUnicode_KIND(dna)
-            data = PyUnicode_DATA(dna)
-
-            for i in range(self.slen):
-                nuc = _letters[self.digits[i]]
-                PyUnicode_WRITE(kind, data, i, nuc)
-
-            return dna
+        return dna
 
     def __getstate__(self):
         assert self.digits != NULL
@@ -2936,41 +2915,21 @@ cdef class Gene:
             begin = slen - gene.end
             end = slen + 1 - gene.begin
 
-        # NB(@althonos): For some reason, PyPy3.6 (v7.3.3) is not happy with
-        #                the use of the PyUnicode API here, and will just not
-        #                write any letter with PyUnicode_WRITE. The bug
-        #                doesn't seem to affect `Gene.translate`, so
-        #                I'm not sure what's going on, but in that case we
-        #                can build an ASCII string and decode afterwards.
-        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
-            # create an empty byte buffer that we can write to
-            dna = PyBytes_FromStringAndSize(NULL, length)
-            data = <void*> PyBytes_AsString(dna)
-        else:
-            # create an empty string that we can write to
-            dna  = PyUnicode_New(length, 0x7F)
-            kind = PyUnicode_KIND(dna)
-            data = PyUnicode_DATA(dna)
+        # create an empty string that we can write to
+        dna  = PyUnicode_New(length, 0x7F)
+        kind = PyUnicode_KIND(dna)
+        data = PyUnicode_DATA(dna)
 
         if strand == 1:
             for i, j in enumerate(range(begin, end)):
                 nuc = _letters[digits[j]]
-                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
-                    (<char*> data)[i] = nuc
-                else:
-                    PyUnicode_WRITE(kind, data, i, nuc)
+                PyUnicode_WRITE(kind, data, i, nuc)
         else:
             for i, j in enumerate(range(begin, end)):
                 nuc = _letters[_complement[digits[slen - 1 - j]]]
-                if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
-                    (<char*> data)[i] = nuc
-                else:
-                    PyUnicode_WRITE(kind, data, i, nuc)
+                PyUnicode_WRITE(kind, data, i, nuc)
 
-        if SYS_VERSION_INFO_MAJOR <= 3 and SYS_VERSION_INFO_MINOR < 7 and PYPY:
-            return dna.decode("ascii")
-        else:
-            return dna
+        return dna
 
     cpdef str translate(
         self,
