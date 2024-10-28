@@ -185,7 +185,8 @@ cdef class BaseConnectionScorer:
         const bint final
     ) noexcept nogil
 
-cpdef BaseConnectionScorer ConnectionScorer(str backend)
+cdef class ConnectionScorer(BaseConnectionScorer):
+    pass
 
 # --- Nodes ------------------------------------------------------------------
 

@@ -1372,66 +1372,68 @@ cdef class BaseConnectionScorer:
         with nogil:
             self._score_connections(nodes, tinf.tinf, final)
 
-cpdef BaseConnectionScorer ConnectionScorer(str backend):
-    cdef BaseConnectionScorer scorer
-    if TARGET_CPU == "x86" or TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
-        if backend == "detect":
-            scorer = BaseConnectionScorer()
-            if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
-                scorer = SSE2ConnectionScorer()
-            if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
-                scorer = AVX2ConnectionScorer()
-        elif backend == "mmx":
-            if not MMX_BUILD_SUPPORT:
-                raise RuntimeError("Extension was compiled without MMX support")
-        elif backend == "sse":
-            if not SSE2_BUILD_SUPPORT:
-                raise RuntimeError("Extension was compiled without SSE2 support")
-            elif not _SSE2_RUNTIME_SUPPORT:
-                raise RuntimeError("Cannot run SSE2 instructions on this machine")
+cdef class ConnectionScorer(BaseConnectionScorer):
+    def __init__(self, str backend):
+        cdef BaseConnectionScorer scorer
+        if TARGET_CPU == "x86" or TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
+            if backend == "detect":
+                scorer = BaseConnectionScorer()
+                if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
+                    scorer = SSE2ConnectionScorer()
+                if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
+                    scorer = AVX2ConnectionScorer()
+            elif backend == "mmx":
+                if not MMX_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without MMX support")
+            elif backend == "sse":
+                if not SSE2_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without SSE2 support")
+                elif not _SSE2_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run SSE2 instructions on this machine")
+                else:
+                    scorer = SSE2ConnectionScorer()
+            elif backend == "avx":
+                if not AVX2_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without AVX2 support")
+                elif not _AVX2_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run AVX2 instructions on this machine")
+                else:
+                    scorer = AVX2ConnectionScorer()
+            elif backend == "generic":
+                scorer = GenericConnectionScorer()
+            elif backend is None:
+                scorer = BaseConnectionScorer()
             else:
-                scorer = SSE2ConnectionScorer()
-        elif backend == "avx":
-            if not AVX2_BUILD_SUPPORT:
-                raise RuntimeError("Extension was compiled without AVX2 support")
-            elif not _AVX2_RUNTIME_SUPPORT:
-                raise RuntimeError("Cannot run AVX2 instructions on this machine")
+                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
+        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+            if backend == "detect":
+                scorer = BaseConnectionScorer()
+                if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
+                    scorer = NEONConnectionScorer()
+            elif backend == "neon":
+                if not NEON_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without NEON support")
+                elif not _NEON_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run NEON instructions on this machine")
+                else:
+                    scorer = NEONConnectionScorer()
+            elif backend == "generic":
+                scorer = GenericConnectionScorer()
+            elif backend is None:
+                scorer = BaseConnectionScorer()
             else:
-                scorer = AVX2ConnectionScorer()
-        elif backend == "generic":
-            scorer = GenericConnectionScorer()
-        elif backend is None:
-            scorer = BaseConnectionScorer()
+                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
         else:
-            raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
-    elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
-        if backend == "detect":
-            scorer = BaseConnectionScorer()
-            if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
-                scorer = NEONConnectionScorer()
-        elif backend == "neon":
-            if not NEON_BUILD_SUPPORT:
-                raise RuntimeError("Extension was compiled without NEON support")
-            elif not _NEON_RUNTIME_SUPPORT:
-                raise RuntimeError("Cannot run NEON instructions on this machine")
+            if backend == "detect":
+                scorer = BaseConnectionScorer()
+            if backend == "generic":
+                scorer = GenericConnectionScorer()
+            elif backend is None:
+                scorer = BaseConnectionScorer()
             else:
-                scorer = NEONConnectionScorer()
-        elif backend == "generic":
-            scorer = GenericConnectionScorer()
-        elif backend is None:
-            scorer = BaseConnectionScorer()
-        else:
-            raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
-    else:
-        if backend == "detect":
-            scorer = BaseConnectionScorer()
-        if backend == "generic":
-            scorer = GenericConnectionScorer()
-        elif backend is None:
-            scorer = BaseConnectionScorer()
-        else:
-            raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
-    return scorer
+                raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
+        self.enabled = scorer.enabled
+        self.skippable = scorer.skippable
 
 # --- Nodes ------------------------------------------------------------------
 
@@ -5416,7 +5418,7 @@ cdef class GeneFinder:
         cdef TrainingInfo     tinf
         cdef Nodes            nodes  = Nodes.__new__(Nodes)
         cdef Genes            genes  = Genes.__new__(Genes)
-        cdef BaseConnectionScorer scorer = ConnectionScorer("generic")
+        cdef BaseConnectionScorer scorer = ConnectionScorer(self.backend)
 
         # check argument values
         if not self.meta and self.training_info is None:
@@ -5513,7 +5515,7 @@ cdef class GeneFinder:
         cdef int              slen
         cdef TrainingInfo     tinf
         cdef Nodes            nodes  = Nodes.__new__(Nodes)
-        cdef BaseConnectionScorer scorer = ConnectionScorer("generic")
+        cdef BaseConnectionScorer scorer = ConnectionScorer(self.backend)
 
         # Check arguments
         if self.meta:
