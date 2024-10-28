@@ -157,7 +157,7 @@ import textwrap
 import threading
 import warnings
 
-include "_version.py"
+__version__ = PROJECT_VERSION
 
 # --- Module-level constants -------------------------------------------------
 

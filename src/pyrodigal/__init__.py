@@ -3,10 +3,9 @@ from collections.abc import (
     Sized as _Sized,
 )
 
-from ._version import __version__
-
 from . import lib
 from .lib import (
+    __version__,
     Gene,
     Genes,
     GeneFinder,
