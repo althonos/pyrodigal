@@ -15,21 +15,7 @@ check_symbol_exists(PyInterpreterState_GetID "stdint.h;stdlib.h;Python.h" HAVE_P
 set(CMAKE_REQUIRED_INCLUDES "${SAFE_CMAKE_REQUIRED_INCLUDES}")
 set(CMAKE_REQUIRED_LIBRARIES "${SAFE_CMAKE_REQUIRED_LIBRARIES}")
 set(CMAKE_REQUIRED_LINK_DIRECTORIES "${SAFE_CMAKE_REQUIRED_LINK_DIRECTORIES}")
-
-# --- Generate patch file to be included in every Cython extension -------------
-
-set(PATCH_FILE ${CMAKE_CURRENT_BINARY_DIR}/getid.h)
-file(WRITE ${PATCH_FILE} 
-    "
-    #ifndef HAVE_PYINTERPRETERSTATE_GETID
-    #define HAVE_PYINTERPRETERSTATE_GETID
-    #include <Python.h>
-    #ifndef PyInterpreterState_GetID
-    #define PyInterpreterState_GetID(x) (0)
-    #endif
-    #endif
-    "
-)
+set(PYSTATE_PATCH_H ${CMAKE_CURRENT_LIST_DIR}/pystate_patch.h)
 
 # --- Prepare Cython directives and constants ----------------------------------
 
@@ -112,7 +98,7 @@ macro(cython_extension _name)
   set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${_name} )
   target_include_directories(${_target} AFTER PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) 
   target_link_libraries(${_target} PUBLIC ${CYTHON_EXTENSION_LINKS})
-  target_precompile_headers(${_target} PRIVATE ${PATCH_FILE})
+  target_precompile_headers(${_target} PRIVATE ${PYSTATE_PATCH_H})
   if(HAVE_PYINTERPRETERSTATE_GETID)
     target_compile_definitions(${_target} PUBLIC HAVE_PYINTERPRETERSTATE_GETID)
   endif()
