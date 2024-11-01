@@ -8,14 +8,13 @@ feedback.
 
 ### Versions
 
-This project targets Python 3.5 or later.
+This project targets Python 3.7 or later.
 
 Python objects should be typed; since it is not supported by Cython,
 you must manually declare types in type stubs (`.pyi` files). In Python
 files, you can add type annotations to function signatures (supported in
-Python 3.5) but not in variable assignments (supported only from Python
-3.6 onward). However, Cython allows you to use [f-strings](https://www.python.org/dev/peps/pep-0498/)
-even when compiling the code for Python 3.5.
+Python 3.5) and in variable assignments (supported only from Python
+3.6 onward).
 
 ### Interfacing with C
 
@@ -39,7 +38,7 @@ the standard library. Running them requires the extension to be built
 locally:
 
 ```console
-$ python setup.py build_ext --debug --inplace
+$ python -m pip install -v -e . --no-build-isolation
 $ python -m unittest discover -vv
 ```
 
@@ -53,7 +52,7 @@ code makes it faster.
 
 Start by building `pyrodigal` locally:
 ```console
-$ python setup.py build_ext --debug --inplace
+$ python -m pip install -v . --no-build-isolation
 ```
 
 Then make sure you have the required packages and data:
@@ -77,7 +76,7 @@ same results on a set of genomes: https://github.com/jhahnfeld/prodigal-pyrodiga
 To use it, first install the local version of Pyrodigal that you want to compare against
 Prodigal:
 ```console
-$ pip install --user . --force-reinstall
+$ pip install --user . --no-build-isolation --force-reinstall
 ```
 
 Then compile the patched Prodigal binary from the code that is

@@ -119,6 +119,8 @@ with multiprocessing.pool.ThreadPool() as pool:
 
 ## 🔧 Installing
 
+This project is supported on Python 3.7 and later.
+
 Pyrodigal can be installed directly from [PyPI](https://pypi.org/project/pyrodigal/),
 which hosts some pre-built wheels for the x86-64 architecture (Linux/MacOS/Windows)
 and the Aarch64 architecture (Linux/MacOS), as well as the code required to compile
