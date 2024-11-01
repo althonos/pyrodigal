@@ -6,7 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.5.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.0...HEAD
+
+
+## [v3.6.0] - 2024-11-02
+[v3.6.0]: https://github.com/althonos/pyrodigal/compare/v3.5.1...v3.6.0
+
+### Added
+- Support for Python 3.13.
+
+### Changed
+- Reorganize project to build with CMake and `scikit-build-core`.
+- Build separate Python modules for various SIMD implementations to avoid potential linking issues.
+
+### Fixed
+- Pointer dereference issue when calling `TrainingInfo.load` in PyPI or with objects missing a `readinto` method.
+
+### Removed
+- Support for Python 3.6.
 
 
 ## [v3.5.2] - 2024-09-04
