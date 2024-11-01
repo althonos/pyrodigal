@@ -1,4 +1,2 @@
 cython ~=3.0
-wheel
-auditwheel <5.2
-setuptools >=46.4.0
+scikit-build-core

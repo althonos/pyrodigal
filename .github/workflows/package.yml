@@ -10,186 +10,106 @@ jobs:
   wheel-linux-aarch64:
     name: Build Linux wheels (Aarch64)
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        python-tag:
-        - cp36-manylinux_aarch64
-        - cp37-manylinux_aarch64
-        - cp38-manylinux_aarch64
-        - cp39-manylinux_aarch64
-        - cp310-manylinux_aarch64
-        - cp311-manylinux_aarch64
-        - cp312-manylinux_aarch64
-        - pp37-manylinux_aarch64
-        - pp38-manylinux_aarch64
-        - pp39-manylinux_aarch64
-        - pp310-manylinux_aarch64
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set up QEMU
       id: qemu
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
       with:
-        platforms: all
+        platforms: arm64
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.19.2
+      uses: pypa/cibuildwheel@v2.21.3
       env:
         CIBW_ARCHS: aarch64
-        CIBW_BUILD: ${{ matrix.python-tag }}
-        CIBW_BEFORE_BUILD: pip install cython
+        CIBW_BUILD: '*-manylinux_aarch64'
         CIBW_BUILD_VERBOSITY: 2
-        CIBW_TEST_COMMAND: python -m unittest pyrodigal.tests -vv
-        CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels-${{ matrix.python-tag }}
+        name: wheels-manylinux_aarch64
         path: dist/*
 
   wheel-linux-x86_64:
     name: Build Linux wheels (x86-64)
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        python-tag:
-        - cp36-manylinux_x86_64
-        - cp37-manylinux_x86_64
-        - cp38-manylinux_x86_64
-        - cp39-manylinux_x86_64
-        - cp310-manylinux_x86_64
-        - cp311-manylinux_x86_64
-        - cp312-manylinux_x86_64
-        - pp37-manylinux_x86_64
-        - pp38-manylinux_x86_64
-        - pp39-manylinux_x86_64
-        - pp310-manylinux_x86_64
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.19.2
+      uses: pypa/cibuildwheel@v2.21.3
       env:
         CIBW_ARCHS: x86_64
-        CIBW_BUILD: ${{ matrix.python-tag }}
-        CIBW_BEFORE_BUILD: pip install cython
+        CIBW_BUILD: '*-manylinux_x86_64'
         CIBW_BUILD_VERBOSITY: 2
-        CIBW_TEST_COMMAND: python -m unittest pyrodigal.tests -vv
-        CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels-${{ matrix.python-tag }}
+        name: wheels-manylinux_x86_64
         path: dist/*
 
   wheel-macos-x86_64:
     name: Build MacOS wheels (x86-64)
     runs-on: macOS-12
-    strategy:
-      matrix:
-        python-tag:
-        - cp36-macosx_x86_64
-        - cp37-macosx_x86_64
-        - cp38-macosx_x86_64
-        - cp39-macosx_x86_64
-        - cp310-macosx_x86_64
-        - cp311-macosx_x86_64
-        - cp312-macosx_x86_64
-        - pp37-macosx_x86_64
-        - pp38-macosx_x86_64
-        - pp39-macosx_x86_64
-        - pp310-macosx_x86_64
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.19.2
+      uses: pypa/cibuildwheel@v2.21.3
       env:
         CIBW_ARCHS: x86_64
-        CIBW_BUILD: ${{ matrix.python-tag }}
-        CIBW_BEFORE_BUILD: pip install cython
+        CIBW_BUILD: '*-macosx_x86_64'
         CIBW_BUILD_VERBOSITY: 2
-        CIBW_TEST_COMMAND: python -m unittest pyrodigal.tests -vv
-        CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels-${{ matrix.python-tag }}
+        name: wheels-macosx_x86_64
         path: dist/*
 
   wheel-macos-aarch64:
     name: Build MacOS wheels (Aarch64)
     runs-on: macOS-12
-    strategy:
-      matrix:
-        python-tag:
-        - cp38-macosx_arm64
-        - cp39-macosx_arm64
-        - cp310-macosx_arm64
-        - cp311-macosx_arm64
-        - cp312-macosx_arm64
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.19.2
+      uses: pypa/cibuildwheel@v2.21.3
       env:
         CIBW_ARCHS: arm64
-        CIBW_BUILD: ${{ matrix.python-tag }}
-        CIBW_BEFORE_BUILD: pip install cython
+        CIBW_BUILD: '*-macosx_arm64'
         CIBW_BUILD_VERBOSITY: 2
-        CIBW_TEST_COMMAND: python -m unittest pyrodigal.tests -vv
-        CIBW_TEST_REQUIRES: importlib-resources
-        CIBW_TEST_SKIP: "*-macosx_arm64"
       with:
         output-dir: dist
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels-${{ matrix.python-tag }}
+        name: wheels-macosx_arm64
         path: dist/*
 
   wheel-win32-x86_64:
     name: Build Windows wheels (x86-64)
     runs-on: windows-2019
-    strategy:
-      matrix:
-        python-tag:
-        - cp36-win_amd64
-        - cp37-win_amd64
-        - cp38-win_amd64
-        - cp39-win_amd64
-        - cp310-win_amd64
-        - cp311-win_amd64
-        - cp312-win_amd64
-        - pp37-win_amd64
-        - pp38-win_amd64
-        - pp39-win_amd64
-        - pp310-win_amd64
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.19.2
+      uses: pypa/cibuildwheel@v2.21.3
       env:
         CIBW_ARCHS: AMD64
-        CIBW_BUILD: ${{ matrix.python-tag }}
-        CIBW_BEFORE_BUILD: pip install cython
+        CIBW_BUILD: '*-win_amd64'
         CIBW_BUILD_VERBOSITY: 2
-        CIBW_TEST_COMMAND: python -m unittest pyrodigal.tests -vv
-        CIBW_TEST_REQUIRES: importlib-resources
       with:
         output-dir: dist
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels-${{ matrix.python-tag }}
+        name: wheels-win_amd64
         path: dist/*
 
   sdist:
@@ -301,13 +221,13 @@ jobs:
     - name: Install setuptools
       run: python -m pip install setuptools
     - name: Extract package version
-      run: echo PKGVER=$(python setup.py --version) >> $GITHUB_ENV
+      run: echo PKGVER=$(echo '${{ github.ref }}' | cut -d'v' -f2) >> $GITHUB_ENV
     - name: Compute SHA256 of source distribution
       run: echo SHA256=$(sha256sum dist/pyrodigal-${{ env.PKGVER }}.tar.gz | cut -f1 -d' ') >> $GITHUB_ENV
     - name: Generate PKGBUILD
       run: sed -e "s/%pkgver/${{ env.PKGVER }}/g" -e "s/%sha256sum/${{ env.SHA256 }}/g" pkg/aur/PKGBUILD.in > pkg/aur/PKGBUILD
     - name: Update package
-      uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
+      uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
       with:
         pkgname: python-pyrodigal
         pkgbuild: pkg/aur/PKGBUILD
