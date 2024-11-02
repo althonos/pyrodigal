@@ -1,6 +1,8 @@
 import argparse
 import collections
 import itertools
+import os
+import sys
 
 _TrainingInfo = collections.namedtuple(
     "_TrainingInfo",
@@ -81,6 +83,12 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", required=True)
     parser.add_argument("--index", required=True, type=int)
     args = parser.parse_args()
+
+    if os.path.exists(args.output):
+        mtime_input = os.stat(args.input)
+        mtime_output = os.stat(args.output)
+        if mtime_output > mtime_input:
+            sys.exit(0)
 
     with open(args.input, "r") as src, open(args.output, "w") as dst:
         lines = []
