@@ -1,6 +1,7 @@
 import abc
 import gzip
 import os
+import io
 import sys
 import tempfile
 import textwrap
@@ -27,10 +28,10 @@ class TestTrainingInfo(unittest.TestCase):
 
     def test_roundtrip(self):
         tinf = METAGENOMIC_BINS[0].training_info
-        with tempfile.NamedTemporaryFile("wb+") as f:
-            tinf.dump(f)
-            f.seek(0)
-            tinf2 = TrainingInfo.load(f)
+        f = io.BytesIO()
+        tinf.dump(f)
+        f.seek(0)
+        tinf2 = TrainingInfo.load(f)
         self.assertTrainingInfoEqual(tinf, tinf2)
 
     def test_load_error(self):

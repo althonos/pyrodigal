@@ -3943,7 +3943,7 @@ cdef class TrainingInfo:
             contents = fp.read(sizeof(_training))
             if len(contents) != sizeof(_training):
                 raise EOFError(f"Expected {sizeof(_training)} bytes, only read {len(contents)}")
-            memcpy(&tinf.tinf, PyBytes_AsString(contents), sizeof(_training))
+            memcpy(tinf.tinf, PyBytes_AsString(contents), sizeof(_training))
 
         return tinf
 
