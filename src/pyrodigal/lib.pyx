@@ -3934,7 +3934,7 @@ cdef class TrainingInfo:
         cdef char[:]      contents
         cdef TrainingInfo tinf     = cls(0.50)
 
-        if hasattr(fp, "readinto"):
+        if hasattr(fp, "readinto") and not PYPY:
             mem = PyMemoryView_FromMemory(<char*> tinf.tinf, sizeof(_training), MVIEW_WRITE)
             n = fp.readinto(mem)
             if n != sizeof(_training):
