@@ -68,7 +68,7 @@ References:
 
 """
 
-# ----------------------------------------------------------------------------
+# --- Cython imports -----------------------------------------------------------
 
 cimport cython
 from cpython cimport Py_buffer
@@ -137,17 +137,10 @@ if NEON_BUILD_SUPPORT:
 cdef int MVIEW_READ
 cdef int MVIEW_WRITE
 
-if PYPY:
-    MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
-    MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
-else:
-    MVIEW_READ  = PyBUF_READ
-    MVIEW_WRITE = PyBUF_WRITE
-
 cdef extern from *:
     Py_UCS4 PyUnicode_READ(int kind, const void* data, size_t i) noexcept nogil
 
-# ----------------------------------------------------------------------------
+# --- Python imports -----------------------------------------------------------
 
 import array
 import datetime
@@ -156,10 +149,25 @@ import itertools
 import textwrap
 import threading
 import warnings
+import sys
 
 __version__ = PROJECT_VERSION
 
-# --- Module-level constants -------------------------------------------------
+# --- PyPy handling ------------------------------------------------------------
+
+import sys
+
+cdef bint PYPY = sys.implementation.name == "pypy"
+
+if PYPY:
+    MVIEW_READ  = PyBUF_READ | PyBUF_WRITE
+    MVIEW_WRITE = PyBUF_READ | PyBUF_WRITE
+else:
+    MVIEW_READ  = PyBUF_READ
+    MVIEW_WRITE = PyBUF_WRITE
+
+
+# --- Module-level constants ---------------------------------------------------
 
 cdef size_t MIN_MASKS_ALLOC      = 8
 cdef size_t MIN_GENES_ALLOC      = 32
