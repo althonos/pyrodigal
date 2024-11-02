@@ -1,6 +1,8 @@
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 get_property(PYTHON_EXTENSIONS_SOURCE_DIR GLOBAL PROPERTY PYTHON_EXTENSIONS_SOURCE_DIR)
 
+message(STATUS "Found Python: ${Python_INTERPRETER_ID} ${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}")
+
 # --- Detect PyInterpreterState_GetID ------------------------------------------
 
 include(CheckSymbolExists)
