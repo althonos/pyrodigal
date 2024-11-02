@@ -26,28 +26,18 @@ class TestTrainingInfo(unittest.TestCase):
         self.assertEqual(t1.rbs_weights, t2.rbs_weights)
 
     def test_roundtrip(self):
-        try:
-            tinf = METAGENOMIC_BINS[0].training_info
-            fd, filename = tempfile.mkstemp()
-            with os.fdopen(fd, "wb") as dst:
-                tinf.dump(dst)
-            with open(filename, "rb") as src:
-                tinf2 = TrainingInfo.load(src)
-        finally:
-            if os.path.exists(filename):
-                os.remove(filename)
+        tinf = METAGENOMIC_BINS[0].training_info
+        with tempfile.NamedTemporaryFile("wb+") as f:
+            tinf.dump(f)
+            f.seek(0)
+            tinf2 = TrainingInfo.load(f)
         self.assertTrainingInfoEqual(tinf, tinf2)
 
     def test_load_error(self):
-        try:
-            fd, filename = tempfile.mkstemp()
-            with os.fdopen(fd, "wb") as dst:
-                dst.write(b"not ok\n")
-            with open(filename, "rb") as src:
-                self.assertRaises(EOFError, TrainingInfo.load, src)
-        finally:
-            if os.path.exists(filename):
-                os.remove(filename)
+        with tempfile.NamedTemporaryFile("wb+") as f:
+            f.write(b"not ok\n")
+            f.seek(0)
+            self.assertRaises(EOFError, TrainingInfo.load, f)
 
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_pickle(self):

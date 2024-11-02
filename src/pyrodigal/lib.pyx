@@ -3931,7 +3931,7 @@ cdef class TrainingInfo:
         """
         cdef ssize_t      n
         cdef object       mem
-        cdef char[:]      contents
+        cdef bytes        contents
         cdef TrainingInfo tinf     = cls(0.50)
 
         if hasattr(fp, "readinto") and not PYPY:
@@ -3941,9 +3941,9 @@ cdef class TrainingInfo:
                 raise EOFError(f"Expected {sizeof(_training)} bytes, only read {n}")
         else:
             contents = fp.read(sizeof(_training))
-            if contents.shape[0] != sizeof(_training):
+            if len(contents) != sizeof(_training):
                 raise EOFError(f"Expected {sizeof(_training)} bytes, only read {len(contents)}")
-            memcpy(&tinf.tinf, &contents[0], sizeof(_training))
+            memcpy(&tinf.tinf, PyBytes_AsString(contents), sizeof(_training))
 
         return tinf
 
