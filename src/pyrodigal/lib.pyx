@@ -1076,15 +1076,6 @@ if _AVX512_BUILD_SUPPORT and _AVX512_RUNTIME_SUPPORT:
 if _NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
     from .impl.neon import NEONConnectionScorer
 
-cdef enum simd_backend:
-    NONE = 0
-    MMX = 1
-    SSE2 = 2
-    AVX2 = 3
-    NEON = 4
-    GENERIC = 5
-    AVX512 = 6
-
 cdef class BaseConnectionScorer:
     """A dedicated class for the fast scoring of nodes.
     """
@@ -1176,30 +1167,6 @@ cdef class BaseConnectionScorer:
             assert self.skippable != NULL
             self.skippable(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
         return 0
-        # if AVX512_BUILD_SUPPORT:
-        #     if self.backend == simd_backend.AVX512:
-        #         skippable_avx512(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-        #         return 0
-        # if AVX2_BUILD_SUPPORT:
-        #     if self.backend == simd_backend.AVX2:
-        #         skippable_avx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-        #         return 0
-        # if SSE2_BUILD_SUPPORT:
-        #     if self.backend == simd_backend.SSE2:
-        #         skippable_sse(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-        #         return 0
-        # if MMX_BUILD_SUPPORT:
-        #     if self.backend == simd_backend.MMX:
-        #         skippable_mmx(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-        #         return 0
-        # if NEON_BUILD_SUPPORT:
-        #     if self.backend == simd_backend.NEON:
-        #         skippable_neon(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-        #         return 0
-        # if self.backend == simd_backend.GENERIC:
-        #     skippable_generic(self.node_strands, self.node_types, self.node_frames, min, i, self.skip_connection)
-        #     return 0
-        # return 0
 
     cdef void _score_node_connections(
         self,
