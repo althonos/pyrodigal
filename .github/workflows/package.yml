@@ -191,8 +191,7 @@ jobs:
   release:
     environment: GitHub Releases
     runs-on: ubuntu-latest
-    permissions: 
-      contents: write
+    permissions: write-all
     if: "!contains(github.ref, 'rc') && !contains(github.ref, 'alpha')"
     name: Release
     needs: upload
