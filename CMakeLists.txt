@@ -9,6 +9,7 @@ set_property(GLOBAL PROPERTY PYTHON_EXTENSIONS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE
 # --- Detect SIMD --------------------------------------------------------------
 
 include("src/scripts/cmake/FindAVX2.cmake")
+include("src/scripts/cmake/FindAVX512.cmake")
 include("src/scripts/cmake/FindNEON.cmake")
 include("src/scripts/cmake/FindSSE2.cmake")
 include("src/scripts/cmake/CythonExtension.cmake")

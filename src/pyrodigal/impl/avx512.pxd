@@ -1,4 +1,7 @@
-from libc.stdint cimport int8_t, uint8_t
+# coding: utf-8
+# cython: language_level=3, linetrace=True, binding=True
 
-cdef extern from "impl/avx512.h" nogil:
-    void skippable_avx512(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*) noexcept
+from ..lib cimport BaseConnectionScorer
+
+cdef class AVX512ConnectionScorer(BaseConnectionScorer):
+    pass
