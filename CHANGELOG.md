@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.0...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.1...HEAD
+
+
+## [v3.6.1] - 2024-11-03
+[v3.6.1]: https://github.com/althonos/pyrodigal/compare/v3.6.0...v3.6.1
+
+### Added
+- Compilation of the connection scoring code for AVX-512.
+
+### Fixed
+- Import issue on platforms without AVX2 runtime support.
+- Missing metadata in `pyproject.toml`.
 
 
 ## [v3.6.0] - 2024-11-02
