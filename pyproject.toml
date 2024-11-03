@@ -48,6 +48,9 @@ dependencies = [
 "Paper" = "https://doi.org/10.21105/joss.04296"
 "PyPI" = "https://pypi.org/project/pyrodigal"
 
+[project.scripts]
+pyrodigal = "pyrodigal.cli:main"
+
 [project.optional-dependencies]
 test = ["importlib-resources ; python_version < '3.9'"]
 isal = ["isal ~=1.1"]
