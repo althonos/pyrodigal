@@ -14,7 +14,7 @@ authors = [
 ]
 platform = "any"
 keywords = ["bioinformatics", "genome", "orf", "gene", "prodigal"]
-classifier = [
+classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
