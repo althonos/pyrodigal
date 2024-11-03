@@ -127,13 +127,6 @@ from pyrodigal._connection cimport (
 
 from .impl.generic cimport GenericConnectionScorer
 
-if SSE2_BUILD_SUPPORT:
-    from .impl.sse2 cimport SSE2ConnectionScorer
-if AVX2_BUILD_SUPPORT:
-    from .impl.avx2 cimport AVX2ConnectionScorer
-if NEON_BUILD_SUPPORT:
-    from .impl.neon cimport NEONConnectionScorer
-
 cdef int MVIEW_READ
 cdef int MVIEW_WRITE
 
@@ -1074,6 +1067,15 @@ cdef class Sequence:
 
 # --- Connection Scorer ------------------------------------------------------
 
+if _SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
+    from .impl.sse2 import SSE2ConnectionScorer
+if _AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
+    from .impl.avx2 import AVX2ConnectionScorer
+if _AVX512_BUILD_SUPPORT and _AVX512_RUNTIME_SUPPORT:
+    from .impl.avx512 import AVX512ConnectionScorer
+if _NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
+    from .impl.neon import NEONConnectionScorer
+
 cdef enum simd_backend:
     NONE = 0
     MMX = 1
@@ -1390,6 +1392,8 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                     scorer = SSE2ConnectionScorer()
                 if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
                     scorer = AVX2ConnectionScorer()
+                if AVX512_BUILD_SUPPORT and _AVX512_RUNTIME_SUPPORT:
+                    scorer = AVX512ConnectionScorer()
             elif backend == "mmx":
                 if not MMX_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without MMX support")
@@ -1407,6 +1411,13 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                     raise RuntimeError("Cannot run AVX2 instructions on this machine")
                 else:
                     scorer = AVX2ConnectionScorer()
+            elif backend == "avx512":
+                if not AVX512_BUILD_SUPPORT:
+                    raise RuntimeError("Extension was compiled without AVX512 support")
+                elif not _AVX512_RUNTIME_SUPPORT:
+                    raise RuntimeError("Cannot run AVX512 instructions on this machine")
+                else:
+                    scorer = AVX512ConnectionScorer()
             elif backend == "generic":
                 scorer = GenericConnectionScorer()
             elif backend is None:
