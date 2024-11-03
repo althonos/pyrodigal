@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.1...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.2...HEAD
+
+
+## [v3.6.2] - 2024-11-03
+[v3.6.2]: https://github.com/althonos/pyrodigal/compare/v3.6.1...v3.6.2
+
+### Fixed
+- `pyrodigal` console script not being installed.
 
 
 ## [v3.6.1] - 2024-11-03
