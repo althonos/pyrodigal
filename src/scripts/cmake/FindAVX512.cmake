@@ -50,7 +50,6 @@ else()
     # MSVC can compile AVX intrinsics without the arch flag, however it
     # will detect that AVX code is found and "consider using /arch:AVX".
     set(AVX512_C_FLAG_CANDIDATES
-      "/arch:AVX"
       "/arch:AVX512")
   else()
     set(AVX512_C_FLAG_CANDIDATES
