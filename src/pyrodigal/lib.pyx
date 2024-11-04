@@ -1391,7 +1391,7 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                 scorer = BaseConnectionScorer()
             else:
                 raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
-        elif TARGET_CPU == "arm" or TARGET_CPU == "aarch64":
+        elif TARGET_CPU.startswith("arm") or TARGET_CPU == "aarch64":
             if backend == "detect":
                 scorer = BaseConnectionScorer()
                 if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
@@ -1412,7 +1412,7 @@ cdef class ConnectionScorer(BaseConnectionScorer):
         else:
             if backend == "detect":
                 scorer = BaseConnectionScorer()
-            if backend == "generic":
+            elif backend == "generic":
                 scorer = GenericConnectionScorer()
             elif backend is None:
                 scorer = BaseConnectionScorer()
