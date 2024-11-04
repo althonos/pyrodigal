@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.2...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.3...HEAD
+
+
+## [v3.6.3] - 2024-11-04
+[v3.6.3]: https://github.com/althonos/pyrodigal/compare/v3.6.2...v3.6.3
+
+### Fixed
+- Dynamic dispatch to NEON connection scorer on Aarch64 MacOS.
 
 
 ## [v3.6.2] - 2024-11-03
