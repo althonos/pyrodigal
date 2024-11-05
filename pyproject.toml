@@ -83,7 +83,7 @@ before-build = "pip install scikit-build-core cython"
 build-frontend = { name = "pip", args = ["--no-build-isolation"] }
 build-verbosity = 1
 test-command = "python -m unittest pyrodigal.tests -v"
-test-requires = "importlib-resources"
+test-extras = ["test"]
 free-threaded-support = false
 
 [tool.coverage.run]
