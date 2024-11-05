@@ -24,7 +24,7 @@ one is available, or from source after compiling the Cython code :
 Conda
 ^^^^^
 
-Pronto is also available as a `recipe <https://anaconda.org/bioconda/pyrodigal>`_
+Pyrodigal is also available as a `recipe <https://anaconda.org/bioconda/pyrodigal>`_
 in the `bioconda <https://bioconda.github.io/>`_ channel. To install, simply
 use the ``conda`` installer:
 
