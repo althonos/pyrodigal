@@ -39,7 +39,7 @@ locally:
 
 ```console
 $ python -m pip install -v -e . --no-build-isolation
-$ python -m unittest discover -vv
+$ python -m unittest -vv pyrodigal.tests
 ```
 
 ## Running benchmarks
