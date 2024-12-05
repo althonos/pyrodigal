@@ -256,10 +256,25 @@ def main(
             # open input (with support for compressed files)
             input_file = stdin if args.i is None else ctx.enter_context(zopen(args.i))
 
+            # select closed type
+            if args.c == "both" or args.c == "":
+                closed_start=True
+                closed_stop=True
+            elif args.c == "start":
+                closed_start=True
+                closed_stop=False
+            elif args.c == "stop":
+                closed_start=False
+                closed_stop=True
+            else:
+                closed_start=False
+                closed_stop=False
+
             # initialize the ORF finder
             gene_finder = gene_finder_factory(
                 meta=args.p == "meta",
-                closed=args.c,
+                closed_start=closed_start,
+                closed_stop=closed_stop,
                 mask=args.m,
                 training_info=training_info,
                 min_gene=args.min_gene,
