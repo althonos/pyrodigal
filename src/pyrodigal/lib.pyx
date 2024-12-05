@@ -1988,16 +1988,16 @@ cdef class Nodes:
                     nn += 1
                 else:
                     raise RuntimeError("Encountered a start codon that is none of ATG/TTG/GTG")
-            elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
-                saw_start[i%3] = True
-                self._add_node(
-                    ndx = i,
-                    type = node_type.ATG,
-                    stop_val = last[i%3],
-                    strand = 1,
-                    edge = True,
-                )
-                nn += 1
+            #elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+            #    saw_start[i%3] = True
+            #    self._add_node(
+            #        ndx = i,
+            #        type = node_type.ATG,
+            #        stop_val = last[i%3],
+            #        strand = 1,
+            #        edge = True,
+            #    )
+            #    nn += 1
         for i in range(3):
             if saw_start[i%3]:
                 self._add_node(
@@ -2083,16 +2083,16 @@ cdef class Nodes:
                     nn += 1
                 else:
                     raise RuntimeError("Encountered a start codon that is none of ATG/TTG/GTG")
-            elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
-                saw_start[i%3] = 1
-                node = self._add_node(
-                    ndx = sequence.slen - i - 1,
-                    type = node_type.ATG,
-                    strand = -1,
-                    stop_val = sequence.slen - last[i%3] - 1,
-                    edge = True,
-                )
-                nn += 1
+            #elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+            #    saw_start[i%3] = 1
+            #    node = self._add_node(
+            #        ndx = sequence.slen - i - 1,
+            #        type = node_type.ATG,
+            #        strand = -1,
+            #        stop_val = sequence.slen - last[i%3] - 1,
+            #        edge = True,
+            #    )
+            #    nn += 1
         for i in range(3):
             if saw_start[i%3]:
                 node = self._add_node(
