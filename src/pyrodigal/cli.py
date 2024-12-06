@@ -78,12 +78,22 @@ def argument_parser(
         metavar="trans_file",
         help="Write protein translations to the selected file.",
     )
+    #parser.add_argument(
+    #    "-c",
+    #    required=False,
+    #    action="store_true",
+    #    help="Closed ends. Do not allow genes to run off edges.",
+    #    default=False,
+    #)
     parser.add_argument(
         "-c",
         required=False,
-        action="store_true",
-        help="Closed ends. Do not allow genes to run off edges.",
-        default=False,
+        metavar="mode",
+        help="Closed ends. Do not allow genes to run off edges. Can be at start and/or stop site.",
+        choices={"both", "start", "none"},
+        default="none",
+        nargs='?',
+        const="both",
     )
     parser.add_argument(
         "-d",
@@ -258,23 +268,18 @@ def main(
 
             # select closed type
             if args.c == "both" or args.c == "":
-                closed_start=True
-                closed_stop=True
+                closed = [True, True]
             elif args.c == "start":
-                closed_start=True
-                closed_stop=False
-            elif args.c == "stop":
-                closed_start=False
-                closed_stop=True
+                closed = [True, False]
             else:
-                closed_start=False
-                closed_stop=False
+                closed = [False, False]
 
             # initialize the ORF finder
             gene_finder = gene_finder_factory(
                 meta=args.p == "meta",
-                closed_start=closed_start,
-                closed_stop=closed_stop,
+                closed=closed,
+                #closed_start=closed_start,
+                #closed_stop=closed_stop,
                 mask=args.m,
                 training_info=training_info,
                 min_gene=args.min_gene,

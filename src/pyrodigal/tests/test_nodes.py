@@ -87,7 +87,7 @@ class TestNodes(unittest.TestCase):
             "GAACGATTCCCTGCTTCAGGCATTGCGTACGGTAACCGGC"
             "GAAAATATGTTTCCCGCGTTCAAGGTCGTGCCGAAAACCG"
         )
-        nodes.extract(seq, closed=False)
+        nodes.extract(seq, closed_start=False, closed_stop=False)
         nodes.sort()
         # check the first node is *not* an edge not despite being on
         # the edge and the node extraction running in open genome mode

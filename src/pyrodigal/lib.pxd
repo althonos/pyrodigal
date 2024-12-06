@@ -236,7 +236,9 @@ cdef class Nodes:
         self,
         Sequence sequence,
         const int translation_table,
-        const bint closed,
+        #const bint closed,
+        const bint closed_start,
+        const bint closed_stop,
         const int min_gene,
         const int min_edge_gene
     ) except -1 nogil
@@ -261,7 +263,9 @@ cdef class Nodes:
         self,
         Sequence seq,
         const _training* tinf,
-        const bint closed,
+        #const bint closed,
+        const bint closed_start,
+        const bint closed_stop,
         const bint is_meta
     ) except -1 nogil
     cdef int _sort(self) except 1 nogil
@@ -391,7 +395,9 @@ cdef _metagenomic_bin _METAGENOMIC_BINS[NUM_META]
 cdef class GeneFinder:
     cdef readonly size_t          _num_seq
     cdef readonly str             backend
-    cdef readonly bint            closed
+    #cdef readonly bint            closed
+    cdef readonly bint            closed_start
+    cdef readonly bint            closed_stop
     cdef readonly object          lock
     cdef readonly bint            mask
     cdef readonly int             min_mask
