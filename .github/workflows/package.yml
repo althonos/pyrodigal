@@ -9,16 +9,11 @@ jobs:
 
   wheel-linux-aarch64:
     name: Build Linux wheels (Aarch64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Set up QEMU
-      id: qemu
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
     - name: Build manylinux wheels
       uses: pypa/cibuildwheel@v2.21.3
       env:
