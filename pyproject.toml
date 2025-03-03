@@ -63,6 +63,7 @@ pyrodigal = "pyrodigal.cli:main"
 build-dir = "build/{build_type}"
 editable.rebuild = true
 editable.verbose = false
+sdist.exclude = [".github", "benches/data/*.fna"]
 
 [[tool.scikit-build.overrides]]
 if.state = "editable"
