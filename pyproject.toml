@@ -12,7 +12,6 @@ license = { file = "COPYING" }
 authors = [
   { name = "Martin Larralde", email = "martin.larralde@embl.de" },
 ]
-platform = "any"
 keywords = ["bioinformatics", "genome", "orf", "gene", "prodigal"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
