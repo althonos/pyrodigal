@@ -65,7 +65,7 @@ jobs:
 
   test_osx:
     name: Test (OSX)
-    runs-on: macos-12
+    runs-on: macos-13
     env:
       OS: OSX
       _PYTHON_HOST_PLATFORM: macosx-10.9-x86_64
