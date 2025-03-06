@@ -40,7 +40,7 @@ internals, which has the following advantages:
   to allocate based on the sequence GC% in order to minimize reallocations.
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
-  save from a third to half the runtime depending on the sequence. The [Benchmarks](https://pyrodigal.readthedocs.io/en/stable/benchmarks.html) page of the documentation contains comprehensive comparisons. See the [JOSS paper](https://doi.org/10.21105/joss.04296)
+  save from a third to half the runtime depending on the sequence. The [Benchmarks](https://pyrodigal.readthedocs.io/en/stable/guide/benchmarks.html) page of the documentation contains comprehensive comparisons. See the [JOSS paper](https://doi.org/10.21105/joss.04296)
   for details about how this is achieved.
 - **same results**: Pyrodigal is tested to make sure it produces
   exactly the same results as Prodigal `v2.6.3+31b300a`. *This was verified
@@ -135,7 +135,7 @@ package:
 $ conda install -c bioconda pyrodigal
 ```
 
-Check the [*install* page](https://pyrodigal.readthedocs.io/en/stable/install.html)
+Check the [*install* page](https://pyrodigal.readthedocs.io/en/stable/guide/install.html)
 of the documentation for other ways to install Pyrodigal on your machine.
 
 ## 💡 Example
@@ -210,7 +210,7 @@ an academic work, for instance as:
 
 > Pyrodigal (Larralde, 2022), a Python library binding to Prodigal (Hyatt *et al.*, 2010).
 
-Detailed references are available on the [Publications page](https://pyrodigal.readthedocs.io/en/stable/publications.html) of the
+Detailed references are available on the [Publications page](https://pyrodigal.readthedocs.io/en/stable/guide/publications.html) of the
 [online documentation](https://pyrodigal.readthedocs.io/).
 
 ## 💭 Feedback
