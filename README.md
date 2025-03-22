@@ -100,7 +100,7 @@ regarding memory management:
 
 ### 🧶 Thread-safety
 
-[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
+[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 instances are thread-safe. In addition, the
 [`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.find_genes)
 method is re-entrant. This means you can train an
@@ -147,10 +147,10 @@ format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
+To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal),
 you must explicitly call the
-[`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder.train) method
+[`train`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.train) method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
