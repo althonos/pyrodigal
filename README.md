@@ -114,7 +114,7 @@ gene_finder = pyrodigal.GeneFinder()
 gene_finder.train(training_sequence)
 
 with multiprocessing.pool.ThreadPool() as pool:
-    predictions = pool.map(orf_finder.find_genes, sequences)
+    predictions = pool.map(gene_finder.find_genes, sequences)
 ```
 
 ## 🔧 Installing
@@ -159,9 +159,9 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.GeneFinder()
-orf_finder.train(bytes(record.seq))
-genes = orf_finder.find_genes(bytes(record.seq))
+gene_finder = pyrodigal.GeneFinder()
+gene_finder.train(bytes(record.seq))
+genes = gene_finder.find_genes(bytes(record.seq))
 ```
 
 However, in `meta` mode (corresponding to `prodigal -p meta`), you can find genes directly:
@@ -171,8 +171,8 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.GeneFinder(meta=True)
-for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
+gene_finder = pyrodigal.GeneFinder(meta=True)
+for i, pred in enumerate(gene_finder.find_genes(bytes(record.seq))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
 ```
@@ -189,8 +189,8 @@ import pyrodigal
 
 seq = next(skbio.io.read("sequence.gbk", "genbank"))
 
-orf_finder = pyrodigal.GeneFinder(meta=True)
-for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
+gene_finder = pyrodigal.GeneFinder(meta=True)
+for i, pred in enumerate(gene_finder.find_genes(seq.values.view('B'))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
 ```
