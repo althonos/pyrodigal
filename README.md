@@ -100,7 +100,7 @@ regarding memory management:
 
 ### 🧶 Thread-safety
 
-[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
+[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 instances are thread-safe. In addition, the
 [`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.find_genes)
 method is re-entrant. This means you can train an
@@ -114,7 +114,7 @@ gene_finder = pyrodigal.GeneFinder()
 gene_finder.train(training_sequence)
 
 with multiprocessing.pool.ThreadPool() as pool:
-    predictions = pool.map(orf_finder.find_genes, sequences)
+    predictions = pool.map(gene_finder.find_genes, sequences)
 ```
 
 ## 🔧 Installing
@@ -147,10 +147,10 @@ format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
+To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal),
 you must explicitly call the
-[`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder.train) method
+[`train`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.train) method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
@@ -159,9 +159,9 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.GeneFinder()
-orf_finder.train(bytes(record.seq))
-genes = orf_finder.find_genes(bytes(record.seq))
+gene_finder = pyrodigal.GeneFinder()
+gene_finder.train(bytes(record.seq))
+genes = gene_finder.find_genes(bytes(record.seq))
 ```
 
 However, in `meta` mode (corresponding to `prodigal -p meta`), you can find genes directly:
@@ -171,8 +171,8 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.GeneFinder(meta=True)
-for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
+gene_finder = pyrodigal.GeneFinder(meta=True)
+for i, pred in enumerate(gene_finder.find_genes(bytes(record.seq))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
 ```
@@ -189,8 +189,8 @@ import pyrodigal
 
 seq = next(skbio.io.read("sequence.gbk", "genbank"))
 
-orf_finder = pyrodigal.GeneFinder(meta=True)
-for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
+gene_finder = pyrodigal.GeneFinder(meta=True)
+for i, pred in enumerate(gene_finder.find_genes(seq.values.view('B'))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
 ```
