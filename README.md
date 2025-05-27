@@ -141,7 +141,7 @@ of the documentation for other ways to install Pyrodigal on your machine.
 ## 💡 Example
 
 Let's load a sequence from a
-[GenBank](http://www.insdc.org/files/feature_table.html) file, use an `GeneFinder`
+[GenBank](http://www.insdc.org/files/feature_table.html) file, use a `GeneFinder`
 to find all the genes it contains, and print the proteins in two-line FASTA
 format.
 
