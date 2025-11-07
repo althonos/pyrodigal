@@ -16,7 +16,7 @@ finder for genomes and metagenomes. **Now with SIMD!***
 [![GitHub issues](https://img.shields.io/github/issues/althonos/pyrodigal.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyrodigal/issues)
 [![Docs](https://img.shields.io/readthedocs/pyrodigal/latest?style=flat-square&maxAge=600)](https://pyrodigal.readthedocs.io)
 [![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md)
-[![Downloads](https://img.shields.io/pypi/dm/pyrodigal?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/pyrodigal)
+[![Downloads](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fpepy.tech%2Fprojects%2Fpyrodigal&search=%5B0-9%5D%2B.%5B0-9%5D%2B(k%7CM)&style=flat-square&label=downloads&color=303f9f&cacheSeconds=86400)](https://pepy.tech/project/pyrodigal)
 [![Paper](https://img.shields.io/badge/paper-JOSS-9400ff?style=flat-square&maxAge=86400)](https://doi.org/10.21105/joss.04296)
 [![Citations](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbadge.dimensions.ai%2Fdetails%2Fid%2Fpub.1147419140%2Fmetadata.json&query=%24.times_cited&style=flat-square&label=citations&maxAge=86400)](https://badge.dimensions.ai/details/id/pub.1147419140)
 
@@ -40,7 +40,7 @@ internals, which has the following advantages:
   to allocate based on the sequence GC% in order to minimize reallocations.
 - **better performance**: Pyrodigal uses *SIMD* instructions to compute which
   dynamic programming nodes can be ignored when scoring connections. This can
-  save from a third to half the runtime depending on the sequence. The [Benchmarks](https://pyrodigal.readthedocs.io/en/stable/benchmarks.html) page of the documentation contains comprehensive comparisons. See the [JOSS paper](https://doi.org/10.21105/joss.04296)
+  save from a third to half the runtime depending on the sequence. The [Benchmarks](https://pyrodigal.readthedocs.io/en/stable/guide/benchmarks.html) page of the documentation contains comprehensive comparisons. See the [JOSS paper](https://doi.org/10.21105/joss.04296)
   for details about how this is achieved.
 - **same results**: Pyrodigal is tested to make sure it produces
   exactly the same results as Prodigal `v2.6.3+31b300a`. *This was verified
@@ -100,7 +100,7 @@ regarding memory management:
 
 ### 🧶 Thread-safety
 
-[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
+[`pyrodigal.GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 instances are thread-safe. In addition, the
 [`find_genes`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.find_genes)
 method is re-entrant. This means you can train an
@@ -114,7 +114,7 @@ gene_finder = pyrodigal.GeneFinder()
 gene_finder.train(training_sequence)
 
 with multiprocessing.pool.ThreadPool() as pool:
-    predictions = pool.map(orf_finder.find_genes, sequences)
+    predictions = pool.map(gene_finder.find_genes, sequences)
 ```
 
 ## 🔧 Installing
@@ -135,22 +135,22 @@ package:
 $ conda install -c bioconda pyrodigal
 ```
 
-Check the [*install* page](https://pyrodigal.readthedocs.io/en/stable/install.html)
+Check the [*install* page](https://pyrodigal.readthedocs.io/en/stable/guide/install.html)
 of the documentation for other ways to install Pyrodigal on your machine.
 
 ## 💡 Example
 
 Let's load a sequence from a
-[GenBank](http://www.insdc.org/files/feature_table.html) file, use an `GeneFinder`
+[GenBank](http://www.insdc.org/files/feature_table.html) file, use a `GeneFinder`
 to find all the genes it contains, and print the proteins in two-line FASTA
 format.
 
 ### 🔬 [Biopython](https://github.com/biopython/biopython)
 
-To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder)
+To use the [`GeneFinder`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder)
 in single mode (corresponding to `prodigal -p single`, the default operation mode of Prodigal),
 you must explicitly call the
-[`train`](https://pyrodigal.readthedocs.io/en/stable/api/orf_finder.html#pyrodigal.GeneFinder.train) method
+[`train`](https://pyrodigal.readthedocs.io/en/stable/api/gene_finder.html#pyrodigal.GeneFinder.train) method
 with the sequence you want to use for training before trying to find genes,
 or you will get a [`RuntimeError`](https://docs.python.org/3/library/exceptions.html#RuntimeError):
 ```python
@@ -159,9 +159,9 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.GeneFinder()
-orf_finder.train(bytes(record.seq))
-genes = orf_finder.find_genes(bytes(record.seq))
+gene_finder = pyrodigal.GeneFinder()
+gene_finder.train(bytes(record.seq))
+genes = gene_finder.find_genes(bytes(record.seq))
 ```
 
 However, in `meta` mode (corresponding to `prodigal -p meta`), you can find genes directly:
@@ -171,8 +171,8 @@ import pyrodigal
 
 record = Bio.SeqIO.read("sequence.gbk", "genbank")
 
-orf_finder = pyrodigal.GeneFinder(meta=True)
-for i, pred in enumerate(orf_finder.find_genes(bytes(record.seq))):
+gene_finder = pyrodigal.GeneFinder(meta=True)
+for i, pred in enumerate(gene_finder.find_genes(bytes(record.seq))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
 ```
@@ -189,8 +189,8 @@ import pyrodigal
 
 seq = next(skbio.io.read("sequence.gbk", "genbank"))
 
-orf_finder = pyrodigal.GeneFinder(meta=True)
-for i, pred in enumerate(orf_finder.find_genes(seq.values.view('B'))):
+gene_finder = pyrodigal.GeneFinder(meta=True)
+for i, pred in enumerate(gene_finder.find_genes(seq.values.view('B'))):
     print(f">{record.id}_{i+1}")
     print(pred.translate())
 ```
@@ -210,7 +210,7 @@ an academic work, for instance as:
 
 > Pyrodigal (Larralde, 2022), a Python library binding to Prodigal (Hyatt *et al.*, 2010).
 
-Detailed references are available on the [Publications page](https://pyrodigal.readthedocs.io/en/stable/publications.html) of the
+Detailed references are available on the [Publications page](https://pyrodigal.readthedocs.io/en/stable/guide/publications.html) of the
 [online documentation](https://pyrodigal.readthedocs.io/).
 
 ## 💭 Feedback

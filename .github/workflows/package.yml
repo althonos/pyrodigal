@@ -9,16 +9,11 @@ jobs:
 
   wheel-linux-aarch64:
     name: Build Linux wheels (Aarch64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Set up QEMU
-      id: qemu
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
     - name: Build manylinux wheels
       uses: pypa/cibuildwheel@v2.21.3
       env:
@@ -54,7 +49,7 @@ jobs:
 
   wheel-macos-x86_64:
     name: Build MacOS wheels (x86-64)
-    runs-on: macOS-12
+    runs-on: macOS-13
     steps:
     - uses: actions/checkout@v4
       with:
@@ -74,7 +69,7 @@ jobs:
 
   wheel-macos-aarch64:
     name: Build MacOS wheels (Aarch64)
-    runs-on: macOS-12
+    runs-on: macOS-13
     steps:
     - uses: actions/checkout@v4
       with:
@@ -204,7 +199,7 @@ jobs:
   aur:
     environment: Arch Linux User Repository
     runs-on: ubuntu-latest
-    if: "!contains(github.ref, 'rc') && !contains(github.ref, 'alpha')"
+    if: "!contains(github.ref, 'rc') && !contains(github.ref, 'alpha') && !contains(github.ref, 'post')"
     name: Update AUR package
     needs:
     - sdist
@@ -222,8 +217,6 @@ jobs:
       with:
           name: sdist
           path: dist
-    - name: Install setuptools
-      run: python -m pip install setuptools
     - name: Extract package version
       run: echo PKGVER=$(echo '${{ github.ref }}' | cut -d'v' -f2) >> $GITHUB_ENV
     - name: Compute SHA256 of source distribution

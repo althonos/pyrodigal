@@ -23,4 +23,22 @@ url: 'https://pyrodigal.readthedocs.io'
 keywords:
   - orf-finder
   - gene
-license: MIT
+license: GPL-3.0-or-later
+preferred-citation:
+  type: article
+  authors:
+  - given-names: Martin
+    family-names: Larralde
+    email: martin.larralde@embl.de
+    affiliation: European Molecular Biology Laboratory
+    orcid: 'https://orcid.org/0000-0002-3947-4444'
+  doi: 10.21105/joss.04296
+  journal: "Journal of Open Source Software"
+  month: 4
+  start: 4296
+  end: 4296
+  title: "Pyrodigal: Python bindings and interface to Prodigal, an efficient method for gene prediction in prokaryotes"
+  issue: 72
+  volume: 7
+  year: 2022
+  

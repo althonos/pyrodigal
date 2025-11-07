@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.3...HEAD
 
 
+## [v3.6.3-post1] - 2025-03-04
+[v3.6.3-post1]: https://github.com/althonos/pyrodigal/compare/v3.6.3...v3.6.3-post1
+
+### Fixed
+- Extra key in `pyproject.toml` causing build issues with version `0.11.0` of `scikit-build-core`.
+
+
 ## [v3.6.3] - 2024-11-04
 [v3.6.3]: https://github.com/althonos/pyrodigal/compare/v3.6.2...v3.6.3
 

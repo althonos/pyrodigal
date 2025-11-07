@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pyrodigal"
-version = "4.0.0" # Not sure of version numbering
+version = "3.6.3-post1"
 description = "Cython bindings and Python interface to Prodigal, an ORF finder for genomes and metagenomes."
 readme = "README.md"
 requires-python = ">=3.7"
@@ -12,7 +12,6 @@ license = { file = "COPYING" }
 authors = [
   { name = "Martin Larralde", email = "martin.larralde@embl.de" },
 ]
-platform = "any"
 keywords = ["bioinformatics", "genome", "orf", "gene", "prodigal"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -64,6 +63,7 @@ pyrodigal = "pyrodigal.cli:main"
 build-dir = "build/{build_type}"
 editable.rebuild = true
 editable.verbose = false
+sdist.exclude = [".github", "benches/data/*.fna"]
 
 [[tool.scikit-build.overrides]]
 if.state = "editable"
