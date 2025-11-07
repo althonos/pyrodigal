@@ -1926,7 +1926,7 @@ cdef class Nodes:
             last[(i+slmod)%3] = sequence.slen + i
             saw_start[i%3] = False
             min_dist[i%3] = min_edge_gene
-            if not closed_start or not closed_stop: # TODO: check which closed is neccessary here
+            if not closed_stop: # if closed_stop is false closed_start will also be false so only need to check closed_stop
                 while last[(i+slmod)%3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
@@ -2020,7 +2020,7 @@ cdef class Nodes:
             last[(i + slmod) % 3] = sequence.slen + i
             saw_start[i%3] = False
             min_dist[i%3] = min_edge_gene
-            if not closed_start or not closed_stop: #TODO: check which closed is necessary here
+            if not closed_stop: # if closed_stop is false closed_start will also be false so only need to check closed_stop
                 while last[(i+slmod) % 3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
@@ -2417,7 +2417,7 @@ cdef class Nodes:
 
             # Convert starts at base 1 and slen to edge genes if closed = 0
             if (
-                    (not closed_start or not closed_stop) # TODO: check brackets
+                not closed_stop # if closed_stop is false closed_start will also be false so only need to check closed_stop
                 and not self.nodes[i].edge
                 and ((self.nodes[i].ndx <= 2 and self.nodes[i].strand == 1) or (self.nodes[i].ndx >= seq.slen - 3 and self.nodes[i].strand == -1))
             ):
