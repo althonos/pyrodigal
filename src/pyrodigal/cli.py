@@ -89,7 +89,7 @@ def argument_parser(
         "-c",
         required=False,
         metavar="mode",
-        help="Closed ends. Do not allow genes to run off edges. Can be at start and/or stop site.",
+        help="Closed ends. Do not allow genes to run off edges. Can be at start and/or stop site. Options are 'both', 'start', or 'none'.",
         choices={"both", "start", "none"},
         default="none",
         nargs='?',
