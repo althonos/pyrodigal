@@ -5103,9 +5103,9 @@ cdef class GeneFinder:
         *,
         bint meta=False,
         MetagenomicBins metagenomic_bins=None,
-        closed=[False, False],
-        closed_start=None,
-        closed_stop=None,
+        object closed=[False, False],
+        bint closed_start=False,
+        bint closed_stop=False,
         bint mask=False,
         int min_mask=MASK_SIZE,
         int min_gene=MIN_GENE,
@@ -5183,11 +5183,17 @@ cdef class GeneFinder:
         elif max_overlap > min_gene:
             raise ValueError("`max_overlap` must be lower than `min_gene`")
 
+        # Validate the `closed` argument (is list and/or boolean) and assign closed_start and closed_stop
         if isinstance(closed, list):
             if len(closed) != 2:
                 raise ValueError("`closed` must be a list of two boolean values")
             self.closed_start = closed[0]
             self.closed_stop = closed[1]
+            # Validate that both elements are booleans
+            if not isinstance(closed[0], bool) or not isinstance(closed[1], bool):
+                raise TypeError("`closed` elements must be boolean values")
+            self.closed_start = bool(closed[0])
+            self.closed_stop = bool(closed[1])
         elif isinstance(closed, bool):
             self.closed_start = closed
             self.closed_stop = closed
@@ -5195,9 +5201,7 @@ cdef class GeneFinder:
             raise ValueError("`closed` must be a list of two boolean values or a single boolean value")
 
         self.meta = meta
-        #self.closed = closed
-        #self.closed_start = closed_start
-        #self.closed_stop = closed_stop
+        self.closed = closed
         self.lock = threading.Lock()
         self.mask = mask
         self.training_info = training_info
@@ -5233,10 +5237,10 @@ cdef class GeneFinder:
             template.append(f"meta={self.meta!r}")
         if self.closed:
             template.append(f"closed={self.closed!r}")
-        #if self.closed_start:
-        #    template.append(f"closed_start={self.closed_start!r}")
-        #if self.closed_stop:
-        #    template.append(f"closed_stop={self.closed_stop!r}")
+        if self.closed_start:
+            template.append(f"closed_start={self.closed_start!r}")
+        if self.closed_stop:
+            template.append(f"closed_stop={self.closed_stop!r}")
         if self.mask:
             template.append(f"mask={self.mask!r}")
         if self.min_gene != MIN_GENE:
@@ -5255,7 +5259,7 @@ cdef class GeneFinder:
             type(self),
             meta=self.meta,
             metagenomic_bins=self.metagenomic_bins,
-            #closed=self.closed,
+            closed=self.closed,
             closed_start=self.closed_start,
             closed_stop=self.closed_stop,
             mask=self.mask,
