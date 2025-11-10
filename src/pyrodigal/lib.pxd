@@ -236,7 +236,6 @@ cdef class Nodes:
         self,
         Sequence sequence,
         const int translation_table,
-        #const bint closed,
         const bint closed_start,
         const bint closed_stop,
         const int min_gene,
@@ -263,7 +262,6 @@ cdef class Nodes:
         self,
         Sequence seq,
         const _training* tinf,
-        #const bint closed,
         const bint closed_start,
         const bint closed_stop,
         const bint is_meta

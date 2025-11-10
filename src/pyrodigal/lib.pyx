@@ -1896,7 +1896,6 @@ cdef class Nodes:
         self,
         Sequence sequence,
         int translation_table,
-        #bint closed,
         bint closed_start,
         bint closed_stop,
         int min_gene,
@@ -2513,7 +2512,6 @@ cdef class Nodes:
         self,
         Sequence sequence,
         *,
-        #bint closed=False,
         bint closed_start=False,
         bint closed_stop=False,
         int min_gene=MIN_GENE,
@@ -2530,8 +2528,10 @@ cdef class Nodes:
                 nodes from.
 
         Keyword Arguments:
-            closed (`bool`): Set to `True` to prevent proteins from running
-                off edges when finding genes in a sequence.
+            closed_start (`bool`): Set to `True` to prevent proteins from having
+                no predicted start codon when finding genes in a sequence.
+            closed_stop (`bool`): Set to `True` to prevent proteins from having
+                no predicted stop codon when finding genes in a sequence.
             min_gene (`int`): The minimum gene length. Defaults to the value
                 used in Prodigal.
             min_edge_gene (`int`): The minimum edge gene length. Defaults to
@@ -2547,13 +2547,18 @@ cdef class Nodes:
             This function is adapted from the ``add_nodes`` function in
             the ``node.c`` file of the Prodigal source code.
 
+        .. versionadded:: x.x.x
+              The ``closed_start`` and ``closed_stop`` arguments.
+
+        .. versionchanged:: x.x.x
+              Removed the ``closed`` argument.
+
         """
         cdef int nn
         with nogil:
             nn = self._extract(
                 sequence,
                 translation_table=translation_table,
-                #closed=closed,
                 closed_start=closed_start,
                 closed_stop=closed_stop,
                 min_gene=min_gene,
@@ -2572,7 +2577,6 @@ cdef class Nodes:
         Sequence sequence,
         TrainingInfo training_info,
         *,
-        #bint closed=False,
         bint closed_start=False,
         bint closed_stop=False,
         bint is_meta=False
@@ -2584,12 +2588,17 @@ cdef class Nodes:
             ``node.c`` from the Prodigal source, and already contains the patch
             from `hyattpd/Prodigal#88 <https://github.com/hyattpd/Prodigal/pull/88>`_.
 
+        .. versionadded:: x.x.x
+              The ``closed_start`` and ``closed_stop`` arguments.
+
+        .. versionchanged:: x.x.x
+              Removed the ``closed`` argument.
+
         """
         with nogil:
             self._score(
                 sequence, 
                 training_info.tinf, 
-                #closed=closed,
                 closed_start=closed_start,
                 closed_stop=closed_stop, 
                 is_meta=is_meta
@@ -5075,8 +5084,12 @@ cdef class GeneFinder:
         meta (`bool`): Whether or not this object is configured to
             find genes using the metagenomic bins or manually created
             training infos.
-        closed (`bool`): Whether or not proteins can run off edges when
+        closed (`list`): Whether or not proteins can run off edges when
             finding genes in a sequence.
+        closed_start (`bool`): Whether or not to enforce a start codon
+            at the beginning of genes.
+        closed_stop (`bool`): Whether or not to enforce a stop codon
+            at the end of genes.
         mask (`bool`): Prevent genes from running across regions containing
             unknown nucleotides.
         training_info (`~pyrodigal.TrainingInfo`): The object storing the
@@ -5129,9 +5142,18 @@ cdef class GeneFinder:
             metagenomic_bins (`~pyrodigal.MetagenomicBins`, optional): The
                 metagenomic bins to use while in *meta* mode. When `None`
                 is given, use all models from Prodigal.
-            closed (`bool`): Set to `True` to consider sequences ends
-                *closed*, which prevents proteins from running off edges.
-                Defaults to `False`.
+            closed (`bool`): Set to `[True, True]` to consider sequences ends
+                *closed*, which prevents proteins from running off edges. 
+                Or set to `[True, False]` to enforce a start codon but allow proteins
+                to end at the contig edge.
+                Defaults to `[False, False]`.
+                Can be set to a single `bool` value for backward compatibility.
+            closed_start (`bool`): Whether or not to enforce a start codon
+                at the beginning of genes. This argument is redundant when
+                `closed` is set to a list of two booleans or a single boolean.
+            closed_stop (`bool`): Whether or not to enforce a stop codon
+                at the end of genes. This argument is redundant when
+                `closed` is set to a list of two booleans or a single boolean.
             mask (`bool`): Prevent genes from running across regions
                 containing unknown nucleotides. Defaults to `False`.
             min_mask (`int`): The minimum mask length, when region masking
@@ -5165,8 +5187,11 @@ cdef class GeneFinder:
         .. versionadded:: 3.1.0
            The ``min_mask`` argument.
 
-        .. versionadded:: 4.0.0
-            The enforced start codon in ``closed`` by passing a list of two booleans.
+        .. versionadded:: x.x.x
+              The ``closed_start`` and ``closed_stop`` arguments.
+
+        .. versionchanged:: x.x.x
+              The ``closed`` argument now accepts a list of two booleans.
 
         """
         if meta and training_info is not None:
@@ -5287,7 +5312,6 @@ cdef class GeneFinder:
         nodes._extract(
             sequence,
             tinf.tinf.trans_table,
-            #closed=self.closed,
             closed_start=self.closed_start,
             closed_stop=self.closed_stop,
             min_gene=self.min_gene,
@@ -5333,7 +5357,6 @@ cdef class GeneFinder:
         nodes._extract(
             sequence,
             tinf.tinf.trans_table,
-            #closed=self.closed,
             closed_start=self.closed_start,
             closed_stop=self.closed_stop,
             min_gene=self.min_gene,
@@ -5347,7 +5370,6 @@ cdef class GeneFinder:
         nodes._score(
             sequence, 
             tinf.tinf, 
-            #closed=self.closed,
             closed_start=self.closed_start,
             closed_stop=self.closed_stop,
             is_meta=False
@@ -5400,7 +5422,6 @@ cdef class GeneFinder:
                 nodes._extract(
                     sequence,
                     tinf.trans_table,
-                    #closed=self.closed, 
                     closed_start=self.closed_start,
                     closed_stop=self.closed_stop,
                     min_gene=self.min_gene,
@@ -5413,7 +5434,6 @@ cdef class GeneFinder:
             nodes._score(
                 sequence, 
                 tinf, 
-                #closed=self.closed, 
                 closed_start=self.closed_start,
                 closed_stop=self.closed_stop,
                 is_meta=True
@@ -5443,7 +5463,6 @@ cdef class GeneFinder:
             nodes._extract(
                 sequence,
                 tinf.trans_table,
-                #closed=self.closed, 
                 closed_start=self.closed_start,
                 closed_stop=self.closed_stop,
                 min_gene=self.min_gene,
@@ -5456,7 +5475,6 @@ cdef class GeneFinder:
             nodes._score(
                 sequence, 
                 tinf, 
-                #closed=self.closed, 
                 closed_start=self.closed_start,
                 closed_stop=self.closed_stop,
                 is_meta=True)
