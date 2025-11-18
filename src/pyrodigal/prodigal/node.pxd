@@ -52,7 +52,7 @@ cdef extern from "node.h" nogil:
         uint8_t type
 
 
-    int add_nodes(bitmap_t seq, bitmap_t rseq, int slen, _node* nodes, bint closed, _mask* mlist, int nm, _training* tinf) noexcept
+    int add_nodes(bitmap_t seq, bitmap_t rseq, int slen, _node* nodes, bint closed_start, bint closed_stop, _mask* mlist, int nm, _training* tinf) noexcept
     void reset_node_scores(_node*, int) noexcept
     int compare_nodes(const void*, const void*) noexcept
     int stopcmp_nodes(const void*, const void*) noexcept

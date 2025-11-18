@@ -3,11 +3,11 @@ import datetime
 import threading
 import typing
 from typing import (
+    Dict,
     FrozenSet,
     Iterable,
     Iterator,
     List,
-    Dict,
     Optional,
     TextIO,
     Tuple,
@@ -42,12 +42,50 @@ IDEAL_SINGLE_GENOME: int
 PRODIGAL_VERSION: str
 
 _TRANSLATION_TABLE = Literal[
-    1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25,
-    26, 29, 30, 32, 33
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    29,
+    30,
+    32,
+    33,
 ]
 _DIVISION = Literal[
-    "PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN",
-    "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"
+    "PRI",
+    "ROD",
+    "MAM",
+    "VRT",
+    "INV",
+    "PLN",
+    "BCT",
+    "VRL",
+    "PHG",
+    "SYN",
+    "UNA",
+    "EST",
+    "PAT",
+    "STS",
+    "GSS",
+    "HTG",
+    "HTC",
+    "ENV",
 ]
 
 # --- Sequence mask ----------------------------------------------------------
@@ -158,7 +196,8 @@ class Nodes(typing.Sequence[Node]):
         self,
         sequence: Sequence,
         *,
-        closed: bool = False,
+        closed_start: bool = False,
+        closed_stop: bool = False,
         min_gene: int = 90,
         min_edge_gene: int = 60,
         translation_table: _TRANSLATION_TABLE = 11,
@@ -169,7 +208,8 @@ class Nodes(typing.Sequence[Node]):
         sequence: Sequence,
         training_info: TrainingInfo,
         *,
-        closed: bool = False,
+        closed_start: bool = False,
+        closed_stop: bool = False,
         is_meta: bool = False,
     ) -> None: ...
     def sort(self) -> None: ...
@@ -347,11 +387,15 @@ class TrainingInfo:
     @property
     def upstream_compositions(self) -> memoryview: ...
     @upstream_compositions.setter
-    def upstream_compositions(self, upstream_compositions: Iterable[Iterable[float]]) -> None: ...
+    def upstream_compositions(
+        self, upstream_compositions: Iterable[Iterable[float]]
+    ) -> None: ...
     @property
     def motif_weights(self) -> memoryview: ...
     @motif_weights.setter
-    def motif_weights(self, motif_weights: Iterable[Iterable[Iterable[float]]]) -> None: ...
+    def motif_weights(
+        self, motif_weights: Iterable[Iterable[Iterable[float]]]
+    ) -> None: ...
     @property
     def missing_motif_weight(self) -> float: ...
     @missing_motif_weight.setter
@@ -362,7 +406,6 @@ class TrainingInfo:
     def coding_statistics(self, coding_statistics: Iterable[float]) -> None: ...
     def to_dict(self) -> Dict[str, object]: ...
     def dump(self, fp: typing.BinaryIO) -> None: ...
-
 
 # --- Metagenomic Bins -------------------------------------------------------
 
@@ -384,8 +427,9 @@ class MetagenomicBins(typing.Sequence[MetagenomicBin]):
     @typing.overload
     def __getitem__(self, index: slice) -> MetagenomicBins: ...
     @typing.overload
-    def __getitem__(self, index: Union[int, slice]) -> Union[MetagenomicBin, MetagenomicBins]: ...
-
+    def __getitem__(
+        self, index: Union[int, slice]
+    ) -> Union[MetagenomicBin, MetagenomicBins]: ...
 
 # --- Pyrodigal --------------------------------------------------------------
 
@@ -398,7 +442,7 @@ class GeneFinder:
         *,
         meta: bool = False,
         metagenomic_bins: Optional[MetagenomicBins] = None,
-        closed: bool = False,
+        closed: list = [False, False],
         mask: bool = False,
         min_mask: int = 50,
         min_gene: int = 90,
@@ -413,7 +457,11 @@ class GeneFinder:
     @property
     def meta(self) -> bool: ...
     @property
-    def closed(self) -> bool: ...
+    def closed(self) -> list: ...
+    @property
+    def closed_start(self) -> bool: ...
+    @property
+    def closed_stop(self) -> bool: ...
     @property
     def mask(self) -> bool: ...
     @property

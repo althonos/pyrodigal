@@ -6,7 +6,7 @@ import textwrap
 import unittest
 import warnings
 
-from .. import GeneFinder, MetagenomicBins, METAGENOMIC_BINS
+from .. import METAGENOMIC_BINS, GeneFinder, MetagenomicBins, Sequence
 from . import data
 
 
@@ -233,6 +233,29 @@ class TestMeta(_GeneFinderTestCase, unittest.TestCase):
         self.assertEqual(len(genes), 0)
         self.assertRaises(StopIteration, next, iter(genes))
 
+    def test_enforce_start_without_stop(self):
+        """Ensure a required start codon is enforced even when there is no stop codon."""
+        # sequence with an explicit ATG start codon but no stop codon (no TAA/TAG/TGA)
+        seq = Sequence(
+            "AAAATGGTTAACGCTTCCGGCGACCCCGTAATCGAGGCCG"
+            "CCCACATCTGGTCAGACACGCTGACGGTGCTCAAACACAG"
+            "CGCTTCGCTCAGCCCACGAGAAAAAGGCTGGTTGGAAGGC"
+            "GTTGTTCCTGAAGGCGTCTTCGGTTCGACCATCGTGCTGT"
+            "GTGTGGACAACAACGACACGCTTCAAGCCATTCAGGGTGA"
+            "TTTGAACGATTCCCTGCTTCAGGCATTGCGTACGGTAACC"
+            "GGCGAAAATATGTTTCCCGCGTTCAAGGTCGTGCCGAAAA"
+            "CCG"
+        )
+        p = GeneFinder(
+            meta=True, closed=[True, False]
+        )  # enforce start, allow missing stop
+        genes = p.find_genes(seq)
+        # should report at least one ORF starting at the ATG and running off the end
+        self.assertGreaterEqual(len(genes), 1)
+        g = genes[0]
+        self.assertEqual(g.start_type, "ATG")
+        self.assertTrue(g.partial_end)
+
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_find_genes_masked_MIIJ01000039(self):
         record = data.load_record("MIIJ01000039.fna.gz")
@@ -301,17 +324,21 @@ class TestMeta(_GeneFinderTestCase, unittest.TestCase):
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_custom_metagenomic_bins(self):
         record = data.load_record("SRR492066.fna.gz")
-        
+
         orf_finder = GeneFinder(meta=True)
         preds = orf_finder.find_genes(record.seq)
         self.assertIsNot(preds.metagenomic_bin, None)
-        self.assertEqual(preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description)
+        self.assertEqual(
+            preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description
+        )
 
-        metagenomic_bins = MetagenomicBins(( METAGENOMIC_BINS[0], METAGENOMIC_BINS[4] ))
+        metagenomic_bins = MetagenomicBins((METAGENOMIC_BINS[0], METAGENOMIC_BINS[4]))
         orf_finder = GeneFinder(meta=True, metagenomic_bins=metagenomic_bins)
         preds = orf_finder.find_genes(record.seq)
         self.assertIsNot(preds.metagenomic_bin, None)
-        self.assertEqual(preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description)
+        self.assertEqual(
+            preds.metagenomic_bin.description, METAGENOMIC_BINS[0].description
+        )
 
     @unittest.skipUnless(data.files, "importlib.resources not available")
     def test_empty_metagenomic_bins(self):

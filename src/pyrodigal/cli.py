@@ -78,12 +78,22 @@ def argument_parser(
         metavar="trans_file",
         help="Write protein translations to the selected file.",
     )
+    #parser.add_argument(
+    #    "-c",
+    #    required=False,
+    #    action="store_true",
+    #    help="Closed ends. Do not allow genes to run off edges.",
+    #    default=False,
+    #)
     parser.add_argument(
         "-c",
         required=False,
-        action="store_true",
-        help="Closed ends. Do not allow genes to run off edges.",
-        default=False,
+        metavar="mode",
+        help="Closed ends. Do not allow genes to run off edges. Can be at start and/or stop site. Options are 'both', 'start', or 'none'.",
+        choices={"both", "start", "none"},
+        default="none",
+        nargs='?',
+        const="both",
     )
     parser.add_argument(
         "-d",
@@ -256,10 +266,18 @@ def main(
             # open input (with support for compressed files)
             input_file = stdin if args.i is None else ctx.enter_context(zopen(args.i))
 
+            # select closed type
+            if args.c == "both" or args.c == "":
+                closed = [True, True]
+            elif args.c == "start":
+                closed = [True, False]
+            else:
+                closed = [False, False]
+
             # initialize the ORF finder
             gene_finder = gene_finder_factory(
                 meta=args.p == "meta",
-                closed=args.c,
+                closed=closed,
                 mask=args.m,
                 training_info=training_info,
                 min_gene=args.min_gene,
@@ -268,7 +286,7 @@ def main(
             )
 
             # pre-train if in training mode
-            if args.p == "single":
+            if args.p == "single" and training_info is None:
                 # use the same interleaving logic as Prodigal
                 sequences = list(parse(input_file))
                 training_info = gene_finder.train(

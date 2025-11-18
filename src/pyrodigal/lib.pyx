@@ -1896,7 +1896,8 @@ cdef class Nodes:
         self,
         Sequence sequence,
         int translation_table,
-        bint closed,
+        bint closed_start,
+        bint closed_stop,
         int min_gene,
         int min_edge_gene,
     ) except -1 nogil:
@@ -1924,7 +1925,7 @@ cdef class Nodes:
             last[(i+slmod)%3] = sequence.slen + i
             saw_start[i%3] = False
             min_dist[i%3] = min_edge_gene
-            if not closed:
+            if not closed_stop: # if closed_stop is false closed_start will also be false so only need to check closed_stop
                 while last[(i+slmod)%3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
@@ -1988,7 +1989,7 @@ cdef class Nodes:
                     nn += 1
                 else:
                     raise RuntimeError("Encountered a start codon that is none of ATG/TTG/GTG")
-            elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+            elif i <= 2 and not closed_start and last[i%3] - i > min_edge_gene:
                 saw_start[i%3] = True
                 self._add_node(
                     ndx = i,
@@ -2018,7 +2019,7 @@ cdef class Nodes:
             last[(i + slmod) % 3] = sequence.slen + i
             saw_start[i%3] = False
             min_dist[i%3] = min_edge_gene
-            if not closed:
+            if not closed_stop: # if closed_stop is false closed_start will also be false so only need to check closed_stop
                 while last[(i+slmod) % 3] + 3 > sequence.slen:
                     last[(i+slmod)%3] -= 3
         for i in reversed(range(sequence.slen-2)):
@@ -2083,7 +2084,7 @@ cdef class Nodes:
                     nn += 1
                 else:
                     raise RuntimeError("Encountered a start codon that is none of ATG/TTG/GTG")
-            elif i <= 2 and not closed and last[i%3] - i > min_edge_gene:
+            elif i <= 2 and not closed_start and last[i%3] - i > min_edge_gene:
                 saw_start[i%3] = 1
                 node = self._add_node(
                     ndx = sequence.slen - i - 1,
@@ -2322,7 +2323,9 @@ cdef class Nodes:
         self,
         Sequence seq,
         const _training* tinf,
-        const bint closed,
+        #const bint closed,
+        const bint closed_start,
+        const bint closed_stop,
         const bint is_meta,
     ) except -1 nogil:
 
@@ -2396,9 +2399,9 @@ cdef class Nodes:
 
                 # Penalize upstream score if choosing this start would stop the gene
                 # from running off the edge
-                if not closed and self.nodes[i].ndx <= 2 and self.nodes[i].strand == 1:
+                if not closed_start and self.nodes[i].ndx <= 2 and self.nodes[i].strand == 1:
                     self.nodes[i].uscore += node.EDGE_UPS*tinf.st_wt
-                elif not closed and self.nodes[i].ndx >= seq.slen - 3 and self.nodes[i].strand == -1:
+                elif not closed_start and self.nodes[i].ndx >= seq.slen - 3 and self.nodes[i].strand == -1:
                     self.nodes[i].uscore += node.EDGE_UPS*tinf.st_wt
                 elif i < 500 and self.nodes[i].strand == 1:
                     for j in reversed(range(i)):
@@ -2413,7 +2416,7 @@ cdef class Nodes:
 
             # Convert starts at base 1 and slen to edge genes if closed = 0
             if (
-                    not closed
+                not closed_stop # if closed_stop is false closed_start will also be false so only need to check closed_stop
                 and not self.nodes[i].edge
                 and ((self.nodes[i].ndx <= 2 and self.nodes[i].strand == 1) or (self.nodes[i].ndx >= seq.slen - 3 and self.nodes[i].strand == -1))
             ):
@@ -2509,7 +2512,8 @@ cdef class Nodes:
         self,
         Sequence sequence,
         *,
-        bint closed=False,
+        bint closed_start=False,
+        bint closed_stop=False,
         int min_gene=MIN_GENE,
         int min_edge_gene=MIN_EDGE_GENE,
         int translation_table=11,
@@ -2524,8 +2528,10 @@ cdef class Nodes:
                 nodes from.
 
         Keyword Arguments:
-            closed (`bool`): Set to `True` to prevent proteins from running
-                off edges when finding genes in a sequence.
+            closed_start (`bool`): Set to `True` to prevent proteins from having
+                no predicted start codon when finding genes in a sequence.
+            closed_stop (`bool`): Set to `True` to prevent proteins from having
+                no predicted stop codon when finding genes in a sequence.
             min_gene (`int`): The minimum gene length. Defaults to the value
                 used in Prodigal.
             min_edge_gene (`int`): The minimum edge gene length. Defaults to
@@ -2541,13 +2547,20 @@ cdef class Nodes:
             This function is adapted from the ``add_nodes`` function in
             the ``node.c`` file of the Prodigal source code.
 
+        .. versionadded:: x.x.x
+              The ``closed_start`` and ``closed_stop`` arguments.
+
+        .. versionchanged:: x.x.x
+              Removed the ``closed`` argument.
+
         """
         cdef int nn
         with nogil:
             nn = self._extract(
                 sequence,
                 translation_table=translation_table,
-                closed=closed,
+                closed_start=closed_start,
+                closed_stop=closed_stop,
                 min_gene=min_gene,
                 min_edge_gene=min_edge_gene
             )
@@ -2564,7 +2577,8 @@ cdef class Nodes:
         Sequence sequence,
         TrainingInfo training_info,
         *,
-        bint closed=False,
+        bint closed_start=False,
+        bint closed_stop=False,
         bint is_meta=False
     ):
         """Score the start nodes currently stored.
@@ -2574,9 +2588,21 @@ cdef class Nodes:
             ``node.c`` from the Prodigal source, and already contains the patch
             from `hyattpd/Prodigal#88 <https://github.com/hyattpd/Prodigal/pull/88>`_.
 
+        .. versionadded:: x.x.x
+              The ``closed_start`` and ``closed_stop`` arguments.
+
+        .. versionchanged:: x.x.x
+              Removed the ``closed`` argument.
+
         """
         with nogil:
-            self._score(sequence, training_info.tinf, closed=closed, is_meta=is_meta)
+            self._score(
+                sequence, 
+                training_info.tinf, 
+                closed_start=closed_start,
+                closed_stop=closed_stop, 
+                is_meta=is_meta
+                )
 
     def sort(self):
         """Sort all nodes in the vector by their index and strand.
@@ -3598,7 +3624,7 @@ cdef class Genes:
             n += file.write(sequence_id)
             n += file.write("\t")
             n += file.write("pyrodigal_v")
-            n += file.write(__version__)
+            n += file.write(str(__version__)) # added str because of gff writing error
             n += file.write("\t")
             n += file.write("CDS")
             n += file.write("\t")
@@ -5058,8 +5084,12 @@ cdef class GeneFinder:
         meta (`bool`): Whether or not this object is configured to
             find genes using the metagenomic bins or manually created
             training infos.
-        closed (`bool`): Whether or not proteins can run off edges when
+        closed (`list`): Whether or not proteins can run off edges when
             finding genes in a sequence.
+        closed_start (`bool`): Whether or not to enforce a start codon
+            at the beginning of genes.
+        closed_stop (`bool`): Whether or not to enforce a stop codon
+            at the end of genes.
         mask (`bool`): Prevent genes from running across regions containing
             unknown nucleotides.
         training_info (`~pyrodigal.TrainingInfo`): The object storing the
@@ -5086,7 +5116,9 @@ cdef class GeneFinder:
         *,
         bint meta=False,
         MetagenomicBins metagenomic_bins=None,
-        bint closed=False,
+        object closed=[False, False],
+        bint closed_start=False,
+        bint closed_stop=False,
         bint mask=False,
         int min_mask=MASK_SIZE,
         int min_gene=MIN_GENE,
@@ -5110,9 +5142,18 @@ cdef class GeneFinder:
             metagenomic_bins (`~pyrodigal.MetagenomicBins`, optional): The
                 metagenomic bins to use while in *meta* mode. When `None`
                 is given, use all models from Prodigal.
-            closed (`bool`): Set to `True` to consider sequences ends
-                *closed*, which prevents proteins from running off edges.
-                Defaults to `False`.
+            closed (`bool`): Set to `[True, True]` to consider sequences ends
+                *closed*, which prevents proteins from running off edges. 
+                Or set to `[True, False]` to enforce a start codon but allow proteins
+                to end at the contig edge.
+                Defaults to `[False, False]`.
+                Can be set to a single `bool` value for backward compatibility.
+            closed_start (`bool`): Whether or not to enforce a start codon
+                at the beginning of genes. This argument is redundant when
+                `closed` is set to a list of two booleans or a single boolean.
+            closed_stop (`bool`): Whether or not to enforce a stop codon
+                at the end of genes. This argument is redundant when
+                `closed` is set to a list of two booleans or a single boolean.
             mask (`bool`): Prevent genes from running across regions
                 containing unknown nucleotides. Defaults to `False`.
             min_mask (`int`): The minimum mask length, when region masking
@@ -5146,6 +5187,12 @@ cdef class GeneFinder:
         .. versionadded:: 3.1.0
            The ``min_mask`` argument.
 
+        .. versionadded:: x.x.x
+              The ``closed_start`` and ``closed_stop`` arguments.
+
+        .. versionchanged:: x.x.x
+              The ``closed`` argument now accepts a list of two booleans.
+
         """
         if meta and training_info is not None:
             raise ValueError("cannot use a training info in meta mode.")
@@ -5161,6 +5208,23 @@ cdef class GeneFinder:
         elif max_overlap > min_gene:
             raise ValueError("`max_overlap` must be lower than `min_gene`")
 
+        # Validate the `closed` argument (is list and/or boolean) and assign closed_start and closed_stop
+        if isinstance(closed, list):
+            if len(closed) != 2:
+                raise ValueError("`closed` must be a list of two boolean values")
+            self.closed_start = closed[0]
+            self.closed_stop = closed[1]
+            # Validate that both elements are booleans
+            if not isinstance(closed[0], bool) or not isinstance(closed[1], bool):
+                raise TypeError("`closed` elements must be boolean values")
+            self.closed_start = bool(closed[0])
+            self.closed_stop = bool(closed[1])
+        elif isinstance(closed, bool):
+            self.closed_start = closed
+            self.closed_stop = closed
+        else:
+            raise ValueError("`closed` must be a list of two boolean values or a single boolean value")
+
         self.meta = meta
         self.closed = closed
         self.lock = threading.Lock()
@@ -5175,6 +5239,20 @@ cdef class GeneFinder:
             self.metagenomic_bins = METAGENOMIC_BINS
         else:
             self.metagenomic_bins = metagenomic_bins
+    
+    # getstate and setstate to fix issue with pickling GeneFinder object
+    #def __getstate__(self):
+    #    # Return the state as a dictionary
+    #    state = self.__dict__.copy()
+    #    # Remove objects that cannot be pickled
+    #    state.pop("lock", None)
+    #    return state
+#
+    #def __setstate__(self, state):
+    #    # Restore the state
+    #    self.__dict__.update(state)
+    #    # Reinitialize objects that were not pickled
+    #    self.lock = threading.Lock()
 
     def __repr__(self):
         cdef list template = []
@@ -5184,6 +5262,10 @@ cdef class GeneFinder:
             template.append(f"meta={self.meta!r}")
         if self.closed:
             template.append(f"closed={self.closed!r}")
+        if self.closed_start:
+            template.append(f"closed_start={self.closed_start!r}")
+        if self.closed_stop:
+            template.append(f"closed_stop={self.closed_stop!r}")
         if self.mask:
             template.append(f"mask={self.mask!r}")
         if self.min_gene != MIN_GENE:
@@ -5203,6 +5285,8 @@ cdef class GeneFinder:
             meta=self.meta,
             metagenomic_bins=self.metagenomic_bins,
             closed=self.closed,
+            closed_start=self.closed_start,
+            closed_stop=self.closed_stop,
             mask=self.mask,
             min_mask=self.min_mask,
             min_gene=self.min_gene,
@@ -5228,7 +5312,8 @@ cdef class GeneFinder:
         nodes._extract(
             sequence,
             tinf.tinf.trans_table,
-            closed=self.closed,
+            closed_start=self.closed_start,
+            closed_stop=self.closed_stop,
             min_gene=self.min_gene,
             min_edge_gene=self.min_edge_gene
         )
@@ -5272,7 +5357,8 @@ cdef class GeneFinder:
         nodes._extract(
             sequence,
             tinf.tinf.trans_table,
-            closed=self.closed,
+            closed_start=self.closed_start,
+            closed_stop=self.closed_stop,
             min_gene=self.min_gene,
             min_edge_gene=self.min_edge_gene
         )
@@ -5281,7 +5367,13 @@ cdef class GeneFinder:
         # second dynamic programming, using the dicodon statistics as the
         # scoring function
         nodes._reset_scores()
-        nodes._score(sequence, tinf.tinf, closed=self.closed, is_meta=False)
+        nodes._score(
+            sequence, 
+            tinf.tinf, 
+            closed_start=self.closed_start,
+            closed_stop=self.closed_stop,
+            is_meta=False
+            )
         nodes._record_overlapping_starts(tinf.tinf, True, self.max_overlap)
         ipath = scorer._dynamic_programming(nodes, tinf.tinf, final=True)
         # eliminate eventual bad genes in the nodes
@@ -5330,7 +5422,8 @@ cdef class GeneFinder:
                 nodes._extract(
                     sequence,
                     tinf.trans_table,
-                    closed=self.closed,
+                    closed_start=self.closed_start,
+                    closed_stop=self.closed_stop,
                     min_gene=self.min_gene,
                     min_edge_gene=self.min_edge_gene
                 )
@@ -5338,7 +5431,13 @@ cdef class GeneFinder:
                 scorer._index(nodes)
             # compute the score for the current bin
             nodes._reset_scores()
-            nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
+            nodes._score(
+                sequence, 
+                tinf, 
+                closed_start=self.closed_start,
+                closed_stop=self.closed_stop,
+                is_meta=True
+                )
             nodes._record_overlapping_starts(tinf, True, self.max_overlap)
             ipath = scorer._dynamic_programming(nodes, tinf, final=True)
             # update genes if the current bin had a better score
@@ -5364,7 +5463,8 @@ cdef class GeneFinder:
             nodes._extract(
                 sequence,
                 tinf.trans_table,
-                closed=self.closed,
+                closed_start=self.closed_start,
+                closed_stop=self.closed_stop,
                 min_gene=self.min_gene,
                 min_edge_gene=self.min_edge_gene
             )
@@ -5372,7 +5472,12 @@ cdef class GeneFinder:
             # rescore nodes
             scorer._index(nodes)
             nodes._reset_scores()
-            nodes._score(sequence, tinf, closed=self.closed, is_meta=True)
+            nodes._score(
+                sequence, 
+                tinf, 
+                closed_start=self.closed_start,
+                closed_stop=self.closed_stop,
+                is_meta=True)
         # return the max phase, which may be -1 if all bins were skipped
         return max_phase
 

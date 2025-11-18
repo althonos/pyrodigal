@@ -19,6 +19,8 @@ exceptions:
   however the stream cannot be compressed.
 - The GenBank output of Pyrodigal is a full GenBank record including the 
   input sequence, unlike Prodigal which only outputs the features section.
+- Start codons can be enforced now with ``-c start``, for backwards compatibility, 
+  ``-c`` alone is equivalent to ``-c none``.
 
 Flags
 -----
@@ -28,7 +30,7 @@ The Pyrodigal CLI has all the flags of the original CLI:
 .. code-block:: text
 
     -a trans_file         Write protein translations to the selected file.
-    -c                    Closed ends. Do not allow genes to run off edges.
+    -c [mode]             Closed ends. Do not allow genes to run off edges. Can be at start and/or stop site. Options are 'both', 'start', or 'none'. (default: none)
     -d nuc_file           Write nucleotide sequences of genes to the selected file.
     -f output_type        Select output format.
     -g tr_table           Specify a translation table to use.
