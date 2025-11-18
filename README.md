@@ -242,7 +242,7 @@ This library is provided under the [GNU General Public License v3.0](https://cho
 The Prodigal code was written by [Doug Hyatt](https://github.com/hyattpd) and is distributed under the
 terms of the GPLv3 as well. See `vendor/Prodigal/LICENSE` for more information.
 
-*This project is in no way not affiliated, sponsored, or otherwise endorsed
+*This project is in no way affiliated, sponsored, or otherwise endorsed
 by the [original Prodigal authors](https://github.com/hyattpd). It was developed
 by [Martin Larralde](https://github.com/althonos/) during his PhD project
 at the [European Molecular Biology Laboratory](https://www.embl.de/) in
