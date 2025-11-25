@@ -9,13 +9,13 @@ jobs:
 
   wheel-linux-aarch64:
     name: Build Linux wheels (Aarch64)
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.21.3
+      uses: pypa/cibuildwheel@v3.3.0
       env:
         CIBW_ARCHS: aarch64
         CIBW_BUILD: '*-manylinux_aarch64'
@@ -29,13 +29,13 @@ jobs:
 
   wheel-linux-x86_64:
     name: Build Linux wheels (x86-64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.21.3
+      uses: pypa/cibuildwheel@v3.3.0
       env:
         CIBW_ARCHS: x86_64
         CIBW_BUILD: '*-manylinux_x86_64'
@@ -55,7 +55,7 @@ jobs:
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.21.3
+      uses: pypa/cibuildwheel@v3.3.0
       env:
         CIBW_ARCHS: x86_64
         CIBW_BUILD: '*-macosx_x86_64'
@@ -75,7 +75,7 @@ jobs:
       with:
         submodules: true
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.21.3
+      uses: pypa/cibuildwheel@v3.3.0
       env:
         CIBW_ARCHS: arm64
         CIBW_BUILD: '*-macosx_arm64'
@@ -99,7 +99,7 @@ jobs:
       with:
         arch: amd64
     - name: Build manylinux wheels
-      uses: pypa/cibuildwheel@v2.21.3
+      uses: pypa/cibuildwheel@v3.3.0
       env:
         CIBW_ARCHS: AMD64
         CIBW_BUILD: '*-win_amd64'
