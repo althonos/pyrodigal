@@ -126,6 +126,7 @@ from pyrodigal._connection cimport (
 )
 
 from .impl.generic cimport GenericConnectionScorer
+from .impl.swar64 cimport SWAR64ConnectionScorer
 
 cdef int MVIEW_READ
 cdef int MVIEW_WRITE
@@ -1354,7 +1355,7 @@ cdef class ConnectionScorer(BaseConnectionScorer):
         cdef BaseConnectionScorer scorer
         if TARGET_CPU == "x86" or TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
             if backend == "detect":
-                scorer = BaseConnectionScorer()
+                scorer = SWAR64ConnectionScorer()
                 if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
                     scorer = SSE2ConnectionScorer()
                 if AVX2_BUILD_SUPPORT and _AVX2_RUNTIME_SUPPORT:
@@ -1385,6 +1386,8 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                     raise RuntimeError("Cannot run AVX512 instructions on this machine")
                 else:
                     scorer = AVX512ConnectionScorer()
+            elif backend == "swar64":
+                scorer = SWAR64ConnectionScorer()
             elif backend == "generic":
                 scorer = GenericConnectionScorer()
             elif backend is None:
@@ -1393,7 +1396,7 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                 raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
         elif TARGET_CPU.startswith("arm") or TARGET_CPU == "aarch64":
             if backend == "detect":
-                scorer = BaseConnectionScorer()
+                scorer = SWAR64ConnectionScorer()
                 if NEON_BUILD_SUPPORT and _NEON_RUNTIME_SUPPORT:
                     scorer = NEONConnectionScorer()
             elif backend == "neon":
@@ -1403,6 +1406,8 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                     raise RuntimeError("Cannot run NEON instructions on this machine")
                 else:
                     scorer = NEONConnectionScorer()
+            elif backend == "swar64":
+                scorer = SWAR64ConnectionScorer()
             elif backend == "generic":
                 scorer = GenericConnectionScorer()
             elif backend is None:
@@ -1411,7 +1416,9 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                 raise ValueError(f"Unsupported backend on this architecture ({TARGET_CPU}): {backend}")
         else:
             if backend == "detect":
-                scorer = BaseConnectionScorer()
+                scorer = SWAR64ConnectionScorer()
+            elif backend == "swar64":
+                scorer = SWAR64ConnectionScorer()
             elif backend == "generic":
                 scorer = GenericConnectionScorer()
             elif backend is None:

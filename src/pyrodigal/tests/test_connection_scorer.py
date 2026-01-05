@@ -71,6 +71,10 @@ class TestConnectionScorerGeneric(_TestConnectionScorerBase, unittest.TestCase):
     backend = "generic"
 
 
+class TestConnectionScorerSWAR64(_TestConnectionScorerBase, unittest.TestCase):
+    backend = "swar64"
+
+
 @unittest.skipUnless(lib._MMX_BUILD_SUPPORT, "extension compiled without MMX support")
 @unittest.skipUnless(lib._MMX_RUNTIME_SUPPORT, "requires machine with MMX support")
 class TestConnectionScorerMMX(_TestConnectionScorerBase, unittest.TestCase):

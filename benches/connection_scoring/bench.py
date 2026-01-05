@@ -22,7 +22,7 @@ parser.add_argument("-d", "--data", required=True)
 parser.add_argument("-o", "--output", required=True)
 args = parser.parse_args()
 
-BACKENDS = ["generic", None]
+BACKENDS = ["generic", "swar64", None]
 if lib._AVX512_RUNTIME_SUPPORT:
     BACKENDS.append("avx512")
 if lib._AVX2_RUNTIME_SUPPORT:
