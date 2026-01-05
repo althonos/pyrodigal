@@ -109,7 +109,7 @@ static inline void _score_connection_forward_start(
     // --- Edge Artifacts ---
     if ((n1->traceb == -1) && (n1->strand == 1) && (n1->type == STOP)) {
         return;
-    } else if ((n1->traceb == -1) && (n1->strand == -1) && (n1->type != STOP)) {
+    } else if ((n1->traceb == -1) && (n1->strand != 1) && (n1->type != STOP)) {
         return;
     }
 
@@ -122,7 +122,7 @@ static inline void _score_connection_forward_start(
         if (final)
             score = _intergenic_mod_same(n1, n2, tinf->st_wt);
     // 5'rev->5'fwd
-    } else if ((n1->strand == -1) && (n1->type != STOP)) {
+    } else if ((n1->strand != 1) && (n1->type != STOP)) {
         if (left >= right)
             return;
         if (final)
@@ -160,7 +160,7 @@ static inline void _score_connection_forward_stop(
     // --- Edge Artifacts ---
     if ((n1->traceb == -1) && (n1->strand == 1) && (n1->type == STOP)) {
         return;
-    } else if ((n1->traceb == -1) && (n1->strand == -1) && (n1->type != STOP)) {
+    } else if ((n1->traceb == -1) && (n1->strand != 1) && (n1->type != STOP)) {
         return;
     }
 
@@ -221,7 +221,7 @@ static inline void _score_connection_backward_start(
     // --- Edge Artifacts ---
     if ((n1->traceb == -1) && (n1->strand == 1) && (n1->type == STOP)) {
         return;
-    } else if ((n1->traceb == -1) && (n1->strand == -1) && (n1->type != STOP)) {
+    } else if ((n1->traceb == -1) && (n1->strand != 1) && (n1->type != STOP)) {
         return;
     }
 
@@ -290,7 +290,7 @@ static inline void _score_connection_backward_stop(
     // --- Edge Artifacts ---
     if ((n1->traceb == -1) && (n1->strand == 1) && (n1->type == STOP)) {
         return;
-    } else if ((n1->traceb == -1) && (n1->strand == -1) && (n1->type != STOP)) {
+    } else if ((n1->traceb == -1) && (n1->strand != 1) && (n1->type != STOP)) {
         return;
     }
 
@@ -333,7 +333,7 @@ static inline void _score_connection_backward_stop(
             score = _intergenic_mod_diff(n1, n2, tinf->st_wt);
         }
     // 5'rev->3'rev
-    } else if ((n1->strand == -1) && (n1->type != STOP)) {
+    } else if ((n1->strand != 1) && (n1->type != STOP)) {
         right -= 2;
         if (left >= right)
             return;
@@ -342,7 +342,7 @@ static inline void _score_connection_backward_stop(
 
     // --- Possible Operons */ ---
     // 3'rev->3'rev, check for a start just to right of second 3'
-    } else if ((n1->strand == -1) && (n1->type == STOP)) {
+    } else if ((n1->strand != 1) && (n1->type == STOP)) {
         if (n1->stop_val <= n2->ndx)
             return;
         if (n2->star_ptr[n1->ndx%3] == -1)
@@ -386,7 +386,7 @@ static inline void _score_connection_backward_stop(
 static inline void _score_connections(
     const uint8_t*          skip_connection,
     const uint8_t*          node_types,
-    const int8_t*           node_strands,
+    const uint8_t*          node_strands,
           struct _node*     nodes,
     const int               min,
     const int               i,
@@ -395,7 +395,7 @@ static inline void _score_connections(
 ) {
     int j;
     int kind;
-    kind = 2*(node_strands[i] == -1) + 1*(node_types[i] == STOP);
+    kind = 2*(node_strands[i] != 1) + 1*(node_types[i] == STOP);
     for (j = min; j < i; j++)
         if (!skip_connection[j]) {
             switch(kind) {

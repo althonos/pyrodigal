@@ -1127,7 +1127,7 @@ cdef class BaseConnectionScorer:
                 # reallocate new memory
                 self.skip_connection_raw = <uint8_t*> PyMem_Realloc(self.skip_connection_raw, nodes.length * sizeof(uint8_t) + 0x3F)
                 self.node_types_raw      = <uint8_t*> PyMem_Realloc(self.node_types_raw, nodes.length      * sizeof(uint8_t) + 0x3F)
-                self.node_strands_raw    = <int8_t*>  PyMem_Realloc(self.node_strands_raw, nodes.length    * sizeof(int8_t)  + 0x3F)
+                self.node_strands_raw    = <uint8_t*> PyMem_Realloc(self.node_strands_raw, nodes.length    * sizeof(int8_t)  + 0x3F)
                 self.node_frames_raw     = <uint8_t*> PyMem_Realloc(self.node_frames_raw, nodes.length     * sizeof(uint8_t) + 0x3F)
                 # check that allocations were successful
                 if self.skip_connection_raw == NULL:
@@ -1143,12 +1143,12 @@ cdef class BaseConnectionScorer:
             # compute pointers to aligned memory
             self.skip_connection = <uint8_t*> ((<uintptr_t> self.skip_connection_raw + 0x3F) & (~0x3F))
             self.node_types      = <uint8_t*> ((<uintptr_t> self.node_types_raw      + 0x3F) & (~0x3F))
-            self.node_strands    = <int8_t*>  ((<uintptr_t> self.node_strands_raw    + 0x3F) & (~0x3F))
+            self.node_strands    = <uint8_t*> ((<uintptr_t> self.node_strands_raw    + 0x3F) & (~0x3F))
             self.node_frames     = <uint8_t*> ((<uintptr_t> self.node_frames_raw     + 0x3F) & (~0x3F))
         # copy data from the array of nodes
         for i in range(nodes.length):
             self.node_types[i]      = nodes.nodes[i].type
-            self.node_strands[i]    = nodes.nodes[i].strand
+            self.node_strands[i]    = 1 if nodes.nodes[i].strand == 1 else 2
             self.node_frames[i]     = nodes.nodes[i].ndx % 3
             self.skip_connection[i] = False
         # return 0 if no exceptions were raised

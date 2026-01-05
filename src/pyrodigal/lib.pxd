@@ -117,7 +117,7 @@ cdef class Sequence:
 
 # --- Connection Scorer ------------------------------------------------------
 
-ctypedef void (*skippable_t)(const int8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*) noexcept nogil
+ctypedef void (*skippable_t)(const uint8_t*, const uint8_t*, const uint8_t*, const int, const int, uint8_t*) noexcept nogil
 
 cdef class BaseConnectionScorer:
     # which SIMD backend to use
@@ -131,8 +131,8 @@ cdef class BaseConnectionScorer:
     cdef uint8_t* node_types
     cdef uint8_t* node_types_raw
     # aligned storage of node strands
-    cdef int8_t*  node_strands
-    cdef int8_t*  node_strands_raw
+    cdef uint8_t* node_strands
+    cdef uint8_t* node_strands_raw
     # aligned storage of node frame
     cdef uint8_t* node_frames
     cdef uint8_t* node_frames_raw

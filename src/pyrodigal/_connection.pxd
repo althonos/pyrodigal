@@ -13,7 +13,7 @@ cdef extern from "_connection.h" nogil:
     cdef void _score_connections(
         const uint8_t*   skip_connection,
         const uint8_t*   node_types,
-        const int8_t*    node_strands,
+        const uint8_t*   node_strands,
               _node*     nodes,
         const int        min,
         const int        i,

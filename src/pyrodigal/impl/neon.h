@@ -25,7 +25,7 @@
 #define SIMD_MASK  0xF
 
 void skippable_neon(
-    const int8_t*  restrict strands,
+    const uint8_t* restrict strands,
     const uint8_t* restrict types,
     const uint8_t* restrict frames,
     const int min,
