@@ -8,16 +8,13 @@ jobs:
 
   test_linux:
     name: Test (Linux)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       OS: Linux
     strategy:
       fail-fast: false
       matrix:
         include:
-        - python-version: 3.7
-          python-release: v3.7
-          python-impl: CPython
         - python-version: 3.8
           python-release: v3.8
           python-impl: CPython
@@ -32,6 +29,12 @@ jobs:
           python-impl: CPython
         - python-version: '3.12'
           python-release: v3.12
+          python-impl: CPython
+        - python-version: '3.13'
+          python-release: v3.13
+          python-impl: CPython
+        - python-version: '3.14'
+          python-release: v3.14
           python-impl: CPython
         - python-version: pypy-3.7
           python-release: v3.7
@@ -51,7 +54,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install Python requirements
@@ -65,17 +68,13 @@ jobs:
 
   test_osx:
     name: Test (OSX)
-    runs-on: macos-13
+    runs-on: macos-latest
     env:
       OS: OSX
-      _PYTHON_HOST_PLATFORM: macosx-10.9-x86_64
     strategy:
       fail-fast: false
       matrix:
         include:
-        - python-version: 3.7
-          python-release: v3.7
-          python-impl: CPython
         - python-version: 3.8
           python-release: v3.8
           python-impl: CPython
@@ -91,9 +90,12 @@ jobs:
         - python-version: '3.12'
           python-release: v3.12
           python-impl: CPython
-        - python-version: pypy-3.7
-          python-release: v3.7
-          python-impl: PyPy
+        - python-version: '3.13'
+          python-release: v3.13
+          python-impl: CPython
+        - python-version: '3.14'
+          python-release: v3.14
+          python-impl: CPython
         - python-version: pypy-3.8
           python-release: v3.8
           python-impl: PyPy
@@ -109,7 +111,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install Python requirements
@@ -130,9 +132,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - python-version: 3.7
-          python-release: v3.7
-          python-impl: CPython
         - python-version: 3.8
           python-release: v3.8
           python-impl: CPython
@@ -147,6 +146,12 @@ jobs:
           python-impl: CPython
         - python-version: '3.12'
           python-release: v3.12
+          python-impl: CPython
+        - python-version: '3.13'
+          python-release: v3.13
+          python-impl: CPython
+        - python-version: '3.14'
+          python-release: v3.14
           python-impl: CPython
         - python-version: pypy-3.7
           python-release: v3.7
@@ -166,7 +171,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
@@ -204,7 +209,7 @@ jobs:
   #     with:
   #       submodules: true
   #   - name: Setup Python ${{ matrix.python-version }}
-  #     uses: actions/setup-python@v5
+  #     uses: actions/setup-python@v6
   #     with:
   #       python-version: ${{ matrix.python-version }}
   #   - name: Install Python requirements
