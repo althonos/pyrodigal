@@ -77,8 +77,12 @@ In addition, the **new** features are available:
   threshold, allowing for smaller ORFs to be identified if needed.
 - **custom metagenomic models**: Since `v3.0.0`, you can use your own 
   metagenomic models to run Pyrodigal in *meta*-mode. *Check for instance
-  [`pyrodigal-gv`](https://github.com/althonos/pyrodigal-gv), which 
-  provides additional models for giant viruses and gut phages.*
+  [`pyrodigal-gv`](https://github.com/althonos/pyrodigal-gv) by 
+  [Antônio Camargo](https://github.com/apcamargo/), which 
+  provides additional models for giant viruses and gut phages,
+  or [`pyrodigal-rv`](https://github.com/LanderDC/pyrodigal-rv)
+  by [Lander De Coninck](https://github.com/LanderDC) which
+  provides additional models for RNA viruses.*
 
 ### 🐏 Memory
 
