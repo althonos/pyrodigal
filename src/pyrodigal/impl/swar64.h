@@ -14,7 +14,6 @@
 #define simd_load(m)      swar_load(m)
 #define simd_store(x, m)  swar_store(x, m)
 #define simd_set1(x)      (SWAR_LOBIT * ((uint64_t) x))
-// #define simd_eq(x, y)     ((((x ^ y) - SWAR_LOBIT) & SWAR_HIBIT) >> 7)
 #define simd_eq(x, y)     ((~(((x ^ y) | SWAR_HIBIT) - SWAR_LOBIT) & SWAR_HIBIT) >> 7)
 
 #define mask_t            simd_t
@@ -28,7 +27,7 @@
 #define SIMD_MASK  0x7
 
 static inline simd_t swar_load(const uint8_t* data) {
-    return *((const simd_t*)data);
+    return *((const simd_t*) data);
 }
 
 static inline void swar_store(simd_t x, uint8_t* data) {
@@ -44,8 +43,6 @@ void skippable_swar64(
           uint8_t* restrict skip
 ) {
     skippable_simd(strands, types, frames, min, i, skip);
-    // for (int j = min; j < i; j++)
-        // skippable_generic_single(strands, types, frames, j, i, skip);
 }
 
 #endif

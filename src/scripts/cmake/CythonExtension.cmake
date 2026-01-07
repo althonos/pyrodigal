@@ -19,6 +19,12 @@ set(PYSTATE_PATCH_H ${CMAKE_CURRENT_LIST_DIR}/pystate_patch.h)
 
 # --- Prepare Cython directives and constants ----------------------------------
 
+if(DEFINED CMAKE_C_COMPILER_TARGET)
+    set(TARGET_CPU ${CMAKE_C_COMPILER_TARGET})
+else()
+    set(TARGET_CPU ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
 set(CYTHON_DIRECTIVES
     -X cdivision=True
     -X nonecheck=False
@@ -30,7 +36,7 @@ set(CYTHON_DIRECTIVES
     -E SYS_IMPLEMENTATION_NAME=$<LOWER_CASE:${Python_INTERPRETER_ID}>
     -E SYS_VERSION_INFO_MAJOR=${Python_VERSION_MAJOR}
     -E SYS_VERSION_INFO_MINOR=${Python_VERSION_MINOR}
-    -E TARGET_CPU=$<LOWER_CASE:${CMAKE_SYSTEM_PROCESSOR}>
+    -E TARGET_CPU=$<LOWER_CASE:${TARGET_CPU}>
     -E PROJECT_VERSION=${CMAKE_PROJECT_VERSION}
 )
 

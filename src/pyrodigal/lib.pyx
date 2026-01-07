@@ -264,6 +264,15 @@ if TARGET_CPU == "aarch64":
 if TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
     _SSE2_RUNTIME_SUPPORT = SSE2_BUILD_SUPPORT
 
+# NOTE(@althonos): Emscripten supports SSE2 and/or NEON through WebAssembly SIMD
+#                  instruction set, which have 128-bit vectors. AVX2 can be emulated
+#                  but is typically slower so we don't use it.
+if TARGET_CPU.startswith("wasm"):
+    _SSE2_RUNTIME_SUPPORT   = SSE2_BUILD_SUPPORT
+    _NEON_RUNTIME_SUPPORT   = False
+    _AVX2_RUNTIME_SUPPORT   = False
+    _MMX_RUNTIME_SUPPORT    = False
+    _AVX512_RUNTIME_SUPPORT = False
 
 # --- Sequence mask ----------------------------------------------------------
 
@@ -1353,7 +1362,7 @@ cdef class BaseConnectionScorer:
 cdef class ConnectionScorer(BaseConnectionScorer):
     def __init__(self, str backend):
         cdef BaseConnectionScorer scorer
-        if TARGET_CPU == "x86" or TARGET_CPU == "x86_64" or TARGET_CPU == "amd64":
+        if TARGET_CPU == "x86" or TARGET_CPU == "x86_64" or TARGET_CPU == "amd64" or TARGET_CPU.startswith("wasm"):
             if backend == "detect":
                 scorer = SWAR64ConnectionScorer()
                 if SSE2_BUILD_SUPPORT and _SSE2_RUNTIME_SUPPORT:
