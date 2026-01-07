@@ -3533,6 +3533,7 @@ cdef class Genes:
         bint header=True,
         bint include_translation_table=False,
         bint full_id=True,
+        str version_separator="_v",
     ) except -1:
         """Write the genes to ``file`` in General Feature Format.
 
@@ -3552,6 +3553,10 @@ cdef class Genes:
             full_id (`bool`): Pass `True` to use the full sequence identifier
                 in the header of each record, or `False` to use the sequence
                 numbering such as the one used in Prodigal.
+            source_separator (`str`): The separator used between the tool
+                name and version in the source column. Defaults to ``"_v"``
+                which is the same as Prodigal. Consider using ``":"`` which
+                is the prefered GFF3 format (``tool:version``).
 
         Returns:
             `int`: The number of bytes written to the file.
@@ -3564,6 +3569,9 @@ cdef class Genes:
 
         .. versionadded:: 3.4.0
            The ``full_id`` parameter.
+
+        .. versionadded:: 3.6.4
+           The ``source_separator`` parameter.
 
         """
         cdef Gene           gene
@@ -3607,7 +3615,8 @@ cdef class Genes:
         for i, gene in enumerate(self):
             n += file.write(sequence_id)
             n += file.write("\t")
-            n += file.write("pyrodigal_v")
+            n += file.write("pyrodigal")
+            n += file.write(version_separator)
             n += file.write(__version__)
             n += file.write("\t")
             n += file.write("CDS")
