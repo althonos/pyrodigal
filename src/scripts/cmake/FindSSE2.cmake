@@ -43,7 +43,7 @@ int main(void) { return foo(); }
 # by avoiding any try_compiles for the flags
 if((DEFINED SSE2_C_FLAGS) OR (DEFINED HAVE_SSE2))
 else()
-  if(WIN32)
+  if(CMAKE_C_COMPILER_ID EQUAL "MSVC")
     set(SSE2_C_FLAG_CANDIDATES
       #Empty, if compiler automatically accepts SSE2
       " "
@@ -54,6 +54,8 @@ else()
       " "
       #clang
       "-msse2"
+      #emscripten
+      "-msse2 -msimd128"
       #GNU, Intel
       "-march=core2"
     )

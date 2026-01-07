@@ -46,7 +46,7 @@ int main(void) { return (int)foo(); }
 # by avoiding any try_compiles for the flags
 if((DEFINED AVX512_C_FLAGS) OR (DEFINED HAVE_AVX512))
 else()
-  if(WIN32)
+  if(CMAKE_C_COMPILER_ID EQUAL "MSVC")
     # MSVC can compile AVX intrinsics without the arch flag, however it
     # will detect that AVX code is found and "consider using /arch:AVX".
     set(AVX512_C_FLAG_CANDIDATES
