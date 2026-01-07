@@ -3570,7 +3570,7 @@ cdef class Genes:
         .. versionadded:: 3.4.0
            The ``full_id`` parameter.
 
-        .. versionadded:: 3.6.4
+        .. versionadded:: 3.7.0
            The ``source_separator`` parameter.
 
         """

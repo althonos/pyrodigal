@@ -6,7 +6,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.6.3...HEAD
+[Unreleased]: https://github.com/althonos/pyrodigal/compare/v3.7.0...HEAD
+
+
+## [v3.7.0] - 2026-01-07
+[v3.7.0]: https://github.com/althonos/pyrodigal/compare/v3.6.3...v3.7.0
+
+### Added
+- SWAR (SIMD Within A Register) implementation of the connection scoring pre-filter for platforms lacking SSE or NEON support.
+- Support for Pyodide/Emscripten builds ([#73](https://github.com/althonos/pyrodigal/issues/73)).
+- `source_separator` argument to `Genes.write_gff` to support using the preferred GFF3 format ([#77](https://github.com/althonos/pyrodigal/issues/77)).
+
+### Fixed
+- Detection of SIMD flags on non-MSVC compilers used on Windows.
+- Incorrect metadata keys in `pyproject.toml` causing compilation issues with recent `build` versions.
+- Miscellaneous broken links in documentation and `README.md`.
+- Confusing documentation of the `--no-stop-codon` flag in CLI ([#66](https://github.com/althonos/pyrodigal/pull/66), by [@apcamargo](https://github.com/apcamargo)).
+
+### Changed
+- Internal type of strands encoded in SIMD pre-filter to `uint8_t` to only have to perform unsigned comparisons.
+
+### Removed
+- Deprecated code for MMX detection and testing.
 
 
 ## [v3.6.3-post1] - 2025-03-04
