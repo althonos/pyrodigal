@@ -27,13 +27,6 @@ set(CMAKE_REQUIRED_QUIET ${AVX512_FIND_QUIETLY})
 set(AVX512_C_TEST_SOURCE
 "
 #include <immintrin.h>
-void parasail_memset___m256i(__m256i *b, __m256i c, size_t len)
-{
-    size_t i;
-    for (i=0; i<len; ++i) {
-        _mm256_store_si256(&b[i], c);
-    }
-}
 int foo() {
     __m512i vOne     = _mm512_set1_epi8(1);
     __mmask64 result = _mm512_cmpeq_epi8_mask(vOne,vOne);
@@ -46,7 +39,7 @@ int main(void) { return (int)foo(); }
 # by avoiding any try_compiles for the flags
 if((DEFINED AVX512_C_FLAGS) OR (DEFINED HAVE_AVX512))
 else()
-  if(CMAKE_C_COMPILER_ID EQUAL "MSVC")
+  if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     # MSVC can compile AVX intrinsics without the arch flag, however it
     # will detect that AVX code is found and "consider using /arch:AVX".
     set(AVX512_C_FLAG_CANDIDATES

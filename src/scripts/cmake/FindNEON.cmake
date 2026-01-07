@@ -43,7 +43,7 @@ int main(void)
 # by avoiding any try_compiles for the flags
 if((DEFINED NEON_C_FLAGS) OR (DEFINED HAVE_NEON))
 else()
-  if(CMAKE_C_COMPILER_ID EQUAL "MSVC")
+  if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     set(NEON_C_FLAG_CANDIDATES
       #Empty, if compiler automatically accepts NEON
       " ")
