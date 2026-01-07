@@ -75,12 +75,6 @@ class TestConnectionScorerSWAR64(_TestConnectionScorerBase, unittest.TestCase):
     backend = "swar64"
 
 
-@unittest.skipUnless(lib._MMX_BUILD_SUPPORT, "extension compiled without MMX support")
-@unittest.skipUnless(lib._MMX_RUNTIME_SUPPORT, "requires machine with MMX support")
-class TestConnectionScorerMMX(_TestConnectionScorerBase, unittest.TestCase):
-    backend = "mmx"
-
-
 @unittest.skipUnless(lib._SSE2_BUILD_SUPPORT, "extension compiled without SSE2 support")
 @unittest.skipUnless(lib._SSE2_RUNTIME_SUPPORT, "requires machine with SSE2 support")
 class TestConnectionScorerSSE(_TestConnectionScorerBase, unittest.TestCase):

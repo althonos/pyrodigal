@@ -7,12 +7,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set_property(GLOBAL PROPERTY PYTHON_EXTENSIONS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # --- Detect SIMD --------------------------------------------------------------
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/scripts/cmake")
 
-include("src/scripts/cmake/FindAVX2.cmake")
-include("src/scripts/cmake/FindAVX512.cmake")
-include("src/scripts/cmake/FindNEON.cmake")
-include("src/scripts/cmake/FindSSE2.cmake")
-include("src/scripts/cmake/CythonExtension.cmake")
+include(FindAVX2)
+include(FindAVX512)
+include(FindNEON)
+include(FindSSE2)
 
 # --- Compile code -------------------------------------------------------------
 

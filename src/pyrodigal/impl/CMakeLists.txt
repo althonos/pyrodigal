@@ -1,3 +1,5 @@
+include(CythonExtension)
+
 cython_extension(generic LINKS prodigal EXTRA_SOURCES generic.c generic.h template.h)
 cython_extension(swar64 LINKS prodigal EXTRA_SOURCES swar64.c swar64.h template.h)
 

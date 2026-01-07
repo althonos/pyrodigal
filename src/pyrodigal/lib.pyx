@@ -247,12 +247,10 @@ _AVX512_BUILD_SUPPORT   = AVX512_BUILD_SUPPORT
 _AVX2_BUILD_SUPPORT     = AVX2_BUILD_SUPPORT
 _NEON_BUILD_SUPPORT     = NEON_BUILD_SUPPORT
 _SSE2_BUILD_SUPPORT     = SSE2_BUILD_SUPPORT
-_MMX_BUILD_SUPPORT      = MMX_BUILD_SUPPORT
 _AVX512_RUNTIME_SUPPORT = AVX512_BUILD_SUPPORT and "avx512f" in _HOST_FEATURES and "avx512bw" in _HOST_FEATURES
 _AVX2_RUNTIME_SUPPORT   = AVX2_BUILD_SUPPORT and "avx2" in _HOST_FEATURES
 _NEON_RUNTIME_SUPPORT   = NEON_BUILD_SUPPORT and "neon" in _HOST_FEATURES
 _SSE2_RUNTIME_SUPPORT   = SSE2_BUILD_SUPPORT and "sse2" in _HOST_FEATURES
-_MMX_RUNTIME_SUPPORT    = MMX_BUILD_SUPPORT and "mmx" in _HOST_FEATURES
 
 # NOTE(@althonos): NEON is always supported on Aarch64 so we should only check
 #                  that the extension was built with NEON support.
@@ -271,7 +269,6 @@ if TARGET_CPU.startswith("wasm"):
     _SSE2_RUNTIME_SUPPORT   = SSE2_BUILD_SUPPORT
     _NEON_RUNTIME_SUPPORT   = False
     _AVX2_RUNTIME_SUPPORT   = False
-    _MMX_RUNTIME_SUPPORT    = False
     _AVX512_RUNTIME_SUPPORT = False
 
 # --- Sequence mask ----------------------------------------------------------
@@ -1371,9 +1368,6 @@ cdef class ConnectionScorer(BaseConnectionScorer):
                     scorer = AVX2ConnectionScorer()
                 if AVX512_BUILD_SUPPORT and _AVX512_RUNTIME_SUPPORT:
                     scorer = AVX512ConnectionScorer()
-            elif backend == "mmx":
-                if not MMX_BUILD_SUPPORT:
-                    raise RuntimeError("Extension was compiled without MMX support")
             elif backend == "sse":
                 if not SSE2_BUILD_SUPPORT:
                     raise RuntimeError("Extension was compiled without SSE2 support")
