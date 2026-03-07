@@ -1,5 +1,5 @@
 # coding: utf-8
-# cython: language_level=3, linetrace=True, binding=True
+# cython: language_level=3, binding=True
 
 from libc.stdint cimport int8_t, uint8_t
 
