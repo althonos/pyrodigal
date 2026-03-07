@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [v3.7.1]: https://github.com/althonos/pyrodigal/compare/v3.7.0...v3.7.1
 
 ### Fixed
-- Line tracing being enabled unconditionnaly causing performance issues ([#79](https://github.com/althonos/pyrodigal/issues/79).
+- Line tracing being enabled unconditionnaly causing performance issues ([#79](https://github.com/althonos/pyrodigal/issues/79)).
 
 
 ## [v3.7.0] - 2026-01-07 - YANKED
