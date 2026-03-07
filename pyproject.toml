@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pyrodigal"
-version = "3.7.0"
+version = "3.7.1"
 description = "Cython bindings and Python interface to Prodigal, an ORF finder for genomes and metagenomes."
 readme = "README.md"
 requires-python = ">=3.7"
@@ -28,6 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
