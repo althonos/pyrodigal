@@ -268,7 +268,7 @@ def main(
             )
 
             # pre-train if in training mode
-            if args.p == "single":
+            if args.p == "single" and training_info is None:
                 # use the same interleaving logic as Prodigal
                 sequences = list(parse(input_file))
                 training_info = gene_finder.train(
