@@ -18,7 +18,7 @@ finder for genomes and metagenomes. **Now with SIMD!***
 [![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyrodigal/blob/main/CHANGELOG.md)
 [![Downloads](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fpepy.tech%2Fprojects%2Fpyrodigal&search=%5B0-9%5D%2B.%5B0-9%5D%2B(k%7CM)&style=flat-square&label=downloads&color=303f9f&cacheSeconds=86400)](https://pepy.tech/project/pyrodigal)
 [![Paper](https://img.shields.io/badge/paper-JOSS-9400ff?style=flat-square&maxAge=86400)](https://doi.org/10.21105/joss.04296)
-[![Citations](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbadge.dimensions.ai%2Fdetails%2Fid%2Fpub.1147419140%2Fmetadata.json&query=%24.times_cited&style=flat-square&label=citations&maxAge=86400)](https://badge.dimensions.ai/details/id/pub.1147419140)
+[![Citations](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fbadge.dimensions.ai%2Fdetails%2Fid%2Fpub.1147419140&search=%3Cdiv%20class%3D%22count%22%3E(%5Cd*)%3C%2Fdiv%3E&replace=%241&style=flat-square&label=citations&cacheSeconds=3600)](https://badge.dimensions.ai/details/id/pub.1147419140)
 
 ## 🗺️ Overview
 
